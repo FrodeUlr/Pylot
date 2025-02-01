@@ -7,8 +7,6 @@ use cmd::manage_uv::install_uv;
 
 #[tokio::main]
 async fn main(){
-    //let args = Args::parse();
-
     let styles = Styles::styled()
     .header(AnsiColor::Yellow.on_default())
     .usage(AnsiColor::Green.on_default())
@@ -38,7 +36,7 @@ async fn main(){
 
     match matches.subcommand() {
         Some(("install", _)) => {
-            install_uv(true).await;
+            install_uv().await;
         },
         Some(("check", _)) => {
             println!("Checking if Astral UV is installed");
@@ -47,15 +45,4 @@ async fn main(){
             println!("No command provided");
         }
     }
-    //match args.commands {
-    //    Some(Commands::Install { force }) => {
-    //        install_uv(force);
-    //    },
-    //    Some(Commands::Check) => {
-    //        println!("Checking if Astral UV is installed");
-    //    },
-    //    None => {
-    //        println!("No command provided");
-    //    }
-    //}
 }
