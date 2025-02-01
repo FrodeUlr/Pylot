@@ -21,3 +21,4 @@ pub enum Commands {
     #[command(about = "Check Astral UV", long_about = "This command checks if Astral UV is installed")]
     Check,
 }
+
