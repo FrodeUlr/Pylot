@@ -1,12 +1,12 @@
 mod cmd;
 mod interface;
 
-use clap::{Parser, Arg};
+use clap::Arg;
 use clap::builder::styling::{ Styles, AnsiColor };
-use interface::cli::{ Args, Commands };
 use cmd::manage_uv::install_uv;
 
-fn main(){
+#[tokio::main]
+async fn main(){
     //let args = Args::parse();
 
     let styles = Styles::styled()
@@ -38,7 +38,7 @@ fn main(){
 
     match matches.subcommand() {
         Some(("install", _)) => {
-            install_uv(true);
+            install_uv(true).await;
         },
         Some(("check", _)) => {
             println!("Checking if Astral UV is installed");
