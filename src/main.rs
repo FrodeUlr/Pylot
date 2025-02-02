@@ -10,7 +10,7 @@ async fn main(){
     let args = Cli::parse();
 
     match args.commands {
-        Some(Commands::Install) => {
+        Some(Commands::Install ) => {
             install_uv().await;
         },
         Some(Commands::Check) => {

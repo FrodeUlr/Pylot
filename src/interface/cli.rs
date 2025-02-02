@@ -5,7 +5,6 @@ use super::cli_styles;
 #[derive(Debug, Parser)]
 #[command(
     version,
-    about,
     long_about = None,
     propagate_version = true,
     arg_required_else_help = true
