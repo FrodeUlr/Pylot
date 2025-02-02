@@ -10,7 +10,7 @@ use super::cli_styles;
     arg_required_else_help = true
 )]
 #[command(
-    name = "pythonmanager",
+    name = "Python Manager",
     version = "0.1.0",
     author = "Fulrix",
     about = "A simple CLI to manage Python virtual enviroonments using Astral UV",
@@ -34,5 +34,11 @@ pub enum Commands {
         long_about = "This command checks if Astral UV is installed"
     )]
     Check,
+
+    #[command(
+        about = "Uninstall Astral UV",
+        long_about = "This command uninstalls Astral UV"
+    )]
+    Uninstall,
 }
 

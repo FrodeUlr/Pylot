@@ -2,7 +2,7 @@ mod cmd;
 mod interface;
 
 use clap::Parser;
-use cmd::manage_uv::{ install_uv, check_uv };
+use cmd::manage::{ install, check, uninstall };
 use interface::cli::{ Cli, Commands };
 
 #[tokio::main]
@@ -11,10 +11,13 @@ async fn main(){
 
     match args.commands {
         Some(Commands::Install ) => {
-            install_uv().await;
+            install().await;
         },
+        Some(Commands::Uninstall) => {
+            uninstall().await;
+        }
         Some(Commands::Check) => {
-            check_uv().await;
+            check().await;
         },
         None => {
             println!("No command provided");
