@@ -1,20 +1,17 @@
-use std::process::Stdio;
 use colored::Colorize;
 use std::io::stdin;
-use tokio::process::{Command, Child};
-use tokio::io::{AsyncBufReadExt, BufReader };
+use crate::cmd::utils;
 
 pub async fn install_uv() {
     println!("{}", "Installing Astral UV...".cyan());
     println!("{}", "This will run the following command:".yellow());
     if cfg!(target_os = "windows") {
         install_uv_windows().await;
-    } else {
-        install_uv_linux().await;
+        return;
     }
 
+    install_uv_linux().await;
 }
-
 
 async fn install_uv_linux() {
     println!("{}", "  curl -LsSf https://astral.sh/uv/install.sh | sh".red());
@@ -24,15 +21,9 @@ async fn install_uv_linux() {
         return;
     }
 
-    let mut child = Command::new("bash")
-        .arg("-c")
-        .arg("curl -LsSf https://astral.sh/uv/install.sh | sh")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to execute command");
+    let mut child = utils::create_child_cmd("bash", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh");
 
-    run_command(&mut child).await;
+    utils::run_command(&mut child).await;
 }
 
 async fn install_uv_windows() {
@@ -43,15 +34,9 @@ async fn install_uv_windows() {
         return;
     }
 
-    let mut child = Command::new("winget")
-        .arg("install")
-        .arg("astral-sh.uv")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to execute command");
+    let mut child = utils::create_child_cmd("winget", "install", "astral-sh.uv");
 
-    run_command(&mut child).await;
+    utils::run_command(&mut child).await;
 }
 
 fn confirm() -> bool {
@@ -61,70 +46,17 @@ fn confirm() -> bool {
     input.trim() == "y"
 }
 
-async fn run_command(child: &mut Child) {
-    let stdout = child.stdout.take().expect("Failed to open stdout");
-    let stderr = child.stderr.take().expect("Failed to open stderr");
-
-    let stdout_reader = BufReader::new(stdout);
-    let stderr_reader = BufReader::new(stderr);
-
-    let stdout_task = tokio::spawn(async move {
-        let mut lines = stdout_reader.lines();
-        while let Ok(Some(line)) = lines.next_line().await {
-            println!("{}", line.green());
-        }
-    });
-
-    let stderr_taskk = tokio::spawn(async move {
-        let mut lines = stderr_reader.lines();
-        while let Ok(Some(line)) = lines.next_line().await {
-            println!("{}", line.red());
-        }
-    });
-
-    let (stdout_res, stderr_res, _) = tokio::join!(stdout_task, stderr_taskk, child.wait());
-
-    if let Err(e) = stdout_res {
-        eprintln!("{}", format!("Error reading stdout: {}", e).red());
-    };
-    if let Err(e) = stderr_res {
-        eprintln!("{}", format!("Error reading stderr: {}", e).red());
-    };
-
-    let _ = child.wait().await;
-}
-
 pub async fn check_uv() {
     println!("{}", "Checking if Astral UV is installed...".cyan());
+    let installed: bool;
     if cfg!(target_os = "windows") {
-        check_uv_windows().await;
+        installed = utils::is_command_available("where", "uv").await;
     } else {
-        check_uv_linux().await;
+        installed = utils::is_command_available("which", "uv").await;
     }
-}
-
-async fn check_uv_linux() {
-    if is_command_available("which", "uv").await {
+    if installed {
         println!("{}", "Astral UV is installed".green());
-    } else {
-        println!("{}", "Astral UV is not installed".red());
+        return;
     }
-}
-async fn check_uv_windows() {
-    if is_command_available("where", "uv").await {
-        println!("{}", "Astral UV is installed".green());
-    } else {
-        println!("{}", "Astral UV is not installed".red());
-    }
-}
-
-async fn is_command_available(program: &str, cmd: &str) -> bool {
-    Command::new(program)
-        .arg(cmd)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .await
-        .map(|status| status.success())
-        .unwrap_or(false)
+    println!("{}", "Astral UV is not installed".red());
 }
