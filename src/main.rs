@@ -1,48 +1,25 @@
 mod cmd;
 mod interface;
 
-use clap::Arg;
-use clap::builder::styling::{ Styles, AnsiColor };
+use clap::Parser;
 use cmd::manage_uv::{ install_uv, check_uv };
+use interface::cli::{Args, Commands};
 
 #[tokio::main]
 async fn main(){
-    let styles = Styles::styled()
-    .header(AnsiColor::Yellow.on_default())
-    .usage(AnsiColor::Green.on_default())
-    .literal(AnsiColor::Green.on_default())
-    .placeholder(AnsiColor::Green.on_default());
+    let args = Args::parse();
 
-    let matches = clap::Command::new("pythonmanager")
-        .about("A simple CLI to manage Python versions")
-        .version("0.1.0")
-        .styles(styles)
-        .subcommand(
-            clap::Command::new("install")
-                .about("Install Astral UV")
-                .arg(
-                    Arg::new("version")
-                        .short('v')
-                        .long("version")
-                        .help("The Python version to install")
-                        .required(false)
-                )
-        )
-        .subcommand(
-            clap::Command::new("check")
-                .about("Check if Astral UV is installed")
-        )
-        .get_matches();
-
-    match matches.subcommand() {
-        Some(("install", _)) => {
+    match args.commands {
+        Some(Commands::Install) => {
             install_uv().await;
         },
-        Some(("check", _)) => {
+        Some(Commands::Check) => {
             check_uv().await;
         },
-        _ => {
+        None => {
             println!("No command provided");
         }
     }
+
+    let _ = Args::parse();
 }
