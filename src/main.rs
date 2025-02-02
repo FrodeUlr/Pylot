@@ -3,7 +3,7 @@ mod interface;
 
 use clap::Arg;
 use clap::builder::styling::{ Styles, AnsiColor };
-use cmd::manage_uv::install_uv;
+use cmd::manage_uv::{ install_uv, check_uv };
 
 #[tokio::main]
 async fn main(){
@@ -39,7 +39,7 @@ async fn main(){
             install_uv().await;
         },
         Some(("check", _)) => {
-            println!("Checking if Astral UV is installed");
+            check_uv().await;
         },
         _ => {
             println!("No command provided");

@@ -7,7 +7,6 @@ use tokio::io::{AsyncBufReadExt, BufReader };
 pub async fn install_uv() {
     println!("{}", "Installing Astral UV...".cyan());
     println!("{}", "This will run the following command:".yellow());
-    // Check if windows or linux
     if cfg!(target_os = "windows") {
         install_uv_windows().await;
     } else {
@@ -15,6 +14,7 @@ pub async fn install_uv() {
     }
 
 }
+
 
 async fn install_uv_linux() {
     println!("{}", "  curl -LsSf https://astral.sh/uv/install.sh | sh".red());
@@ -92,4 +92,39 @@ async fn run_command(child: &mut Child) {
     };
 
     let _ = child.wait().await;
+}
+
+pub async fn check_uv() {
+    println!("{}", "Checking if Astral UV is installed...".cyan());
+    if cfg!(target_os = "windows") {
+        check_uv_windows().await;
+    } else {
+        check_uv_linux().await;
+    }
+}
+
+async fn check_uv_linux() {
+    if is_command_available("which", "uv").await {
+        println!("{}", "Astral UV is installed".green());
+    } else {
+        println!("{}", "Astral UV is not installed".red());
+    }
+}
+async fn check_uv_windows() {
+    if is_command_available("where", "uv").await {
+        println!("{}", "Astral UV is installed".green());
+    } else {
+        println!("{}", "Astral UV is not installed".red());
+    }
+}
+
+async fn is_command_available(program: &str, cmd: &str) -> bool {
+    Command::new(program)
+        .arg(cmd)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .await
+        .map(|status| status.success())
+        .unwrap_or(false)
 }
