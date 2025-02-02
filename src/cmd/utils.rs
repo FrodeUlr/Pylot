@@ -1,6 +1,6 @@
 use colored::Colorize;
 use tokio::{io::{AsyncBufReadExt, BufReader}, process::{Child, Command}};
-use std::{io::stdin, process::Stdio};
+use std::{ io::stdin, process::Stdio};
 
 pub async fn is_command_available(cmd: &str, arg: &str) -> bool {
     Command::new(cmd)
@@ -13,10 +13,10 @@ pub async fn is_command_available(cmd: &str, arg: &str) -> bool {
         .unwrap_or(false)
 }
 
-pub fn create_child_cmd(cmd: &str, main_arg: &str, args: &str) -> Child {
+pub fn create_child_cmd(cmd: &str, command: &str, args: &[&str]) -> Child {
     Command::new(cmd)
-        .arg(main_arg)
-        .arg(args)
+        .arg(command)
+        .arg(args.join(" "))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -62,5 +62,3 @@ pub fn confirm() -> bool {
     stdin().read_line(&mut input).unwrap();
     input.trim() == "y"
 }
-
-
