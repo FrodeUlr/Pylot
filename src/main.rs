@@ -3,11 +3,11 @@ mod interface;
 
 use clap::Parser;
 use cmd::manage_uv::{ install_uv, check_uv };
-use interface::cli::{Args, Commands};
+use interface::cli::{ Cli, Commands };
 
 #[tokio::main]
 async fn main(){
-    let args = Args::parse();
+    let args = Cli::parse();
 
     match args.commands {
         Some(Commands::Install) => {
@@ -20,6 +20,4 @@ async fn main(){
             println!("No command provided");
         }
     }
-
-    let _ = Args::parse();
 }

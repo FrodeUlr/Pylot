@@ -1,2 +1,2 @@
 pub mod cli;
-pub mod cli_styles;
+mod cli_styles;
