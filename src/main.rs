@@ -1,24 +1,34 @@
 mod cmd;
 mod interface;
+mod cfg;
 
 use clap::Parser;
-use cmd::manage::{ install, check, uninstall };
+use cmd::manage;
+use cmd::venvmgr;
+use cfg::settings;
 use interface::cli::{ Cli, Commands };
 
 #[tokio::main]
 async fn main(){
-    let args = Cli::parse();
 
+    settings::init().await;
+
+    let args = Cli::parse();
+    
     match args.commands {
         Some(Commands::Install ) => {
-            install().await;
+            manage::install().await;
         },
         Some(Commands::Uninstall) => {
-            uninstall().await;
+            manage::uninstall().await;
         }
         Some(Commands::Check) => {
-            check().await;
+            manage::check().await;
         },
+        Some(Commands::Create { name, python_version, clean }) => {
+            let venv = venvmgr::Venv::new(name, python_version, clean);
+            venv.create().await;
+        }
         None => {
             println!("No command provided");
         }

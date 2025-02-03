@@ -40,5 +40,18 @@ pub enum Commands {
         long_about = "This command uninstalls Astral UV"
     )]
     Uninstall,
+
+    #[command(
+        about = "Create a new python virtual environment",
+        long_about = "This command creates a new python virtual environment"
+    )]
+    Create {
+        #[arg(short, long, help = "Name of the virtual environment")]
+        name: String,
+        #[arg(short, long, help = "Python version to use", default_value = "3.10")]
+        python_version: String,
+        #[arg(short, long, help = "Clean the virtual environment", default_value = "false")]
+        clean: bool,
+    }
 }
 

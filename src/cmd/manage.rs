@@ -5,28 +5,28 @@ pub async fn install() {
     println!("{}", "Installing Astral UV...".yellow());
     println!("{}", "This will run the following command:".yellow());
 
+    let prog;
     let cmd;
     let arg: &[&str];
-    let command;
 
     if cfg!(target_os = "windows") {
-        cmd = "winget";
-        command = "install";
+        prog = "winget";
+        cmd = "install";
         arg = &["astral-sh.uv"];
     } else {
-        cmd = "bash";
-        command = "-c";
+        prog = "bash";
+        cmd = "-c";
         arg = &["curl", "-LsSf", "https://astral.sh/uv/install.sh", "|", "sh"];
     }
 
-    println!("{}", format!("  {} {}", cmd, arg.join(" ")).red());
+    println!("{}", format!("  {} {} {}", prog, cmd, arg.join(" ")).red());
 
     if confirm() == false {
         println!("{}", "Exiting...".yellow());
         return;
     }
 
-    let mut child = utils::create_child_cmd(cmd, command, arg);
+    let mut child = utils::create_child_cmd(prog, cmd, arg);
     utils::run_command(&mut child).await;
 }
 
@@ -34,28 +34,28 @@ pub async fn uninstall() {
     println!("{}", "Uninstalling Astral UV...".yellow());
     println!("{}", "This will run the following command:".yellow());
 
+    let prog;
     let cmd;
     let arg: &[&str];
-    let command;
 
     if cfg!(target_os = "windows") {
-        cmd = "winget";
-        command = "uninstall";
+        prog = "winget";
+        cmd = "uninstall";
         arg = &["astral-sh.uv"];
     } else {
-        cmd = "bash";
-        command = "-c";
+        prog = "bash";
+        cmd = "-c";
         arg = &["rm", "~/.local/bin/uv", "~/.local/bin/uvx"];
     }
 
-    println!("{}", format!("  {} {}", cmd, arg.join(" ")).red());
+    println!("{}", format!("  {} {} {}", prog, cmd, arg.join(" ")).red());
 
     if confirm() == false {
         println!("{}", "Exiting...".yellow());
         return;
     }
 
-    let mut child = utils::create_child_cmd(cmd, command, arg);
+    let mut child = utils::create_child_cmd(prog, cmd, arg);
     utils::run_command(&mut child).await;
 }
 
