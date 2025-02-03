@@ -11,10 +11,12 @@ use interface::cli::{ Cli, Commands };
 #[tokio::main]
 async fn main(){
 
-    settings::init().await;
-
+    settings::Settings::init().await;
+    let settings = settings::Settings::get_settings();
+    println!("{:?}", settings);
+    println!("{:?}", settings.location);
     let args = Cli::parse();
-    
+
     match args.commands {
         Some(Commands::Install ) => {
             manage::install().await;
