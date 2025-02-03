@@ -48,7 +48,7 @@ pub async fn uninstall() {
         arg = &["rm", "~/.local/bin/uv", "~/.local/bin/uvx"];
     }
 
-    println!("{}", format!("  {} {}", cmd, arg.join(" ")).red());
+    println!("{}", format!("  {} {} {}", cmd, command, arg.join(" ")).red());
 
     if confirm() == false {
         println!("{}", "Exiting...".yellow());
