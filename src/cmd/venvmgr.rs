@@ -21,6 +21,6 @@ impl Venv {
         println!("Python version: {}", self.python_version);
         println!("Clean: {}", self.clean);
         println!("Settings: {:?}", settings);
-        println!("Settings location: {:?}", settings.location);
+        println!("Settings location: {:?}", settings.venvs_path);
     }
 }

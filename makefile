@@ -1,4 +1,4 @@
-PROJECT_NAME = manage-python
+PROJECT_NAME = python-manager
 
 ifeq ($(OS),Windows_NT)
 	TARGET_DIR = target/release
@@ -37,7 +37,6 @@ package: build
 	mkdir -p dist
 	cp $(TARGET_DIR)/$(PROJECT_NAME) dist/
 	cp settings.toml dist/
-	echo "Package in dist directory"
 
 rebuild: clean build
 

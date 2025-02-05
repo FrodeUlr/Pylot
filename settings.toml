@@ -1,1 +1,1 @@
-location = "~/.local/share"
+venvs_path = "~/pymngr/venvs"
