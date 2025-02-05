@@ -11,9 +11,6 @@ use interface::cli::{Cli, Commands};
 #[tokio::main]
 async fn main() {
     settings::Settings::init().await;
-    let settings = settings::Settings::get_settings();
-    println!("{:?}", settings);
-    println!("{:?}", settings.location);
     let args = Cli::parse();
 
     match args.commands {
