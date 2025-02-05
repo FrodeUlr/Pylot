@@ -8,7 +8,7 @@ else
 	CARGO_FLAGS = --release --target x86_64-unknown-linux-musl
 endif
 
-.PONY: all build run clean format test lint
+.PHONY: all build run clean format test lint
 
 all: build
 
