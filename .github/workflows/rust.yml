@@ -17,7 +17,7 @@ jobs:
     - name: Update rustc
       run: rustup target add x86_64-unknown-linux-musl
     - name: Build
-      run: cargo build --verbose --release --target x86_64-unknown-linux-musl
+      run: make package
     #- name: Run tests
     #  run: cargo test --verbose
     
@@ -25,14 +25,14 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: linux-binary
-        path: target/x86_64-unknown-linux-musl/release/manage-python
+        path: dist
 
   build-windows:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --verbose --release
+      run: make package
     #- name: Run tests
     #  run: cargo test --verbose
     
@@ -40,4 +40,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: windows-binary
-        path: target/release/manage-python.exe
+        path: dist

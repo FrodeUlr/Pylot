@@ -1,8 +1,12 @@
 PROJECT_NAME = manage-python
 
-TARGET_DIR = target/release
-
-CARGO_FLAGS = --release
+ifeq ($(OS),Windows_NT)
+	TARGET_DIR = target/release
+	CARGO_FLAGS = --release
+else
+	TARGET_DIR = target/x86_64-unknown-linux-musl/release
+	CARGO_FLAGS = --release --target x86_64-unknown-linux-musl
+endif
 
 .PONY: all build run clean format test lint
 
