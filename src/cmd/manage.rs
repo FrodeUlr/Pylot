@@ -21,7 +21,7 @@ pub async fn install() {
 
     println!("{}", format!("  {} {} {}", prog, cmd, arg.join(" ")).red());
 
-    if confirm() == false {
+    if !confirm() {
         println!("{}", "Exiting...".yellow());
         return;
     }
@@ -50,7 +50,7 @@ pub async fn uninstall() {
 
     println!("{}", format!("  {} {} {}", prog, cmd, arg.join(" ")).red());
 
-    if confirm() == false {
+    if !confirm() {
         println!("{}", "Exiting...".yellow());
         return;
     }
@@ -62,13 +62,11 @@ pub async fn uninstall() {
 pub async fn check() {
     println!("{}", "Checking if Astral UV is installed and configured...".cyan());
 
-    let installed: bool;
-
-    if cfg!(target_os = "windows") {
-        installed = utils::is_command_available("where", "uv").await;
+    let installed: bool = if cfg!(target_os = "windows") {
+        utils::is_command_available("where", "uv").await
     } else {
-        installed = utils::is_command_available("which", "uv").await;
-    }
+        utils::is_command_available("which", "uv").await
+    };
 
     if installed {
         println!("{}", "Astral UV was found".green());
