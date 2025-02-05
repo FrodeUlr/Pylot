@@ -1,5 +1,5 @@
-use colored::Colorize;
 use crate::cmd::utils::{self, confirm};
+use colored::Colorize;
 
 pub async fn install() {
     println!("{}", "Installing Astral UV...".yellow());
@@ -16,7 +16,13 @@ pub async fn install() {
     } else {
         prog = "bash";
         cmd = "-c";
-        arg = &["curl", "-LsSf", "https://astral.sh/uv/install.sh", "|", "sh"];
+        arg = &[
+            "curl",
+            "-LsSf",
+            "https://astral.sh/uv/install.sh",
+            "|",
+            "sh",
+        ];
     }
 
     println!("{}", format!("  {} {} {}", prog, cmd, arg.join(" ")).red());
@@ -60,7 +66,10 @@ pub async fn uninstall() {
 }
 
 pub async fn check() {
-    println!("{}", "Checking if Astral UV is installed and configured...".cyan());
+    println!(
+        "{}",
+        "Checking if Astral UV is installed and configured...".cyan()
+    );
 
     let installed: bool = if cfg!(target_os = "windows") {
         utils::is_command_available("where", "uv").await
@@ -73,5 +82,8 @@ pub async fn check() {
         return;
     }
 
-    println!("{}", "Astral UV is not installed or missing from path".red());
+    println!(
+        "{}",
+        "Astral UV is not installed or missing from path".red()
+    );
 }

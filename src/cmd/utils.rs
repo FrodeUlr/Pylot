@@ -1,6 +1,9 @@
 use colored::Colorize;
-use tokio::{io::{AsyncBufReadExt, BufReader}, process::{Child, Command}};
-use std::{ io::stdin, process::Stdio};
+use std::{io::stdin, process::Stdio};
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    process::{Child, Command},
+};
 
 pub async fn is_command_available(cmd: &str, arg: &str) -> bool {
     Command::new(cmd)

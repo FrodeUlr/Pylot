@@ -7,9 +7,11 @@ pub struct Settings {
     pub location: String,
 }
 
-static SETTINGS: Lazy<Mutex<Settings>> = Lazy::new(|| Mutex::new(Settings {
-    location: String::from(""),
-}));
+static SETTINGS: Lazy<Mutex<Settings>> = Lazy::new(|| {
+    Mutex::new(Settings {
+        location: String::from(""),
+    })
+});
 
 impl Settings {
     pub async fn init() {
@@ -18,13 +20,15 @@ impl Settings {
             .build()
             .expect("Failed to build settings");
 
-        let new_settings: Settings = settings.try_deserialize().expect("Failed to deserialize settings");
+        let new_settings: Settings = settings
+            .try_deserialize()
+            .expect("Failed to deserialize settings");
 
         let mut settings_lock = SETTINGS.lock().expect("Failed to lock settings");
         *settings_lock = new_settings;
     }
 
-        pub fn get_settings() -> Settings {
+    pub fn get_settings() -> Settings {
         let settings_lock = SETTINGS.lock().expect("Failed to lock settings");
         settings_lock.clone()
     }

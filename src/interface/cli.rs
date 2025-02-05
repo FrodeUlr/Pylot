@@ -1,6 +1,6 @@
-use clap::{  Parser, Subcommand };
-use cli_styles::custom_styles;
 use super::cli_styles;
+use clap::{Parser, Subcommand};
+use cli_styles::custom_styles;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -50,8 +50,12 @@ pub enum Commands {
         name: String,
         #[arg(short, long, help = "Python version to use", default_value = "3.10")]
         python_version: String,
-        #[arg(short, long, help = "Clean the virtual environment", default_value = "false")]
+        #[arg(
+            short,
+            long,
+            help = "Clean the virtual environment",
+            default_value = "false"
+        )]
         clean: bool,
-    }
+    },
 }
-

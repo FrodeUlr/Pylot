@@ -8,4 +8,3 @@ pub fn custom_styles() -> Styles {
         .literal(AnsiColor::Green.on_default())
         .placeholder(AnsiColor::Green.on_default())
 }
-

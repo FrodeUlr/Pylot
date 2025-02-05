@@ -1,5 +1,3 @@
-
-
 pub struct Venv {
     name: String,
     python_version: String,
