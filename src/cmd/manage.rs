@@ -87,3 +87,5 @@ pub async fn check() {
         "Astral UV is not installed or missing from path".red()
     );
 }
+
+
