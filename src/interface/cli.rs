@@ -58,4 +58,9 @@ pub enum Commands {
         )]
         clean: bool,
     },
+    Delete {
+        #[arg(short, long, help = "Name of the virtual environment")]
+        name: String,
+    },
+    List,
 }

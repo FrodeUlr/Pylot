@@ -31,6 +31,13 @@ async fn main() {
             let venv = venvmgr::Venv::new(name, python_version, clean);
             venv.create().await;
         }
+        Some(Commands::Delete { name }) => {
+            let venv = venvmgr::Venv::new(name, "".to_string(), false);
+            venv.delete().await;
+        }
+        Some(Commands::List) => {
+            venvmgr::Venv::list().await;
+        }
         None => {
             println!("No command provided");
         }

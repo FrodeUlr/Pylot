@@ -23,4 +23,12 @@ impl Venv {
         println!("Settings: {:?}", settings);
         println!("Settings location: {:?}", settings.venvs_path);
     }
+
+    pub async fn delete(&self) {
+        println!("Deleting virtual environment: {}", self.name);
+    }
+
+    pub async fn list() {
+        println!("Listing virtual environments");
+    }
 }
