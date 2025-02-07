@@ -84,4 +84,14 @@ pub async fn check() {
     );
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+    #[tokio::test]
+    async fn test_check() {
+        let installed = check().await;
+        assert_eq!(installed, ());
+    }
+
+}

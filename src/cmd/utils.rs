@@ -65,3 +65,14 @@ pub fn confirm() -> bool {
     stdin().read_line(&mut input).unwrap();
     input.trim() == "y"
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_is_command_available() {
+        let available = is_command_available("ls", "--version").await;
+        assert_eq!(available, true);
+    }
+}
