@@ -68,11 +68,30 @@ pub fn confirm() -> bool {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[tokio::test]
     async fn test_is_command_available() {
         let available = is_command_available("ls", "--version").await;
         assert_eq!(available, true);
+    }
+
+    #[tokio::test]
+    async fn test_create_child_cmd() {
+        let cmd = "ls";
+        let arg = "-lah";
+        let args = &["|", "grep python-manager"];
+        let child = create_child_cmd(cmd, arg, args);
+        assert_eq!(child.id() > Some(0), true);
+    }
+
+    #[tokio::test]
+    async fn test_run_command() {
+        let cmd = "ls";
+        let arg = "-lah";
+        let args = &["|", "grep python-manager"];
+        let mut child = create_child_cmd(cmd, arg, args);
+        run_command(&mut child).await;
     }
 }

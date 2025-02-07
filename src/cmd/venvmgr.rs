@@ -41,3 +41,24 @@ impl Venv {
         println!("Listing virtual environments");
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_venv() {
+        let venv = Venv::new("test_venv".to_string(), "3.8".to_string(), false);
+        assert_eq!(venv.name, "test_venv");
+        assert_eq!(venv.python_version, "3.8");
+        assert_eq!(venv.clean, false);
+    }
+
+    #[tokio::test]
+    async fn test_venv_clean() {
+        let venv = Venv::new("test_venv_clean".to_string(), "3.9".to_string(), true);
+        assert_eq!(venv.name, "test_venv_clean");
+        assert_eq!(venv.python_version, "3.9");
+        assert_eq!(venv.clean, true);
+    }
+}
