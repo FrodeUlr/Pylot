@@ -26,13 +26,13 @@ async fn main() {
         Some(Commands::Create {
             name,
             python_version,
-            clean,
+            packages,
         }) => {
-            let venv = venvmgr::Venv::new(name, python_version, clean);
+            let venv = venvmgr::Venv::new(name, python_version, packages);
             venv.create().await;
         }
         Some(Commands::Delete { name }) => {
-            let venv = venvmgr::Venv::new(name, "".to_string(), false);
+            let venv = venvmgr::Venv::new(name, "".to_string(), vec![]);
             venv.delete().await;
         }
         Some(Commands::List) => {

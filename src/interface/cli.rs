@@ -53,10 +53,11 @@ pub enum Commands {
         #[arg(
             short,
             long,
-            help = "Clean the virtual environment",
-            default_value = "false"
+            help = "Packages to install",
+            default_value = "[]",
+            num_args = 1..
         )]
-        clean: bool,
+        packages: Vec<String>,
     },
     Delete {
         #[arg(short, long, help = "Name of the virtual environment")]
