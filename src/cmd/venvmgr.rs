@@ -1,3 +1,4 @@
+use super::utils;
 use crate::cfg::settings;
 
 pub struct Venv {
@@ -17,11 +18,19 @@ impl Venv {
 
     pub async fn create(&self) {
         let settings = settings::Settings::get_settings();
+        let pwd = std::env::current_dir().unwrap();
+        // set pwd to settings venvs_path
+        let path = shellexpand::tilde(&settings.venvs_path).to_string();
+        std::env::set_current_dir(&path).unwrap();
+        let args = &[
+            self.name.as_str(),
+            "--python",
+            self.python_version.as_str(),
+        ];
         println!("Creating virtual environment: {}", self.name);
-        println!("Python version: {}", self.python_version);
-        println!("Clean: {}", self.clean);
-        println!("Settings: {:?}", settings);
-        println!("Settings location: {:?}", settings.venvs_path);
+        let mut child = utils::create_child_cmd("uv", "venv", args);
+        utils::run_command(&mut child).await;
+        std::env::set_current_dir(pwd).unwrap();
     }
 
     pub async fn delete(&self) {

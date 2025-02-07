@@ -19,7 +19,7 @@ pub async fn is_command_available(cmd: &str, arg: &str) -> bool {
 pub fn create_child_cmd(cmd: &str, command: &str, args: &[&str]) -> Child {
     Command::new(cmd)
         .arg(command)
-        .arg(args.join(" "))
+        .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()

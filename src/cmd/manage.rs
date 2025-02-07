@@ -7,32 +7,28 @@ pub async fn install() {
 
     let prog;
     let cmd;
-    let arg: &[&str];
+    let args: &[&str];
 
     if cfg!(target_os = "windows") {
         prog = "winget";
         cmd = "install";
-        arg = &["astral-sh.uv"];
+        args = &["astral-sh.uv"];
     } else {
         prog = "bash";
         cmd = "-c";
-        arg = &[
-            "curl",
-            "-LsSf",
-            "https://astral.sh/uv/install.sh",
-            "|",
-            "sh",
+        args = &[
+            "curl -LsSf https://astral.sh/uv/install.sh | sh",
         ];
     }
 
-    println!("{}", format!("  {} {} {}", prog, cmd, arg.join(" ")).red());
+    println!("{}", format!("  {} {} {}", prog, cmd, args.join(" ")).red());
 
     if !confirm() {
         println!("{}", "Exiting...".yellow());
         return;
     }
 
-    let mut child = utils::create_child_cmd(prog, cmd, arg);
+    let mut child = utils::create_child_cmd(prog, cmd, args);
     utils::run_command(&mut child).await;
 }
 
@@ -51,7 +47,7 @@ pub async fn uninstall() {
     } else {
         prog = "bash";
         cmd = "-c";
-        arg = &["rm", "~/.local/bin/uv", "~/.local/bin/uvx"];
+        arg = &["rm ~/.local/bin/uv ~/.local/bin/uvx"];
     }
 
     println!("{}", format!("  {} {} {}", prog, cmd, arg.join(" ")).red());
