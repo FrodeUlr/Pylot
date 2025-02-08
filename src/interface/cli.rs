@@ -51,7 +51,7 @@ pub enum Commands {
         #[arg(short, long, help = "Python version to use", default_value = "3.10")]
         python_version: String,
         #[arg(
-            short,
+            short = 'k',
             long,
             help = "Packages to install",
             default_value = "[]",

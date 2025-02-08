@@ -16,9 +16,8 @@ pub async fn is_command_available(cmd: &str, arg: &str) -> bool {
         .unwrap_or(false)
 }
 
-pub fn create_child_cmd(cmd: &str, command: &str, args: &[&str]) -> Child {
+pub fn create_child_cmd(cmd: &str, args: &[&str]) -> Child {
     Command::new(cmd)
-        .arg(command)
         .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -80,18 +79,16 @@ mod tests {
     #[tokio::test]
     async fn test_create_child_cmd() {
         let cmd = "ls";
-        let arg = "-lah";
-        let args = &["|", "grep python-manager"];
-        let child = create_child_cmd(cmd, arg, args);
+        let args = &["-lah", "|", "grep python-manager"];
+        let child = create_child_cmd(cmd, args);
         assert_eq!(child.id() > Some(0), true);
     }
 
     #[tokio::test]
     async fn test_run_command() {
         let cmd = "ls";
-        let arg = "-lah";
-        let args = &["|", "grep python-manager"];
-        let mut child = create_child_cmd(cmd, arg, args);
+        let args = &["-lah", "|", "grep python-manager"];
+        let mut child = create_child_cmd(cmd, args);
         run_command(&mut child).await;
     }
 }

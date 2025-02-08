@@ -5,30 +5,26 @@ pub async fn install() {
     println!("{}", "Installing Astral UV...".yellow());
     println!("{}", "This will run the following command:".yellow());
 
-    let prog;
-    let cmd;
-    let args: &[&str];
-
-    if cfg!(target_os = "windows") {
-        prog = "winget";
-        cmd = "install";
-        args = &["astral-sh.uv"];
+    let (cmd, args) = if cfg!(target_os = "windows") {
+        let _cmd = "winget";
+        let _args = &["install", "astral-sh.uv"];
+        (_cmd, _args)
     } else {
-        prog = "bash";
-        cmd = "-c";
-        args = &[
-            "curl -LsSf https://astral.sh/uv/install.sh | sh",
+        let _cmd = "bash";
+        let args = &[
+            "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh",
         ];
-    }
+        (_cmd, args)
+    };
 
-    println!("{}", format!("  {} {} {}", prog, cmd, args.join(" ")).red());
+    println!("{}", format!("  {} {}", cmd, args.join(" ")).red());
 
     if !confirm() {
         println!("{}", "Exiting...".yellow());
         return;
     }
 
-    let mut child = utils::create_child_cmd(prog, cmd, args);
+    let mut child = utils::create_child_cmd(cmd, args);
     utils::run_command(&mut child).await;
 }
 
@@ -36,28 +32,27 @@ pub async fn uninstall() {
     println!("{}", "Uninstalling Astral UV...".yellow());
     println!("{}", "This will run the following command:".yellow());
 
-    let prog;
-    let cmd;
-    let arg: &[&str];
+    //let cmd;
+    //let args: &[&str];
 
-    if cfg!(target_os = "windows") {
-        prog = "winget";
-        cmd = "uninstall";
-        arg = &["astral-sh.uv"];
+    let (cmd, args) = if cfg!(target_os = "windows") {
+        let _cmd = "winget";
+        let _args = &["uninstall", "astral-sh.uv"];
+        (_cmd, _args)
     } else {
-        prog = "bash";
-        cmd = "-c";
-        arg = &["rm ~/.local/bin/uv ~/.local/bin/uvx"];
-    }
+        let _cmd = "bash";
+        let _args = &["-c", "rm ~/.local/bin/uv ~/.local/bin/uvx"];
+        (_cmd, _args)
+    };
 
-    println!("{}", format!("  {} {} {}", prog, cmd, arg.join(" ")).red());
+    println!("{}", format!("  {} {}", cmd, args.join(" ")).red());
 
     if !confirm() {
         println!("{}", "Exiting...".yellow());
         return;
     }
 
-    let mut child = utils::create_child_cmd(prog, cmd, arg);
+    let mut child = utils::create_child_cmd(cmd, args);
     utils::run_command(&mut child).await;
 }
 
