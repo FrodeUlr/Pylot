@@ -1,7 +1,7 @@
 use colored::Colorize;
-use std::{io::stdin, process::Stdio};
+use std::{io::{stdin, Write}, process::Stdio};
 use tokio::{
-    io::{AsyncBufReadExt, BufReader},
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{Child, Command},
 };
 
@@ -23,6 +23,43 @@ pub fn create_child_cmd(cmd: &str, args: &[&str]) -> Child {
         .stderr(Stdio::piped())
         .spawn()
         .expect("Failed to execute command")
+}
+
+pub async fn activate_venv_install_pkgs(path: &str, pkgs: &Vec<String>) {
+    let mut child = Command::new("bash") // Use "cmd" on Windows
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .expect("Failed to start shell");
+
+    let stdin = child.stdin.as_mut().expect("Failed to open stdin");
+    let stdout = child.stdout.take().expect("Failed to open stdout");
+
+    let mut reader = BufReader::new(stdout).lines();
+
+    // Send a command
+    //stdin.write_all(b"echo Hello, Rust!\n").await.expect("Failed to write to stdin");
+    //stdin.flush().await.expect("Failed to flush stdin");
+
+    //if let Some(line) = reader.next_line().await.expect("Failed to read line") {
+    //    println!("Output: {}", line);
+    //}
+
+    // Send exit command
+    stdin.write_all(b"ls\n").await.expect("Failed to write to stdin");
+    stdin.flush().await.expect("Failed to flush stdin");
+    while let Some(line) = reader.next_line().await.expect("Failed to read line") {
+        if line.is_empty() {
+            break;
+        }
+        println!("Output: {}", line);
+    }
+    stdin.write_all(b"exit\n").await.expect("Failed to write to stdin");
+    stdin.flush().await.expect("Failed to flush stdin");
+
+    // Wait for the child process to exit
+    let status = child.wait().await.expect("Failed to wait on child process");
+    println!("Shell exited with status: {:?}", status);
 }
 
 pub async fn run_command(child: &mut Child) {
