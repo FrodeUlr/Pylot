@@ -28,10 +28,10 @@ pub fn create_child_cmd(cmd: &str, args: &[&str]) -> Child {
         .expect("Failed to execute command")
 }
 
-pub fn activate_venv_shell(cmd: &str, args: &str) {
+pub fn activate_venv_shell(cmd: &str, args: Vec<String>) {
     let _ = StdCommand::new(cmd)
         .arg("-c")
-        .arg(args)
+        .args(args)
         .spawn()
         .expect("Failed to activate virtual environment")
         .wait();
