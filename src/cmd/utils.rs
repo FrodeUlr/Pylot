@@ -81,8 +81,7 @@ pub fn get_parent_shell() -> String {
     if cfg!(target_os = "windows") {
         return "pwsh".to_string();
     }
-    let shell = std::env::var("SHELL").unwrap();
-    shell
+    std::env::var("SHELL").unwrap()
 }
 
 #[cfg(test)]

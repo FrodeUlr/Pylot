@@ -32,7 +32,7 @@ impl Venv {
         let mut child = utils::create_child_cmd("uv", args);
         utils::run_command(&mut child).await;
         let pkgs = self.packages.clone();
-        if self.packages.len() > 0 && self.packages[0] != "[]" {
+        if !self.packages.is_empty() && self.packages[0] != "[]" {
             let venn_path = shellexpand::tilde(&settings.venvs_path).to_string();
 
             let vpath = if cfg!(target_os = "windows") {
