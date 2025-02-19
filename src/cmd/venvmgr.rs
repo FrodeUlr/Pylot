@@ -75,7 +75,12 @@ impl Venv {
             println!("Virtual environment does not exist");
             return;
         }
-        let mut child = utils::create_child_cmd("rm", &["-rf", &format!("{}/{}", path, self.name)]);
+        let recurse = if cfg!(target_os = "windows") {
+            "-r"
+        } else {
+            "-rf"
+        };
+        let mut child = utils::create_child_cmd("rm", &[recurse, &format!("{}/{}", path, self.name)]);
         utils::run_command(&mut child).await;
     }
 
