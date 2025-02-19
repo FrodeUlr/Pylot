@@ -43,7 +43,7 @@ impl Venv {
 
             let mut args: Vec<String> = vec![
                 "source".to_string(),
-                vpath,  // Now `vpath` is owned inside `args`
+                vpath, // Now `vpath` is owned inside `args`
                 "&&".to_string(),
                 "uv".to_string(),
                 "pip".to_string(),
@@ -52,7 +52,11 @@ impl Venv {
 
             args.push(pkgs.join(" "));
             println!("Installing package(s): {}", pkgs.join(", "));
-            let agr_str = args.iter().map(String::as_str).collect::<Vec<_>>().join(" ");
+            let agr_str = args
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>()
+                .join(" ");
             let mut child2 = utils::create_child_cmd("bash", &["-c", &agr_str]);
 
             utils::run_command(&mut child2).await;
@@ -112,9 +116,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_venv_clean() {
-        let venv = Venv::new("test_venv_clean".to_string(), "3.9".to_string(), vec!["numpy".to_string(), "pandas".to_string()]);
+        let venv = Venv::new(
+            "test_venv_clean".to_string(),
+            "3.9".to_string(),
+            vec!["numpy".to_string(), "pandas".to_string()],
+        );
         assert_eq!(venv.name, "test_venv_clean");
         assert_eq!(venv.python_version, "3.9");
-        assert_eq![venv.packages ,&["numpy", "pandas"]]
+        assert_eq![venv.packages, &["numpy", "pandas"]]
     }
 }

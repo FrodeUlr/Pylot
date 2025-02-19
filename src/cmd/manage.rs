@@ -11,9 +11,7 @@ pub async fn install() {
         (_cmd, _args)
     } else {
         let _cmd = "bash";
-        let args = &[
-            "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh",
-        ];
+        let args = &["-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"];
         (_cmd, args)
     };
 
@@ -88,5 +86,4 @@ mod tests {
         let installed = check().await;
         assert_eq!(installed, ());
     }
-
 }

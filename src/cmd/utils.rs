@@ -1,5 +1,8 @@
 use colored::Colorize;
-use std::{io::stdin, process::{Stdio, Command as StdCommand}};
+use std::{
+    io::stdin,
+    process::{Command as StdCommand, Stdio},
+};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::{Child, Command},
