@@ -32,7 +32,7 @@ impl Venv {
         let mut child = utils::create_child_cmd("uv", args);
         utils::run_command(&mut child).await;
         let pkgs = self.packages.clone();
-        if self.packages.len() > 0 {
+        if self.packages.len() > 0 && self.packages[0] != "[]" {
             let venn_path = shellexpand::tilde(&settings.venvs_path).to_string();
 
             let vpath = if cfg!(target_os = "windows") {
@@ -50,8 +50,8 @@ impl Venv {
                 "install".to_string(),
             ];
 
-            args.push(pkgs.join(" ")); // Store the owned String
-            println!("Installing packages: {:?}", args);
+            args.push(pkgs.join(" "));
+            println!("Installing package(s): {}", pkgs.join(", "));
             let agr_str = args.iter().map(String::as_str).collect::<Vec<_>>().join(" ");
             let mut child2 = utils::create_child_cmd("bash", &["-c", &agr_str]);
 
@@ -62,10 +62,43 @@ impl Venv {
 
     pub async fn delete(&self) {
         println!("Deleting virtual environment: {}", self.name);
+        let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
+        let venv_path = format!("{}/{}", path, self.name);
+        if !std::path::Path::new(&venv_path).exists() {
+            println!("Virtual environment does not exist");
+            return;
+        }
+        let mut child = utils::create_child_cmd("rm", &["-rf", &format!("{}/{}", path, self.name)]);
+        utils::run_command(&mut child).await;
     }
 
     pub async fn list() {
         println!("Listing virtual environments");
+        let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
+        let mut child = utils::create_child_cmd("ls", &[&path]);
+        utils::run_command(&mut child).await;
+    }
+
+    pub async fn activate(&self) {
+        let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
+        let cmd = if cfg!(target_os = "windows") {
+            "pwsh"
+        } else {
+            "zsh"
+        };
+        let vpath = if cfg!(target_os = "windows") {
+            format!("{}/{}/scripts/activate", path, self.name)
+        } else {
+            format!("{}/{}/bin/activate", path, self.name)
+        };
+
+        let full_cmd = if cfg!(target_os = "windows") {
+            format!("{} && exec pwsh", vpath)
+        } else {
+            format!("source {} && {} -i", vpath, cmd)
+        };
+        println!("Full command: {}", full_cmd);
+        utils::activate_venv_shell(cmd, &full_cmd);
     }
 }
 

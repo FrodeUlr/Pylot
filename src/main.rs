@@ -38,6 +38,10 @@ async fn main() {
         Some(Commands::List) => {
             venvmgr::Venv::list().await;
         }
+        Some(Commands::Activate { name }) => {
+            let venv = venvmgr::Venv::new(name, "".to_string(), vec![]);
+            venv.activate().await;
+        }
         None => {
             println!("No command provided");
         }

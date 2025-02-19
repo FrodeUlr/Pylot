@@ -64,4 +64,8 @@ pub enum Commands {
         name: String,
     },
     List,
+    Activate {
+        #[arg(short, long, help = "Name of the virtual environment")]
+        name: String,
+    },
 }

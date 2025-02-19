@@ -4,6 +4,7 @@ use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     process::{Child, Command},
 };
+use std::process::Command as StdCommand;
 
 pub async fn is_command_available(cmd: &str, arg: &str) -> bool {
     Command::new(cmd)
@@ -23,6 +24,15 @@ pub fn create_child_cmd(cmd: &str, args: &[&str]) -> Child {
         .stderr(Stdio::piped())
         .spawn()
         .expect("Failed to execute command")
+}
+
+pub fn activate_venv_shell(cmd: &str, args: &str) {
+    let _ = StdCommand::new(cmd)
+        .arg("-c")
+        .arg(args)
+        .spawn()
+        .expect("Failed to activate virtual environment")
+        .wait();
 }
 
 pub async fn activate_venv_install_pkgs(path: &str, pkgs: &Vec<String>) {
