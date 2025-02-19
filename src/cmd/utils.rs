@@ -28,6 +28,17 @@ pub fn create_child_cmd(cmd: &str, args: &[&str]) -> Child {
         .expect("Failed to execute command")
 }
 
+pub fn create_child_cmd_run(cmd: &str, run: &str, args: &[&str]) -> Child {
+    Command::new(cmd)
+        .arg(run)
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("Failed to execute command")
+}
+
+
 pub fn activate_venv_shell(cmd: &str, args: Vec<String>) {
     let _ = StdCommand::new(cmd)
         .arg("-c")

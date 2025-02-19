@@ -35,21 +35,24 @@ impl Venv {
         if !self.packages.is_empty() && self.packages[0] != "[]" {
             let venn_path = shellexpand::tilde(&settings.venvs_path).to_string();
 
-            let vpath = if cfg!(target_os = "windows") {
-                format!("{}/{}/scripts/activate", venn_path, self.name)
+            let (cmd, vcmd, run) = if cfg!(target_os = "windows") {
+                let venv_cmd = format!("{}/{}/scripts/activate.ps1", venn_path, self.name);
+                ("pwsh", venv_cmd, "-Command")
             } else {
-                format!("{}/{}/bin/activate", venn_path, self.name)
+                let venv_cmd = format!("{}/{}/bin/activate", venn_path, self.name);
+                ("bash", venv_cmd, "-c")
             };
 
             let mut args: Vec<String> = vec![
-                "source".to_string(),
-                vpath, // Now `vpath` is owned inside `args`
+                vcmd,
                 "&&".to_string(),
                 "uv".to_string(),
                 "pip".to_string(),
                 "install".to_string(),
             ];
-
+            if !cfg!(target_os = "windows") {
+                args.insert(0, "source".to_string());
+            }
             args.push(pkgs.join(" "));
             println!("Installing package(s): {}", pkgs.join(", "));
             let agr_str = args
@@ -57,7 +60,7 @@ impl Venv {
                 .map(String::as_str)
                 .collect::<Vec<_>>()
                 .join(" ");
-            let mut child2 = utils::create_child_cmd("bash", &["-c", &agr_str]);
+            let mut child2 = utils::create_child_cmd_run(cmd, run, &[&agr_str]);
 
             utils::run_command(&mut child2).await;
         }
@@ -87,7 +90,7 @@ impl Venv {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let shell = utils::get_parent_shell();
         let (cmd, path) = if cfg!(target_os = "windows") {
-            let venv_path = format!("{}/{}/scripts/activate", path, self.name);
+            let venv_path = format!("{}/{}/scripts/activate.ps1", path, self.name);
             let venv_cmd = format!("{} && {}", venv_path, shell.as_str());
             (vec!(venv_cmd), venv_path)
         } else {
