@@ -50,7 +50,6 @@ impl Settings {
     }
 
     fn validate_venv_path(&self) {
-        println!("Validating venv path: {}", self.venvs_path);
         let mut path = self.venvs_path.clone();
         if path.starts_with("~") {
             path = shellexpand::tilde(&path).to_string();

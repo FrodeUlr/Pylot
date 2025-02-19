@@ -59,11 +59,23 @@ pub enum Commands {
         )]
         packages: Vec<String>,
     },
+    #[command(
+        about = "Delete a python virtual environment",
+        long_about = "This command deletes a python virtual environment"
+    )]
     Delete {
         #[arg(short, long, help = "Name of the virtual environment")]
         name: String,
     },
+    #[command(
+        about = "List all python virtual environments",
+        long_about = "This command lists all python virtual environments"
+    )]
     List,
+    #[command(
+        about = "Activate a python virtual environment",
+        long_about = "This command activates a python virtual environment in its own shell"
+    )]
     Activate {
         #[arg(short, long, help = "Name of the virtual environment")]
         name: String,
