@@ -81,24 +81,21 @@ impl Venv {
 
     pub async fn activate(&self) {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
-        let cmd = if cfg!(target_os = "windows") {
-            "pwsh"
+        let shell = utils::get_parent_shell();
+        let (cmd, path) = if cfg!(target_os = "windows") {
+            let venv_path = format!("{}/{}/scripts/activate", path, self.name);
+            let venv_cmd = format!("{} && {}", venv_path, shell.as_str());
+            (venv_cmd, venv_path)
         } else {
-            "zsh"
+            let venv_path = format!("{}/{}/bin/activate", path, self.name);
+            let venv_cmd = format!("source {} && {} -i", venv_path, shell.as_str());
+            (venv_cmd, venv_path)
         };
-        let vpath = if cfg!(target_os = "windows") {
-            format!("{}/{}/scripts/activate", path, self.name)
-        } else {
-            format!("{}/{}/bin/activate", path, self.name)
-        };
-
-        let full_cmd = if cfg!(target_os = "windows") {
-            format!("{} && exec pwsh", vpath)
-        } else {
-            format!("source {} && {} -i", vpath, cmd)
-        };
-        println!("Full command: {}", full_cmd);
-        utils::activate_venv_shell(cmd, &full_cmd);
+        if !std::path::Path::new(&path).exists() {
+            println!("Virtual environment does not exist");
+            return;
+        }
+        utils::activate_venv_shell(shell.as_str(), &cmd);
     }
 }
 
