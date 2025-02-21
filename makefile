@@ -34,7 +34,8 @@ install:
 	cargo install --path .
 
 package: build
-	@if [ ! -d "dist" ]; then mkdir dist; fi
+	@if [ -d "dist" ]; then rm -rf dist; fi
+	mkdir dist
 	cp $(TARGET_DIR)/$(PROJECT_NAME) dist/
 	cp settings.toml dist/
 
