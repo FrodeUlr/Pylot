@@ -1,12 +1,12 @@
-PROJECT_NAME = python-manager
-
 ifeq ($(OS),Windows_NT)
 	TARGET_DIR = target/release
 	CARGO_FLAGS = --release
+	PROJECT_NAME = python-manager.exe
 	WINDOWS = 1
 else
 	TARGET_DIR = target/x86_64-unknown-linux-musl/release
 	CARGO_FLAGS = --release --target x86_64-unknown-linux-musl
+	PROJECT_NAME = python-manager
 	WINDOWS = 0
 endif
 
