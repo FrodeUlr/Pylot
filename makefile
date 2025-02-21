@@ -3,9 +3,11 @@ PROJECT_NAME = python-manager
 ifeq ($(OS),Windows_NT)
 	TARGET_DIR = target/release
 	CARGO_FLAGS = --release
+	WINDOWS = 1
 else
 	TARGET_DIR = target/x86_64-unknown-linux-musl/release
 	CARGO_FLAGS = --release --target x86_64-unknown-linux-musl
+	WINDOWS = 0
 endif
 
 .PHONY: all build run clean format test lint
@@ -33,8 +35,10 @@ clean:
 install:
 	cargo install --path .
 
-package: build
-	@if [ -d "dist" ]; then rm -rf dist; fi
+cleanout:
+	@if [ -d "dist" ]; then rm -rf dist; elif Test-Path dist; then Remove-Item -Recurse -Force dist; fi
+
+package: cleanout build
 	mkdir dist
 	cp $(TARGET_DIR)/$(PROJECT_NAME) dist/
 	cp settings.toml dist/
