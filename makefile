@@ -37,7 +37,7 @@ install:
 
 clean_dist:
 ifeq ($(WINDOWS),1)
-	if (Test-Path dist) { Remove-Item -Recurse -Force dist }
+	powershell if (Test-Path dist) { Remove-Item -Recurse -Force dist }
 else
 	@if [ -d "dist" ]; then rm -rf dist; fi
 endif
