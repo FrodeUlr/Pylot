@@ -35,10 +35,14 @@ clean:
 install:
 	cargo install --path .
 
-cleanout:
-	@if [ -d "dist" ]; then rm -rf dist; elif Test-Path dist; then Remove-Item -Recurse -Force dist; fi
+clean_dist:
+ifeq ($(WINDOWS),1)
+	@if Test-Path dist; then Remove-Item -Recurse -Force dist; fi
+else
+	@if [ -d "dist" ]; then rm -rf dist; fi
+endif
 
-package: cleanout build
+package: clean_dist build
 	mkdir dist
 	cp $(TARGET_DIR)/$(PROJECT_NAME) dist/
 	cp settings.toml dist/
