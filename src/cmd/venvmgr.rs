@@ -31,7 +31,7 @@ impl Venv {
             "--python",
             self.python_version.as_str(),
         ];
-        println!("Creating virtual environment: {}", self.name);
+        println!("Creating virtual environment: {}", self.name.cyan());
         let mut child = utils::create_child_cmd("uv", args);
         utils::run_command(&mut child).await;
         let pkgs = self.packages.clone();
@@ -89,7 +89,7 @@ impl Venv {
     }
 
     pub async fn list() {
-        println!("Listing virtual environments");
+        println!("{}", "Listing virtual environments".cyan());
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         match fs::read_dir(&path) {
             Ok(entries) => {
@@ -112,6 +112,7 @@ impl Venv {
     }
 
     pub async fn activate(&self) {
+        println!("{} {}","Activating virtual environment:".cyan(), self.name.green());
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let shell = utils::get_parent_shell();
         let (cmd, path) = if cfg!(target_os = "windows") {
