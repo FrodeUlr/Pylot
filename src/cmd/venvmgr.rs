@@ -57,7 +57,7 @@ impl Venv {
                 args.insert(0, "source".to_string());
             }
             args.push(pkgs.join(" "));
-            println!("Installing package(s): {}", pkgs.join(", "));
+            println!("{} {}", "Installing package(s):".cyan(), pkgs.join(", ").cyan());
             let agr_str = args
                 .iter()
                 .map(String::as_str)
@@ -75,7 +75,7 @@ impl Venv {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venv_path = format!("{}/{}", path, self.name);
         if !std::path::Path::new(&venv_path).exists() {
-            println!("Virtual environment does not exist");
+            println!("{}", "Virtual environment does not exist".yellow());
             return;
         }
         let choice = utils::confirm();
