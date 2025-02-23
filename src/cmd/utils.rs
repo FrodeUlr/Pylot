@@ -1,6 +1,6 @@
 use colored::Colorize;
 use std::{
-    io::stdin,
+    io::{stdin, stdout, Write},
     process::{Command as StdCommand, Stdio},
 };
 use tokio::{
@@ -65,7 +65,7 @@ pub async fn run_command(child: &mut Child) {
     let stderr_taskk = tokio::spawn(async move {
         let mut lines = stderr_reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            println!("{}", line.red());
+            println!("{}", line.yellow());
         }
     });
 
@@ -82,7 +82,8 @@ pub async fn run_command(child: &mut Child) {
 }
 
 pub fn confirm() -> bool {
-    println!("{}", "Do you want to continue? (y/n): ".cyan());
+    print!("{}", "Do you want to continue? (y/n): ".cyan());
+    stdout().flush().unwrap();
     let mut input = String::new();
     stdin().read_line(&mut input).unwrap();
     input.trim() == "y"
