@@ -1,5 +1,8 @@
+use colored::Colorize;
+
 use super::utils;
 use crate::cfg::settings;
+use std::fs;
 
 pub struct Venv {
     name: String,
@@ -75,20 +78,37 @@ impl Venv {
             println!("Virtual environment does not exist");
             return;
         }
-        let recurse = if cfg!(target_os = "windows") {
-            "-r"
-        } else {
-            "-rf"
-        };
-        let mut child = utils::create_child_cmd("rm", &[recurse, &format!("{}/{}", path, self.name)]);
-        utils::run_command(&mut child).await;
+        let choice = utils::confirm();
+        if !choice {
+            return;
+        }
+        match fs::remove_dir_all(venv_path) {
+            Ok(_) => println!("{} {}", self.name.green(), "has been deleted".green()),
+            Err(e) => println!("{} {}", e.to_string().red(), self.name),
+        }
     }
 
     pub async fn list() {
         println!("Listing virtual environments");
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
-        let mut child = utils::create_child_cmd("ls", &[&path]);
-        utils::run_command(&mut child).await;
+        match fs::read_dir(&path) {
+            Ok(entries) => {
+                let entries: Vec<_> = entries.filter_map(Result::ok).collect();
+                if entries.is_empty() {
+                    println!("{}", "No virtual environments found".yellow());
+                    return;
+                } else {
+                    for entry in entries {
+                        if entry.file_type().unwrap().is_dir() {
+                            println!("{}", entry.file_name().to_str().unwrap().green());
+                        }
+                    }
+                }
+            }
+            Err(_) => {
+                println!("{}", "No virtual environments found".yellow());
+            }
+        }
     }
 
     pub async fn activate(&self) {
