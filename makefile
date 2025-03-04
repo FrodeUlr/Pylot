@@ -1,19 +1,15 @@
 PROJECT_NAME = python-manager
 
 ifeq ($(OS),Windows_NT)
-	SOURCE_DIR = target\\release
-	TARGET_DIR = dist\\
-	PATH_SEPARATOR = \\
+	TARGET_DIR = target/release
 	CARGO_FLAGS = --release
-	MKDIR_CMD = mkdir
-	COPY_CMD = copy
+	MKDIR_CMD = powershell -NoProfile mkdir dist -Force
+	COPY_CMD = powershell -NoProfile cp
 	PROJECT_NAME = python-manager.exe
 else
-	SOURCE_DIR = target/x86_64-unknown-linux-musl/release
-	TARGET_DIR = dist/
-	PATH_SEPARATOR = /
+	TARGET_DIR = target/x86_64-unknown-linux-musl/release
 	CARGO_FLAGS = --release --target x86_64-unknown-linux-musl
-	MKDIR_CMD = mkdir -p
+	MKDIR_CMD = mkdir -p dist
 	COPY_CMD = cp
 endif
 
@@ -25,7 +21,7 @@ build:
 	cargo build $(CARGO_FLAGS)
 
 run: build
-	$(SOURCE_DIR)/$(PROJECT_NAME)
+	$(TARGET_DIR)/$(PROJECT_NAME)
 
 format:
 	cargo fmt
@@ -43,9 +39,9 @@ install:
 	cargo install --path .
 
 package: build
-	@$(MKDIR_CMD) dist 2>nul || :
-	@$(COPY_CMD) $(SOURCE_DIR)$(PATH_SEPARATOR)$(PROJECT_NAME) $(TARGET_DIR)
-	$(COPY_CMD) settings.toml $(TARGET_DIR)
+	$(MKDIR_CMD)
+	$(COPY_CMD) $(TARGET_DIR)/$(PROJECT_NAME) dist/
+	$(COPY_CMD) settings.toml dist/
 
 rebuild: clean build
 
