@@ -57,7 +57,11 @@ impl Venv {
                 args.insert(0, "source".to_string());
             }
             args.push(pkgs.join(" "));
-            println!("{} {}", "Installing package(s):".cyan(), pkgs.join(", ").cyan());
+            println!(
+                "{} {}",
+                "Installing package(s):".cyan(),
+                pkgs.join(", ").cyan()
+            );
             let agr_str = args
                 .iter()
                 .map(String::as_str)
@@ -77,7 +81,13 @@ impl Venv {
             println!("{}", "Virtual environment does not exist".yellow());
             return;
         }
-        println!("{} {} {} {}", "Deleting virtual environment:".yellow(), self.name.red(), "at".yellow(), venv_path.replace("\\", "/").red());
+        println!(
+            "{} {} {} {}",
+            "Deleting virtual environment:".yellow(),
+            self.name.red(),
+            "at".yellow(),
+            venv_path.replace("\\", "/").red()
+        );
         let choice = utils::confirm();
         if !choice {
             return;
@@ -112,17 +122,21 @@ impl Venv {
     }
 
     pub async fn activate(&self) {
-        println!("{} {}","Activating virtual environment:".cyan(), self.name.green());
+        println!(
+            "{} {}",
+            "Activating virtual environment:".cyan(),
+            self.name.green()
+        );
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let shell = utils::get_parent_shell();
         let (cmd, path) = if cfg!(target_os = "windows") {
             let venv_path = format!("{}/{}/scripts/activate.ps1", path, self.name);
             let venv_cmd = format!("{} && {}", venv_path, shell.as_str());
-            (vec!(venv_cmd), venv_path)
+            (vec![venv_cmd], venv_path)
         } else {
             let venv_path = format!("{}/{}/bin/activate", path, self.name);
             let venv_cmd = format!("source {} && {} -i", venv_path, shell.as_str());
-            (vec!("-c".to_string(), venv_cmd), venv_path)
+            (vec!["-c".to_string(), venv_cmd], venv_path)
         };
         if !std::path::Path::new(&path).exists() {
             println!("Virtual environment does not exist");
