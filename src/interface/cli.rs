@@ -60,6 +60,8 @@ pub enum Commands {
         packages: Vec<String>,
         #[arg(index = 1, help = "Name of the virtual environment")]
         name_pos: Option<String>,
+        #[arg(short, long, help = "Use default packages")]
+        default: bool,
     },
     #[command(
         about = "Delete a python virtual environment",

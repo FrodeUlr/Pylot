@@ -6,6 +6,7 @@ use std::{path::Path, sync::Mutex};
 pub struct Settings {
     #[serde(default = "default_venv_path")]
     pub venvs_path: String,
+    pub default_pkgs: Vec<String>,
 }
 
 fn default_venv_path() -> String {
@@ -18,6 +19,7 @@ impl Default for Settings {
     fn default() -> Self {
         Settings {
             venvs_path: default_venv_path(),
+            default_pkgs: vec![],
         }
     }
 }

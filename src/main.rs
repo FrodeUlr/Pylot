@@ -12,6 +12,9 @@ use interface::cli::{Cli, Commands};
 #[tokio::main]
 async fn main() {
     settings::Settings::init().await;
+    for pkgs in settings::Settings::get_settings().default_pkgs.iter() {
+        println!("{}", pkgs);
+    }
     let args = Cli::parse();
 
     match args.commands {
@@ -29,10 +32,16 @@ async fn main() {
             name,
             python_version,
             packages,
+            default,
         }) => {
             let name = name.or(name_pos).unwrap_or_else(|| {
                 utils::exit_with_error("Please provide a name for the virtual environment")
             });
+            let mut packages = packages;
+            if default {
+                let default_pkgs = settings::Settings::get_settings().default_pkgs.clone();
+                packages.extend(default_pkgs);
+            }
             let venv = venvmgr::Venv::new(name, python_version, packages);
             venv.create().await;
         }

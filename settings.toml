@@ -1,1 +1,2 @@
 venvs_path = "~/pymngr/venvs"
+default_pkgs = ["neovim", "pyvim", "pylint", "pydantic", "jupyter", "jupyterthemes", "ruff-lsp"]
