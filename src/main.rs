@@ -25,10 +25,10 @@ async fn main() {
             manage::check().await;
         }
         Some(Commands::Create {
+            name_pos,
             name,
             python_version,
             packages,
-            name_pos,
         }) => {
             let name = name.or(name_pos).unwrap_or_else(|| {
                 utils::exit_with_error("Please provide a name for the virtual environment")
