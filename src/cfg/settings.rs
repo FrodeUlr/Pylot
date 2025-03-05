@@ -77,6 +77,7 @@ mod tests {
     fn test_validate_venv_path() {
         let settings = Settings {
             venvs_path: "~/pymngr/venvs".to_string(),
+            default_pkgs: vec![],
         };
         settings.validate_venv_path();
         let expected_path = shellexpand::tilde("~/pymngr/venvs").to_string();
@@ -87,6 +88,7 @@ mod tests {
     fn test_get_settings() {
         let settings = Settings {
             venvs_path: "~/pymngr/venvs".to_string(),
+            default_pkgs: vec![],
         };
         let settings_lock = Mutex::new(settings);
         let settings = settings_lock.lock().unwrap();
