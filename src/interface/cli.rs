@@ -55,7 +55,6 @@ pub enum Commands {
             alias = "pkg",
             long,
             help = "Packages to install(alias --pkg)",
-            default_value = "[]",
             num_args = 1..
         )]
         packages: Vec<String>,
