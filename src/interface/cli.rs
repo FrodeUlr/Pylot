@@ -47,7 +47,7 @@ pub enum Commands {
     )]
     Create {
         #[arg(short, long, help = "Name of the virtual environment")]
-        name: String,
+        name: Option<String>,
         #[arg(short, long, help = "Python version to use", default_value = "3.10")]
         python_version: String,
         #[arg(
@@ -58,6 +58,8 @@ pub enum Commands {
             num_args = 1..
         )]
         packages: Vec<String>,
+        #[arg(index = 1, help = "Name of the virtual environment")]
+        name_pos: Option<String>,
     },
     #[command(
         about = "Delete a python virtual environment",

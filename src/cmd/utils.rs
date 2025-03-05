@@ -95,6 +95,11 @@ pub fn get_parent_shell() -> String {
     std::env::var("SHELL").unwrap()
 }
 
+pub fn exit_with_error(msg: &str) -> ! {
+    eprintln!("{}", msg.red());
+    std::process::exit(1);
+}
+
 #[cfg(test)]
 mod tests {
 
