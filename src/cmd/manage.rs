@@ -30,9 +30,6 @@ pub async fn uninstall() {
     println!("{}", "Uninstalling Astral UV...".yellow());
     println!("{}", "This will run the following command:".yellow());
 
-    //let cmd;
-    //let args: &[&str];
-
     let (cmd, args) = if cfg!(target_os = "windows") {
         let _cmd = "winget";
         let _args = &["uninstall", "astral-sh.uv"];
@@ -54,27 +51,14 @@ pub async fn uninstall() {
     utils::run_command(&mut child).await;
 }
 
-pub async fn check() {
-    println!(
-        "{}",
-        "Checking if Astral UV is installed and configured...".cyan()
-    );
-
+pub async fn check() -> bool {
     let installed: bool = if cfg!(target_os = "windows") {
         utils::is_command_available("where", "uv").await
     } else {
         utils::is_command_available("which", "uv").await
     };
 
-    if installed {
-        println!("{}", "Astral UV was found".green());
-        return;
-    }
-
-    println!(
-        "{}",
-        "Astral UV is not installed or missing from path".red()
-    );
+    installed
 }
 
 #[cfg(test)]

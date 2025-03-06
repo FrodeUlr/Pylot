@@ -1,13 +1,14 @@
 mod cfg;
 mod cmd;
-mod interface;
+mod core;
 
 use cfg::settings;
 use clap::Parser;
 use cmd::manage;
 use cmd::utils;
 use cmd::venvmgr;
-use interface::cli::{Cli, Commands};
+use colored::Colorize;
+use core::cli::{Cli, Commands};
 
 #[tokio::main]
 async fn main() {
@@ -22,7 +23,13 @@ async fn main() {
             manage::uninstall().await;
         }
         Some(Commands::Check) => {
-            manage::check().await;
+            println!("{}", "Checking if Astral UV is installed and configured...".cyan());
+            let installed = manage::check().await;
+            if installed {
+                println!("{}", "Astral UV is installed".green());
+            } else {
+                println!("{}", "Astral UV was not found".red());
+            }
         }
         Some(Commands::Create {
             name_pos,
@@ -32,7 +39,7 @@ async fn main() {
             default,
         }) => {
             let name = name.or(name_pos).unwrap_or_else(|| {
-                utils::exit_with_error("Please provide a name for the virtual environment")
+                utils::exit_with_error("Error, please provide a name for the virtual environment")
             });
             let mut packages = packages;
             if default {
@@ -42,14 +49,20 @@ async fn main() {
             let venv = venvmgr::Venv::new(name, python_version, packages);
             venv.create().await;
         }
-        Some(Commands::Delete { name }) => {
+        Some(Commands::Delete { name_pos, name }) => {
+            let name  = name.or(name_pos).unwrap_or_else(|| {
+                utils::exit_with_error("Error, please provide a envioronment name")
+            });
             let venv = venvmgr::Venv::new(name, "".to_string(), vec![]);
             venv.delete().await;
         }
         Some(Commands::List) => {
             venvmgr::Venv::list().await;
         }
-        Some(Commands::Activate { name }) => {
+        Some(Commands::Activate { name_pos, name }) => {
+            let name = name.or(name_pos).unwrap_or_else(|| {
+                utils::exit_with_error("Error, please provide a envioronment name")
+            });
             let venv = venvmgr::Venv::new(name, "".to_string(), vec![]);
             venv.activate().await;
         }

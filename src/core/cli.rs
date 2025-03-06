@@ -69,7 +69,9 @@ pub enum Commands {
     )]
     Delete {
         #[arg(short, long, help = "Name of the virtual environment")]
-        name: String,
+        name: Option<String>,
+        #[arg(index = 1, help = "Name of the virtual environment")]
+        name_pos: Option<String>,
     },
     #[command(
         about = "List all python virtual environments",
@@ -82,6 +84,8 @@ pub enum Commands {
     )]
     Activate {
         #[arg(short, long, help = "Name of the virtual environment")]
-        name: String,
+        name: Option<String>,
+        #[arg(index = 1, help = "Name of the virtual environment")]
+        name_pos: Option<String>,
     },
 }
