@@ -107,23 +107,42 @@ mod tests {
 
     #[tokio::test]
     async fn test_is_command_available() {
-        let available = is_command_available("ls", "--version").await;
-        assert_eq!(available, true);
+        if cfg!(target_os = "windows") {
+            let available = is_command_available("cmd", "/C echo Hello").await;
+            assert_eq!(available, true);
+        } else {
+            let available = is_command_available("ls", "--version").await;
+            assert_eq!(available, true);
+        }
     }
 
     #[tokio::test]
     async fn test_create_child_cmd() {
-        let cmd = "ls";
-        let args = &["-lah", "|", "grep python-manager"];
-        let child = create_child_cmd(cmd, args);
-        assert_eq!(child.id() > Some(0), true);
+        if cfg!(target_os = "windows") {
+            let cmd = "cmd";
+            let args = &["/C", "echo", "Hello"];
+            let child = create_child_cmd(cmd, args);
+            assert_eq!(child.id() > Some(0), true);
+        } else {
+            let cmd = "ls";
+            let args = &["-lah"];
+            let child = create_child_cmd(cmd, args);
+            assert_eq!(child.id() > Some(0), true);
+        }
     }
 
     #[tokio::test]
     async fn test_run_command() {
-        let cmd = "ls";
-        let args = &["-lah", "|", "grep python-manager"];
-        let mut child = create_child_cmd(cmd, args);
-        run_command(&mut child).await;
+        if cfg!(target_os = "windows") {
+            let cmd = "cmd";
+            let args = &["/C", "echo", "Hello"];
+            let mut child = create_child_cmd(cmd, args);
+            run_command(&mut child).await;
+        } else {
+            let cmd = "ls";
+            let args = &["-lah"];
+            let mut child = create_child_cmd(cmd, args);
+            run_command(&mut child).await;
+        }
     }
 }
