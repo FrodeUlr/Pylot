@@ -68,6 +68,6 @@ mod tests {
     #[tokio::test]
     async fn test_check() {
         let installed = check().await;
-        assert_eq!(installed, ());
+        assert_eq!(installed, false);
     }
 }
