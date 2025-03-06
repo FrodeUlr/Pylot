@@ -51,7 +51,7 @@ async fn main() {
         }
         Some(Commands::Delete { name_pos, name }) => {
             let name  = name.or(name_pos).unwrap_or_else(|| {
-                utils::exit_with_error("Error, please provide a envioronment name")
+                utils::exit_with_error("Error, please provide a environment name")
             });
             let venv = venvmgr::Venv::new(name, "".to_string(), vec![]);
             venv.delete().await;
@@ -61,7 +61,7 @@ async fn main() {
         }
         Some(Commands::Activate { name_pos, name }) => {
             let name = name.or(name_pos).unwrap_or_else(|| {
-                utils::exit_with_error("Error, please provide a envioronment name")
+                utils::exit_with_error("Error, please provide a environment name")
             });
             let venv = venvmgr::Venv::new(name, "".to_string(), vec![]);
             venv.activate().await;
