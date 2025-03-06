@@ -6,6 +6,7 @@ use std::{path::Path, sync::Mutex};
 pub struct Settings {
     #[serde(default = "default_venv_path")]
     pub venvs_path: String,
+    #[serde(default)]
     pub default_pkgs: Vec<String>,
 }
 
@@ -19,7 +20,7 @@ impl Default for Settings {
     fn default() -> Self {
         Settings {
             venvs_path: default_venv_path(),
-            default_pkgs: vec![],
+            default_pkgs: Vec::new(),
         }
     }
 }
@@ -93,5 +94,12 @@ mod tests {
         let settings_lock = Mutex::new(settings);
         let settings = settings_lock.lock().unwrap();
         assert_eq!(settings.venvs_path, "~/pymngr/venvs");
+    }
+
+    #[test]
+    fn test_default_pkgs() {
+        let settings = Settings::default();
+        let empty_vec: Vec<String> = Vec::new();
+        assert_eq!(settings.default_pkgs, empty_vec);
     }
 }
