@@ -4,9 +4,7 @@ mod core;
 
 use cfg::settings;
 use clap::Parser;
-use cmd::manage;
-use cmd::utils;
-use cmd::venvmgr;
+use cmd::{manage, utils, venvmgr};
 use colored::Colorize;
 use core::cli::{Cli, Commands};
 
