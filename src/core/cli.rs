@@ -48,7 +48,13 @@ pub enum Commands {
     Create {
         #[arg(short, long, help = "Name of the virtual environment")]
         name: Option<String>,
-        #[arg(short, long, alias = "pv", help = "Python version to use(alias --pv)", default_value = "3.10")]
+        #[arg(
+            short,
+            long,
+            alias = "pv",
+            help = "Python version to use(alias --pv)",
+            default_value = "3.10"
+        )]
         python_version: String,
         #[arg(
             short = 'k',

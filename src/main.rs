@@ -23,7 +23,10 @@ async fn main() {
             manage::uninstall().await;
         }
         Some(Commands::Check) => {
-            println!("{}", "Checking if Astral UV is installed and configured...".cyan());
+            println!(
+                "{}",
+                "Checking if Astral UV is installed and configured...".cyan()
+            );
             let installed = manage::check().await;
             if installed {
                 println!("{}", "Astral UV is installed".green());
@@ -71,7 +74,7 @@ async fn main() {
                 let name = venvs[index - 1].clone();
                 venvmgr::Venv::new(name, "".to_string(), vec![])
             } else {
-                let name  = name.or(name_pos).unwrap_or_else(|| {
+                let name = name.or(name_pos).unwrap_or_else(|| {
                     utils::exit_with_error("Error, please provide a environment name")
                 });
                 venvmgr::Venv::new(name, "".to_string(), vec![])
