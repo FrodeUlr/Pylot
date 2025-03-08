@@ -50,10 +50,32 @@ async fn main() {
             venv.create().await;
         }
         Some(Commands::Delete { name_pos, name }) => {
-            let name  = name.or(name_pos).unwrap_or_else(|| {
-                utils::exit_with_error("Error, please provide a environment name")
-            });
-            let venv = venvmgr::Venv::new(name, "".to_string(), vec![]);
+            let venv = if name.is_none() && name_pos.is_none() {
+                let venvs = venvmgr::Venv::list().await;
+                if venvs.is_empty() {
+                    return;
+                }
+                println!("Please select a virtual environment to delete:");
+                for (i, venv) in venvs.iter().enumerate() {
+                    println!("{}. {}", i + 1, venv);
+                }
+                let mut input = String::new();
+                std::io::stdin().read_line(&mut input).unwrap();
+                if input.trim().is_empty() {
+                    utils::exit_with_error("Error, please provide a valid index");
+                }
+                let index = input.trim().parse::<usize>().unwrap();
+                if index > venvs.len() {
+                    utils::exit_with_error("Error, please provide a valid index");
+                }
+                let name = venvs[index - 1].clone();
+                venvmgr::Venv::new(name, "".to_string(), vec![])
+            } else {
+                let name  = name.or(name_pos).unwrap_or_else(|| {
+                    utils::exit_with_error("Error, please provide a environment name")
+                });
+                venvmgr::Venv::new(name, "".to_string(), vec![])
+            };
             venv.delete().await;
         }
         Some(Commands::List) => {
