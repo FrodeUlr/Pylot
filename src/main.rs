@@ -7,6 +7,7 @@ use clap::Parser;
 use cmd::{manage, utils, venvmgr};
 use colored::Colorize;
 use core::cli::{Cli, Commands};
+use std::io;
 
 #[tokio::main]
 async fn main() {
@@ -15,10 +16,10 @@ async fn main() {
 
     match args.commands {
         Some(Commands::Install) => {
-            manage::install().await;
+            manage::install(io::stdin()).await;
         }
         Some(Commands::Uninstall) => {
-            manage::uninstall().await;
+            manage::uninstall(io::stdin()).await;
         }
         Some(Commands::Check) => {
             println!(
@@ -42,12 +43,7 @@ async fn main() {
             let name = name.or(name_pos).unwrap_or_else(|| {
                 utils::exit_with_error("Error, please provide a name for the virtual environment")
             });
-            let mut packages = packages;
-            if default {
-                let default_pkgs = settings::Settings::get_settings().default_pkgs.clone();
-                packages.extend(default_pkgs);
-            }
-            let venv = venvmgr::Venv::new(name, python_version, packages);
+            let venv = venvmgr::Venv::new(name, python_version, packages, default);
             venv.create().await;
         }
         Some(Commands::Delete { name_pos, name }) => {
@@ -70,13 +66,13 @@ async fn main() {
                     utils::exit_with_error("Error, please provide a valid index");
                 }
                 let name = venvs[index - 1].clone();
-                venvmgr::Venv::new(name, "".to_string(), vec![])
+                venvmgr::Venv::new(name, "".to_string(), vec![], false)
             } else {
                 let name = name.or(name_pos).unwrap_or_else(|| {
                     utils::exit_with_error("Error, please provide a environment name")
                 });
-                venvmgr::Venv::new(name, "".to_string(), vec![])
-            };
+                venvmgr::Venv::new(name, "".to_string(), vec![], false)
+           };
             venv.delete().await;
         }
         Some(Commands::List) => {
@@ -86,7 +82,7 @@ async fn main() {
             let name = name.or(name_pos).unwrap_or_else(|| {
                 utils::exit_with_error("Error, please provide a environment name")
             });
-            let venv = venvmgr::Venv::new(name, "".to_string(), vec![]);
+            let venv = venvmgr::Venv::new(name, "".to_string(), vec![], false);
             venv.activate().await;
         }
         None => {

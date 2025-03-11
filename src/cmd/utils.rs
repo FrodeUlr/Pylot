@@ -1,6 +1,6 @@
 use colored::Colorize;
 use std::{
-    io::{stdin, stdout, Write},
+    io::{stdout, BufRead, Write},
     process::{Command as StdCommand, Stdio},
 };
 use tokio::{
@@ -80,12 +80,13 @@ pub async fn run_command(child: &mut Child) {
     let _ = child.wait().await;
 }
 
-pub fn confirm() -> bool {
+pub fn confirm<R: std::io::Read>(input: R) -> bool {
+    let mut stdin = std::io::BufReader::new(input);
     print!("{}", "Do you want to continue? (y/n): ".cyan());
-    stdout().flush().unwrap();
-    let mut input = String::new();
-    stdin().read_line(&mut input).unwrap();
-    input.trim() == "y"
+    let _ = stdout().flush();
+    let mut input_string = String::new();
+    stdin.read_line(&mut input_string).unwrap();
+    input_string.trim() == "y"
 }
 
 pub fn get_parent_shell() -> String {
@@ -144,5 +145,33 @@ mod tests {
             let mut child = create_child_cmd(cmd, args);
             run_command(&mut child).await;
         }
+    }
+
+    #[test]
+    fn test_confirm_yes() {
+        let cursor = std::io::Cursor::new("y\n");
+        let result = confirm(cursor);
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_confirm_no() {
+        let cursor = std::io::Cursor::new("n\n");
+        let result = confirm(cursor);
+        assert_eq!(result, false);
+    }
+
+    #[test]
+    fn test_confirm_invalid() {
+        let cursor = std::io::Cursor::new("x\n");
+        let result = confirm(cursor);
+        assert_eq!(result, false);
+    }
+
+    #[test]
+    fn test_confirm_empty() {
+        let cursor = std::io::Cursor::new("\n");
+        let result = confirm(cursor);
+        assert_eq!(result, false);
     }
 }

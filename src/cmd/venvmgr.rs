@@ -2,20 +2,22 @@ use colored::Colorize;
 
 use super::utils;
 use crate::cfg::settings;
-use std::fs;
+use std::{fs, io};
 
 pub struct Venv {
     name: String,
     python_version: String,
     packages: Vec<String>,
+    default: bool,
 }
 
 impl Venv {
-    pub fn new(name: String, python_version: String, packages: Vec<String>) -> Self {
+    pub fn new(name: String, python_version: String, packages: Vec<String>, default: bool) -> Self {
         Venv {
             name,
             python_version,
             packages,
+            default,
         }
     }
 
@@ -34,8 +36,12 @@ impl Venv {
         println!("Creating virtual environment: {}", self.name.cyan());
         let mut child = utils::create_child_cmd("uv", args);
         utils::run_command(&mut child).await;
-        let pkgs = self.packages.clone();
-        if !self.packages.is_empty() && self.packages[0] != "[]" {
+        let mut pkgs = self.packages.clone();
+        if self.default {
+            let default_pkgs = settings.default_pkgs.clone();
+            pkgs.extend(default_pkgs);
+        }
+        if !pkgs.is_empty() {
             let venn_path = shellexpand::tilde(&settings.venvs_path).to_string();
 
             let (cmd, vcmd, run) = if cfg!(target_os = "windows") {
@@ -88,7 +94,7 @@ impl Venv {
             "at".yellow(),
             venv_path.replace("\\", "/").red()
         );
-        let choice = utils::confirm();
+        let choice = utils::confirm(io::stdin());
         if !choice {
             return;
         }
@@ -157,7 +163,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_venv() {
-        let venv = Venv::new("test_venv".to_string(), "3.8".to_string(), vec![]);
+        let venv = Venv::new("test_venv".to_string(), "3.8".to_string(), vec![], false);
         assert_eq!(venv.name, "test_venv");
         assert_eq!(venv.python_version, "3.8");
     }
@@ -168,6 +174,7 @@ mod tests {
             "test_venv_clean".to_string(),
             "3.9".to_string(),
             vec!["numpy".to_string(), "pandas".to_string()],
+            false,
         );
         assert_eq!(venv.name, "test_venv_clean");
         assert_eq!(venv.python_version, "3.9");

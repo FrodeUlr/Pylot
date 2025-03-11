@@ -49,15 +49,15 @@ pub enum Commands {
         #[arg(short, long, help = "Name of the virtual environment")]
         name: Option<String>,
         #[arg(
-            short,
-            long,
+            short = 'v',
             alias = "pv",
+            long,
             help = "Python version to use(alias --pv)",
             default_value = "3.10"
         )]
         python_version: String,
         #[arg(
-            short = 'k',
+            short = 'p',
             alias = "pkg",
             long,
             help = "Packages to install(alias --pkg)",
