@@ -72,20 +72,19 @@ mod tests {
     #[tokio::test]
     async fn test_check() {
         let installed = check().await;
-        assert_eq!(installed, false);
+        assert!(!installed);
     }
 
     #[tokio::test]
     async fn test_install() {
         if cfg!(target_os = "windows") {
             // Github agent does not have winget, maybe add another install option
-            assert_eq!(true, true);
             return;
         }
         let is_installed = check().await;
         let input = Cursor::new("y\n");
         let success = install(input).await;
-        assert_eq!(success, true);
+        assert!(success);
         if !is_installed {
             let input = Cursor::new("y\n");
             uninstall(input).await;
@@ -98,7 +97,6 @@ mod tests {
     async fn test_uninstall() {
         if cfg!(target_os = "windows") {
             // Github agent does not have winget, maybe add another install option
-            assert_eq!(true, true);
             return;
         }
         let is_installed = check().await;
@@ -108,7 +106,7 @@ mod tests {
         }
         let input = Cursor::new("y\n");
         let success = uninstall(input).await;
-        assert_eq!(success, true);
+        assert!(success);
         if is_installed {
             let input = Cursor::new("y\n");
             install(input).await;

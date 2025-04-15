@@ -110,10 +110,10 @@ mod tests {
     async fn test_is_command_available() {
         if cfg!(target_os = "windows") {
             let available = is_command_available("cmd", "/C echo Hello").await;
-            assert_eq!(available, true);
+            assert!(available);
         } else {
             let available = is_command_available("ls", "--version").await;
-            assert_eq!(available, true);
+            assert!(available);
         }
     }
 
@@ -123,12 +123,12 @@ mod tests {
             let cmd = "cmd";
             let args = &["/C", "echo", "Hello"];
             let child = create_child_cmd(cmd, args);
-            assert_eq!(child.id() > Some(0), true);
+            assert!(child.id() > Some(0));
         } else {
             let cmd = "ls";
             let args = &["-lah"];
             let child = create_child_cmd(cmd, args);
-            assert_eq!(child.id() > Some(0), true);
+            assert!(child.id() > Some(0));
         }
     }
 
@@ -151,27 +151,27 @@ mod tests {
     fn test_confirm_yes() {
         let cursor = std::io::Cursor::new("y\n");
         let result = confirm(cursor);
-        assert_eq!(result, true);
+        assert!(result);
     }
 
     #[test]
     fn test_confirm_no() {
         let cursor = std::io::Cursor::new("n\n");
         let result = confirm(cursor);
-        assert_eq!(result, false);
+        assert!(!result);
     }
 
     #[test]
     fn test_confirm_invalid() {
         let cursor = std::io::Cursor::new("x\n");
         let result = confirm(cursor);
-        assert_eq!(result, false);
+        assert!(!result);
     }
 
     #[test]
     fn test_confirm_empty() {
         let cursor = std::io::Cursor::new("\n");
         let result = confirm(cursor);
-        assert_eq!(result, false);
+        assert!(!result);
     }
 }
