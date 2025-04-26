@@ -104,20 +104,25 @@ impl Venv {
         }
     }
 
-    pub async fn list() -> Vec<String> {
+    pub async fn list(print: Option<bool>) -> Vec<String> {
+        let print = print.unwrap_or(true);
         println!("{}", "Listing virtual environments".cyan());
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venvs: Vec<String> = match fs::read_dir(&path) {
             Ok(entries) => {
                 let entries: Vec<_> = entries.filter_map(Result::ok).collect();
                 if entries.is_empty() {
-                    println!("{}", "No virtual environments found".yellow());
+                    if print {
+                        println!("{}", "No virtual environments found".yellow());
+                    }
                     Vec::new()
                 } else {
                     let mut venvs: Vec<String> = Vec::new();
                     for entry in entries {
                         if entry.file_type().unwrap().is_dir() {
-                            println!("{}", entry.file_name().to_str().unwrap().green());
+                            if print {
+                                println!("{}", entry.file_name().to_str().unwrap().green());
+                            }
                             venvs.push(entry.file_name().to_str().unwrap().to_string());
                         }
                     }
