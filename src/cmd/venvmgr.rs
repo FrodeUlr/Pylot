@@ -155,7 +155,7 @@ impl Venv {
             (vec!["-c".to_string(), venv_cmd], venv_path)
         };
         if !std::path::Path::new(&path).exists() {
-            println!("Virtual environment does not exist");
+            println!("{}", "Virtual environment does not exist".yellow());
             return;
         }
         utils::activate_venv_shell(shell.as_str(), cmd);

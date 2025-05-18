@@ -30,8 +30,7 @@ async fn main() {
                 "{}",
                 "Checking if Astral UV is installed and configured...".cyan()
             );
-            let installed = manage::check().await;
-            if installed {
+            if manage::check().await {
                 println!("{}", "Astral UV is installed".green());
             } else {
                 println!("{}", "Astral UV was not found".red());
@@ -53,24 +52,11 @@ async fn main() {
         }
 
         Some(Commands::Delete { name_pos, name }) => {
-            let venv = if name.is_none() && name_pos.is_none() {
-                let venvs = venvmgr::Venv::list(Some(false)).await;
-                if venvs.is_empty() {
-                    return;
-                }
-                for (i, venv) in venvs.iter().enumerate() {
-                    println!("{}. {}", i + 1, venv);
-                }
-                println!("Please select a virtual environment to delete:");
-                let index = util::get_index(venvs.len());
-                venvmgr::Venv::new(venvs[index - 1].clone(), "".to_string(), vec![], false)
-            } else {
-                let name = name.or(name_pos).unwrap_or_else(|| {
-                    utils::exit_with_error("Error, please provide an environment name")
-                });
-                venvmgr::Venv::new(name, "".to_string(), vec![], false)
-            };
-            venv.delete().await;
+            let venv = util::find_venv(name_pos, name, "delete".to_string()).await;
+            match venv {
+                Some(v) => v.delete().await,
+                None => return,
+            }
         }
 
         Some(Commands::List) => {
@@ -78,26 +64,11 @@ async fn main() {
         }
 
         Some(Commands::Activate { name_pos, name }) => {
-            let name = if name.is_none() && name_pos.is_none() {
-                let venvs = venvmgr::Venv::list(Some(false)).await;
-                if venvs.is_empty() {
-                    return;
-                }
-                for (i, venv) in venvs.iter().enumerate() {
-                    println!("{}. {}", i + 1, venv);
-                }
-                println!("Please select a virtual environment to activate:");
-                {
-                    let index = util::get_index(venvs.len());
-                    venvs[index - 1].clone()
-                }
-            } else {
-                name.or(name_pos).unwrap_or_else(|| {
-                    utils::exit_with_error("Error, please provide a environment name")
-                })
-            };
-            let venv = venvmgr::Venv::new(name, "".to_string(), vec![], false);
-            venv.activate().await;
+            let venv = util::find_venv(name_pos, name, "activate".to_string()).await;
+            match venv {
+                Some(v) => v.activate().await,
+                None => return,
+            }
         }
         None => {
             println!("No command provided");
