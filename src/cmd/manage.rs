@@ -100,7 +100,6 @@ mod tests {
             return;
         }
         let is_installed = check().await;
-        println!("is_installed: {}", is_installed);
         if !is_installed {
             let input = Cursor::new("y\n");
             install(input).await;
@@ -113,8 +112,6 @@ mod tests {
             install(input).await;
         }
         let end_status = check().await;
-        println!("end_status: {}", end_status);
-        println!("is_installed: {}", is_installed);
         assert_eq!(end_status, is_installed);
     }
 }
