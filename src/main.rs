@@ -44,9 +44,12 @@ async fn main() {
             packages,
             default,
         }) => {
-            let name = name.or(name_pos).unwrap_or_else(|| {
-                utils::exit_with_error("Error, please provide a name for the virtual environment")
-            });
+            let name = match name.or(name_pos) {
+                Some(n) => n,
+                None => {
+                    utils::exit_with_error("Missing name for the environment.");
+                }
+            };
             let venv = venvmgr::Venv::new(name, python_version, packages, default);
             venv.create().await;
         }
