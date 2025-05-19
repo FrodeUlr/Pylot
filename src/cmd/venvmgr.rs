@@ -21,7 +21,7 @@ impl Venv {
         }
     }
 
-    pub async fn create(&self) {
+    pub async fn create(&self) -> Result<(), String> {
         let settings = settings::Settings::get_settings();
         let pwd = std::env::current_dir().unwrap();
         // set pwd to settings venvs_path
@@ -35,7 +35,9 @@ impl Venv {
         ];
         println!("Creating virtual environment: {}", self.name.cyan());
         let mut child = utils::create_child_cmd("uv", args);
-        utils::run_command(&mut child).await;
+        utils::run_command(&mut child)
+            .await
+            .map_err(|_| "Error creating virtual environment".to_string())?;
         let mut pkgs = self.packages.clone();
         if self.default {
             let default_pkgs = settings.default_pkgs.clone();
@@ -75,9 +77,12 @@ impl Venv {
                 .join(" ");
             let mut child2 = utils::create_child_cmd_run(cmd, run, &[&agr_str]);
 
-            utils::run_command(&mut child2).await;
+            utils::run_command(&mut child2)
+                .await
+                .map_err(|_| "Error installing packages".to_string())?;
         }
         std::env::set_current_dir(pwd).unwrap();
+        Ok(())
     }
 
     pub async fn delete(&self) {

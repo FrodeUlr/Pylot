@@ -18,11 +18,15 @@ async fn main() {
 
     match args.commands {
         Some(Commands::Install) => {
-            manage::install(io::stdin()).await;
+            if let Err(e) = manage::install(io::stdin()).await {
+                eprintln!("{}", format!("Error installing Astral UV: {}", e).red());
+            }
         }
 
         Some(Commands::Uninstall) => {
-            manage::uninstall(io::stdin()).await;
+            if let Err(e) = manage::uninstall(io::stdin()).await {
+                eprintln!("{}", format!("Error uninstalling Astral UV: {}", e).red());
+            }
         }
 
         Some(Commands::Check) => {
@@ -32,9 +36,9 @@ async fn main() {
             );
             if manage::check().await {
                 println!("{}", "Astral UV is installed".green());
-            } else {
-                println!("{}", "Astral UV was not found".red());
+                return;
             }
+            println!("{}", "Astral UV was not found".red());
         }
 
         Some(Commands::Create {
@@ -51,7 +55,12 @@ async fn main() {
                 }
             };
             let venv = venvmgr::Venv::new(name, python_version, packages, default);
-            venv.create().await;
+            if let Err(e) = venv.create().await {
+                eprintln!(
+                    "{}",
+                    format!("Error creating virtual environment: {}", e).red()
+                );
+            }
         }
 
         Some(Commands::Delete { name_pos, name }) => {

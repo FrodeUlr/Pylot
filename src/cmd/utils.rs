@@ -47,7 +47,7 @@ pub fn activate_venv_shell(cmd: &str, args: Vec<String>) {
         .wait();
 }
 
-pub async fn run_command(child: &mut Child) {
+pub async fn run_command(child: &mut Child) -> Result<(), Box<dyn std::error::Error>> {
     let stdout = child.stdout.take().expect("Failed to open stdout");
     let stderr = child.stderr.take().expect("Failed to open stderr");
 
@@ -61,14 +61,14 @@ pub async fn run_command(child: &mut Child) {
         }
     });
 
-    let stderr_taskk = tokio::spawn(async move {
+    let stderr_task = tokio::spawn(async move {
         let mut lines = stderr_reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            println!("{}", line.yellow());
+            eprintln!("{}", line.yellow());
         }
     });
 
-    let (stdout_res, stderr_res, _) = tokio::join!(stdout_task, stderr_taskk, child.wait());
+    let (stdout_res, stderr_res, child_res) = tokio::join!(stdout_task, stderr_task, child.wait());
 
     if let Err(e) = stdout_res {
         eprintln!("{}", format!("Error reading stdout: {}", e).red());
@@ -76,8 +76,11 @@ pub async fn run_command(child: &mut Child) {
     if let Err(e) = stderr_res {
         eprintln!("{}", format!("Error reading stderr: {}", e).red());
     };
+    if let Err(e) = child_res {
+        eprintln!("{}", format!("Error waiting for child: {}", e).red());
+    }
 
-    let _ = child.wait().await;
+    Ok(())
 }
 
 pub fn confirm<R: std::io::Read>(input: R) -> bool {
@@ -85,8 +88,11 @@ pub fn confirm<R: std::io::Read>(input: R) -> bool {
     print!("{}", "Do you want to continue? (y/n): ".cyan());
     let _ = stdout().flush();
     let mut input_string = String::new();
-    stdin.read_line(&mut input_string).unwrap();
-    input_string.trim() == "y"
+    if stdin.read_line(&mut input_string).is_ok() {
+        matches!(input_string.trim(), "y" | "yes")
+    } else {
+        false
+    }
 }
 
 pub fn get_parent_shell() -> String {
@@ -138,12 +144,14 @@ mod tests {
             let cmd = "cmd";
             let args = &["/C", "echo", "Hello"];
             let mut child = create_child_cmd(cmd, args);
-            run_command(&mut child).await;
+            let res = run_command(&mut child).await;
+            assert!(res.is_ok());
         } else {
             let cmd = "ls";
             let args = &["-lah"];
             let mut child = create_child_cmd(cmd, args);
-            run_command(&mut child).await;
+            let res = run_command(&mut child).await;
+            assert!(res.is_ok());
         }
     }
 

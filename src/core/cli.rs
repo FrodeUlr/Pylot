@@ -11,7 +11,7 @@ use cli_styles::custom_styles;
 )]
 #[command(
     name = "Python Manager",
-    version = "0.1.0",
+    version = "0.2.0",
     author = "Fulrix",
     about = "A simple CLI to manage Python virtual enviroonments using Astral UV",
     styles = custom_styles()
