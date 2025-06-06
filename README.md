@@ -49,10 +49,10 @@ You can specify location of virual environments and the default python packages 
 
   ```bash
     python-manager activate
-    1. myenv
-    2. mysecondenv
-    Please select a virtual environment to activate:
-    1
+    #1. myenv
+    #2. mysecondenv
+    #Please select a virtual environment to activate:
+    #1
   ```
 
 - Remove a virtual environment by name:
@@ -65,10 +65,10 @@ You can specify location of virual environments and the default python packages 
 
   ```bash
     python-manager delete
-    1. myenv
-    2. mysecondenv
-    Please select a virtual environment to delete:
-    1
+    #1. myenv
+    #2. mysecondenv
+    #Please select a virtual environment to delete:
+    #1
   ```
 
 - List all available virtual environments:
