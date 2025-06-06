@@ -17,7 +17,14 @@ async fn main() {
     let args = Cli::parse();
 
     match args.commands {
-        Some(Commands::Install) => {
+        Some(Commands::Install { update }) => {
+            if !update && manage::check().await {
+                println!(
+                    "{}",
+                    "Astral UV is already installed, skipping installation.\nUse --update (-u) flag to check for update".yellow()
+                );
+                return;
+            }
             if let Err(e) = manage::install(io::stdin()).await {
                 eprintln!("{}", format!("Error installing Astral UV: {}", e).red());
             }

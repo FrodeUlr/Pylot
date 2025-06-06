@@ -27,7 +27,15 @@ pub enum Commands {
         about = "Install Astral UV",
         long_about = "This command installs Astral UV"
     )]
-    Install,
+    Install {
+        #[arg(
+            short = 'u',
+            long,
+            help = "Check for updates and install if available",
+            default_value = "false"
+        )]
+        update: bool,
+    },
 
     #[command(
         about = "Check Astral UV",
