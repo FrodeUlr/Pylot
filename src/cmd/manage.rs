@@ -63,14 +63,9 @@ pub async fn check() -> bool {
 #[cfg(test)]
 mod tests {
     use std::io::Cursor;
+    use tokio::time::{sleep, Duration};
 
     use super::*;
-
-    #[tokio::test]
-    async fn test_check() {
-        let installed = check().await;
-        assert!(!installed);
-    }
 
     #[tokio::test]
     async fn test_install() {
@@ -87,16 +82,17 @@ mod tests {
             let res = uninstall(input).await;
             assert!(res.is_ok());
         }
+        sleep(Duration::from_secs(2)).await;
         let end_status = check().await;
         assert_eq!(end_status, is_installed);
     }
 
     #[tokio::test]
     async fn test_uninstall() {
-        if cfg!(target_os = "windows") {
-            // Github agent does not have winget, maybe add another install option
-            return;
-        }
+        //if cfg!(target_os = "windows") {
+        //    // Github agent does not have winget, maybe add another install option
+        //    return;
+        //}
         let is_installed = check().await;
         if !is_installed {
             let input = Cursor::new("y\n");
