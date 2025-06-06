@@ -1,6 +1,10 @@
 use config::{Config, File, FileFormat};
 use once_cell::sync::Lazy;
-use std::{path::Path, sync::Mutex};
+use std::{
+    env,
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct Settings {
@@ -27,8 +31,24 @@ impl Default for Settings {
 
 impl Settings {
     pub async fn init() {
+        let exe_dir = match env::current_exe() {
+            Ok(exe_path) => exe_path
+                .parent()
+                .unwrap_or_else(|| {
+                    println!("Could not determine the executable directory");
+                    std::path::Path::new(".")
+                })
+                .to_path_buf(),
+            Err(_) => {
+                println!("Could not determine the executable directory");
+                PathBuf::from(".")
+            }
+        };
+
+        let settings_path = exe_dir.join("settings.toml");
+
         let settings = Config::builder()
-            .add_source(File::with_name("settings").format(FileFormat::Toml))
+            .add_source(File::from(settings_path).format(FileFormat::Toml))
             .build()
             .unwrap_or_else(|_| {
                 println!("Settings.toml missing or invalid");
