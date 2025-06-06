@@ -68,6 +68,18 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn test_check() {
+        let is_installed = check().await;
+        if is_installed {
+            println!("Astral UV is installed.");
+            assert!(is_installed);
+        } else {
+            println!("Astral UV is not installed.");
+            assert!(!is_installed);
+        }
+    }
+
+    #[tokio::test]
     async fn test_install() {
         if cfg!(target_os = "windows") {
             // Github agent does not have winget, maybe add another install option
@@ -89,10 +101,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_uninstall() {
-        //if cfg!(target_os = "windows") {
-        //    // Github agent does not have winget, maybe add another install option
-        //    return;
-        //}
+        if cfg!(target_os = "windows") {
+            // Github agent does not have winget, maybe add another install option
+            return;
+        }
         let is_installed = check().await;
         if !is_installed {
             let input = Cursor::new("y\n");
@@ -107,6 +119,7 @@ mod tests {
             let res = install(input).await;
             assert!(res.is_ok());
         }
+        sleep(Duration::from_secs(2)).await;
         let end_status = check().await;
         assert_eq!(end_status, is_installed);
     }
