@@ -55,10 +55,10 @@ You can specify location of virual environments and the default python packages 
     #1
   ```
 
-- Remove a virtual environment by name:
+- Delete a virtual environment by name:
 
   ```bash
-    python-manager remove myenv
+    python-manager delete myenv
   ```
 
 - Delete a virtual environment using index number:
