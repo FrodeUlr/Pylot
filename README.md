@@ -1,8 +1,8 @@
 # A manager for python virtual environments made using UV
 
-PythonManager assists you in installing, updating and removing [Astral UV](https://docs.astral.sh/uv/).
-You can use PythonManager to create and remove virtual environments, which are created using `UV`.
-When activated, the virtual environment will be invoked in a child shell session in your current shell.
+PythonManager assists you in installing, updating and removing [Astral UV](https://docs.astral.sh/uv/).  
+You can use PythonManager to create and remove virtual environments, which are created using `UV`.  
+When activated, the virtual environment will be invoked in a child shell session in your current shell.  
 To deactivate the active environment, type `exit` in the terminal.
 
 You can specify location of virual environments and the default python packages by updating the `settings.toml` file.
