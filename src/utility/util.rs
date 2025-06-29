@@ -3,21 +3,23 @@ use colored::Colorize;
 use crate::{
     cmd::{
         utils,
-        venvmgr::{self, Venv},
+        venv::{self, Venv},
     },
     utility::util,
 };
 
-fn get_index(size: usize) -> usize {
+fn get_index(size: usize) -> Option<usize> {
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).unwrap();
-
-    input
-        .trim()
+    let trimmed = input.trim();
+    if trimmed.eq_ignore_ascii_case("q") {
+        return None;
+    }
+    trimmed
         .parse::<usize>()
         .ok()
         .filter(|&i| (1..=size).contains(&i))
-        .unwrap_or_else(|| utils::exit_with_error("Error, please provide a valid index"))
+        .or_else(|| utils::exit_with_error("Error, please provide a valid index"))
 }
 
 pub async fn find_venv(
@@ -26,9 +28,9 @@ pub async fn find_venv(
     method: String,
 ) -> Option<Venv> {
     let venv = match name.or(name_pos) {
-        Some(n) => venvmgr::Venv::new(n, "".to_string(), vec![], false),
+        Some(n) => venv::Venv::new(n, "".to_string(), vec![], false),
         None => {
-            let venvs = venvmgr::Venv::list(Some(false)).await;
+            let venvs = venv::Venv::list(Some(false)).await;
             if venvs.is_empty() {
                 println!("{}", "No virtual environments found".yellow());
                 return None;
@@ -37,8 +39,12 @@ pub async fn find_venv(
                 println!("{}. {}", i + 1, venv);
             }
             println!("Please select a virtual environment to {}:", method);
-            let index = util::get_index(venvs.len());
-            venvmgr::Venv::new(venvs[index - 1].clone(), "".to_string(), vec![], false)
+            match util::get_index(venvs.len()) {
+                None => return None,
+                Some(index) => {
+                    venv::Venv::new(venvs[index - 1].clone(), "".to_string(), vec![], false)
+                }
+            }
         }
     };
     Some(venv)

@@ -5,7 +5,7 @@ mod utility;
 
 use cfg::settings;
 use clap::Parser;
-use cmd::{manage, utils, venvmgr};
+use cmd::{manage, utils, venv, venvmngr};
 use colored::Colorize;
 use core::cli::{Cli, Commands};
 use std::io;
@@ -61,7 +61,7 @@ async fn main() {
                     utils::exit_with_error("Missing name for the environment.");
                 }
             };
-            let venv = venvmgr::Venv::new(name, python_version, packages, default);
+            let venv = venv::Venv::new(name, python_version, packages, default);
             if let Err(e) = venv.create().await {
                 eprintln!(
                     "{}",
@@ -79,7 +79,7 @@ async fn main() {
         }
 
         Some(Commands::List) => {
-            venvmgr::Venv::list(Some(true)).await;
+            venvmngr::VENVMANAGER.list(Some(true)).await;
         }
 
         Some(Commands::Activate { name_pos, name }) => {
