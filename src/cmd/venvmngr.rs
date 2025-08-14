@@ -26,7 +26,17 @@ impl VenvManager {
                     .filter_map(Result::ok)
                     .filter_map(|entry| {
                         if entry.file_type().ok()?.is_dir() {
-                            entry.file_name().to_str().map(|s| s.to_string())
+                            let dir_path = entry.path();
+                            let python_paths = [
+                                dir_path.join("Scripts").join("python.exe"),
+                                dir_path.join("bin").join("python"),
+                                dir_path.join("bin").join("python3"),
+                            ];
+                            if python_paths.iter().any(|p| p.exists()) {
+                                entry.file_name().to_str().map(|s| s.to_string())
+                            } else {
+                                None
+                            }
                         } else {
                             None
                         }
