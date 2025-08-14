@@ -1,14 +1,14 @@
 [package]
 name = "python-manager"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.5.27", features = ["derive"] }
+clap = { version = "4.5.45", features = ["derive"] }
 colored = "3.0.0"
-tokio = { version = "1.43.0", features = ["full"] }
-config = "0.15.7"
+tokio = { version = "1.47.1", features = ["full"] }
+config = "0.15.14"
 serde = { version = "1.0.217", features = ["derive"] }
-once_cell = "1.20.2"
-serde_path_to_error = "0.1.16"
-shellexpand = "3.1.0"
+once_cell = "1.21.3"
+serde_path_to_error = "0.1.17"
+shellexpand = "3.1.1"
