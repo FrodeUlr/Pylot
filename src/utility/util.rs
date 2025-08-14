@@ -1,3 +1,4 @@
+use crate::venvmngr;
 use colored::Colorize;
 
 use crate::{
@@ -30,7 +31,7 @@ pub async fn find_venv(
     let venv = match name.or(name_pos) {
         Some(n) => venv::Venv::new(n, "".to_string(), vec![], false),
         None => {
-            let venvs = venv::Venv::list(Some(false)).await;
+            let venvs = venvmngr::VENVMANAGER.list(Some(false)).await;
             if venvs.is_empty() {
                 println!("{}", "No virtual environments found".yellow());
                 return None;

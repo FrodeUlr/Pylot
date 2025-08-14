@@ -7,7 +7,7 @@ use crate::cfg::settings;
 
 pub struct VenvManager;
 
-pub static VENVMANAGER: Lazy<VenvManager> = Lazy::new(|| VenvManager::new());
+pub static VENVMANAGER: Lazy<VenvManager> = Lazy::new(VenvManager::new);
 
 impl VenvManager {
     fn new() -> Self {
