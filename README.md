@@ -15,7 +15,7 @@ You can specify location of virual environments and the default python packages 
     python-manager install
   ```
 
-- Update Astral UV if it is alredy installed:
+- Update Astral UV if it is already installed:
 
   ```bash
     python-manager install --update
