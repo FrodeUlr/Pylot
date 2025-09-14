@@ -18,30 +18,30 @@ endif
 all: build
 
 build:
-	cargo build $(CARGO_FLAGS)
+	@cargo build $(CARGO_FLAGS)
 
 run: build
-	$(TARGET_DIR)/$(PROJECT_NAME)
+	@$(TARGET_DIR)/$(PROJECT_NAME)
 
 format:
-	cargo fmt
+	@cargo fmt
 
 test:
-	cargo test
+	@cargo test
 
 lint:
-	cargo clippy -- -D warnings
+	@cargo clippy -- -D warnings
 
 clean:
-	cargo clean
+	@cargo clean
 
 install:
-	cargo install --path .
+	@cargo install --path .
 
 package: build
-	$(MKDIR_CMD)
-	$(COPY_CMD) $(TARGET_DIR)/$(PROJECT_NAME) dist/
-	$(COPY_CMD) settings.toml dist/
+	@$(MKDIR_CMD)
+	@$(COPY_CMD) $(TARGET_DIR)/$(PROJECT_NAME) dist/
+	@$(COPY_CMD) settings.toml dist/
 
 rebuild: clean build
 
