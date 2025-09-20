@@ -24,6 +24,7 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     #[command(
+        name = "install-uv",
         about = "Install Astral UV",
         long_about = "This command installs Astral UV"
     )]
@@ -44,6 +45,7 @@ pub enum Commands {
     Check,
 
     #[command(
+        name = "uninstall-uv",
         about = "Uninstall Astral UV",
         long_about = "This command uninstalls Astral UV"
     )]
