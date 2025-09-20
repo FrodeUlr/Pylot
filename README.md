@@ -12,13 +12,13 @@ You can specify location of virual environments and the default python packages 
 - Install Astral UV:
 
   ```bash
-    python-manager install
+    python-manager install-uv
   ```
 
 - Update Astral UV if it is already installed:
 
   ```bash
-    python-manager install --update
+    python-manager install-uv --update
   ```
 
 - Check if Astral UV is installed:
@@ -75,4 +75,10 @@ You can specify location of virual environments and the default python packages 
 
   ```bash
     python-manager list
+  ```
+
+- Uninstall Astral UV:
+
+  ```bash
+    python-manager uninstall-uv
   ```
