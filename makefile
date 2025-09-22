@@ -45,3 +45,6 @@ package: build
 
 rebuild: clean build
 
+debug:
+	@cargo build
+	@$(COPY_CMD) settings.toml target/debug/

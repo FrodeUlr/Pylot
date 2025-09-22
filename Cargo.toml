@@ -4,11 +4,11 @@ version = "0.2.0"
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.5.45", features = ["derive"] }
+clap = { version = "4.5.48", features = ["derive"] }
 colored = "3.0.0"
 tokio = { version = "1.47.1", features = ["full"] }
-config = "0.15.14"
-serde = { version = "1.0.217", features = ["derive"] }
+config = "0.15.16"
+serde = { version = "1.0.226", features = ["derive"] }
 once_cell = "1.21.3"
-serde_path_to_error = "0.1.17"
+serde_path_to_error = "0.1.20"
 shellexpand = "3.1.1"
