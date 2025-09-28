@@ -1,7 +1,7 @@
 # A manager for python virtual environments made using UV
 
-PyPilot assists you in installing, updating and removing [Astral UV](https://docs.astral.sh/uv/).  
-You can use PyPilot to create and remove virtual environments, which are created using `UV`.  
+`PyPilot` assists you in installing, updating and removing [Astral UV](https://docs.astral.sh/uv/).  
+You can use `PyPilot` to create and remove virtual environments, which are created using `UV`.  
 When activated, the virtual environment will be invoked in a child shell session in your current shell.  
 To deactivate the active environment, type `exit` in the terminal.
 
