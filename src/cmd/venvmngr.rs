@@ -61,4 +61,10 @@ impl VenvManager {
         };
         venvs
     }
+
+    pub async fn check_if_exists(&self, name: String) -> bool {
+        let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
+        let venv_path = format!("{}/{}", path, name);
+        std::path::Path::new(&venv_path).exists()
+    }
 }

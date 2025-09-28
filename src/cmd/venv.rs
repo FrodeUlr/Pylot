@@ -26,9 +26,6 @@ impl Venv {
 
     pub async fn create(&self) -> Result<(), String> {
         let settings = settings::Settings::get_settings();
-        if self.check_if_exists(&settings.venvs_path).await {
-            return Err("Virtual environment already exists".to_string());
-        }
         let pwd = std::env::current_dir().unwrap();
         // set pwd to settings venvs_path
         let path = shellexpand::tilde(&settings.venvs_path).to_string();
@@ -142,12 +139,6 @@ impl Venv {
             return;
         }
         utils::activate_venv_shell(shell.as_str(), cmd);
-    }
-
-    async fn check_if_exists(&self, path: &String) -> bool {
-        let path = shellexpand::tilde(path).to_string();
-        let venv_path = format!("{}/{}", path, self.name);
-        std::path::Path::new(&venv_path).exists()
     }
 }
 

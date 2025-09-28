@@ -1,17 +1,16 @@
 mod cfg;
+mod cli_core;
 mod cmd;
-mod core;
 mod utility;
 
 use cfg::settings;
 use clap::Parser;
-use cmd::{manage, utils, venv, venvmngr};
-use colored::Colorize;
-use core::cli::{Cli, Commands};
-use std::io;
-use utility::util;
+use cli_core::cli::{Cli, Commands};
+use cmd::venvmngr;
 
-use crate::cmd::manage::check;
+use crate::cli_core::run::{
+    run_activate, run_check, run_create, run_delete, run_install, run_uninstall,
+};
 
 #[tokio::main]
 async fn main() {
@@ -19,39 +18,9 @@ async fn main() {
     let args = Cli::parse();
 
     match args.commands {
-        Some(Commands::Install { update }) => {
-            if !update && manage::check().await {
-                println!(
-                    "{}",
-                    "Astral UV is already installed, skipping installation.\nUse --update (-u) flag to check for update".yellow()
-                );
-                return;
-            }
-            if let Err(e) = manage::install(io::stdin()).await {
-                eprintln!("{}", format!("Error installing Astral UV: {}", e).red());
-            }
-        }
+        Some(Commands::Activate { name_pos, name }) => run_activate(name_pos, name).await,
 
-        Some(Commands::Uninstall) => {
-            if !check().await {
-                utils::exit_with_error("Astral UV is not installed.");
-            }
-            if let Err(e) = manage::uninstall(io::stdin()).await {
-                eprintln!("{}", format!("Error uninstalling Astral UV: {}", e).red());
-            }
-        }
-
-        Some(Commands::Check) => {
-            println!(
-                "{}",
-                "Checking if Astral UV is installed and configured...".cyan()
-            );
-            if manage::check().await {
-                println!("{}", "Astral UV is installed".green());
-                return;
-            }
-            println!("{}", "Astral UV was not found".red());
-        }
+        Some(Commands::Check) => run_check().await,
 
         Some(Commands::Create {
             name_pos,
@@ -59,46 +28,18 @@ async fn main() {
             python_version,
             packages,
             default,
-        }) => {
-            let name = match name.or(name_pos) {
-                Some(n) => n,
-                None => {
-                    utils::exit_with_error("Missing name for the environment.");
-                }
-            };
-            if !check().await {
-                utils::exit_with_error(
-                    "Astral UV is not installed. Please run 'uv install' to install it.",
-                );
-            }
-            let venv = venv::Venv::new(name, python_version, packages, default);
-            if let Err(e) = venv.create().await {
-                eprintln!(
-                    "{}",
-                    format!("Error creating virtual environment: {}", e).red()
-                );
-            }
-        }
+        }) => run_create(name_pos, name, python_version, packages, default).await,
 
-        Some(Commands::Delete { name_pos, name }) => {
-            let venv = util::find_venv(name_pos, name, "delete".to_string()).await;
-            match venv {
-                Some(v) => v.delete().await,
-                None => return,
-            }
-        }
+        Some(Commands::Delete { name_pos, name }) => run_delete(name_pos, name).await,
 
         Some(Commands::List) => {
             venvmngr::VENVMANAGER.list(Some(true)).await;
         }
 
-        Some(Commands::Activate { name_pos, name }) => {
-            let venv = util::find_venv(name_pos, name, "activate".to_string()).await;
-            match venv {
-                Some(v) => v.activate().await,
-                None => return,
-            }
-        }
+        Some(Commands::Install { update }) => run_install(update).await,
+
+        Some(Commands::Uninstall) => run_uninstall().await,
+
         None => {
             println!("No command provided");
         }

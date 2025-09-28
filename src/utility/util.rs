@@ -26,7 +26,7 @@ fn get_index(size: usize) -> Option<usize> {
 pub async fn find_venv(
     name_pos: Option<String>,
     name: Option<String>,
-    method: String,
+    method: &str,
 ) -> Option<Venv> {
     let venv = match name.or(name_pos) {
         Some(n) => venv::Venv::new(n, "".to_string(), vec![], false),
