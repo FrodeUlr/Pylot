@@ -11,74 +11,74 @@ You can specify location of virtual environments and the default python packages
 
 - Install Astral UV:
 
-  ```console
+  ```bash
     PyPilot install-uv
   ```
 
 - Update Astral UV if it is already installed:
 
-  ```console
+  ```bash
     PyPilot install-uv --update
   ```
 
 - Check if Astral UV is installed:
 
-  ```console
+  ```bash
     PyPilot check
   ```
 
 - Create a new virtual environment with specific Python version 3.10 and packages maturin, numpy, pandas:
 
-  ```console
+  ```bash
     PyPilot create myenv -v 3.10 -p maturin numpy pandas
   ```
 
 - Create a new virtual environment with specific Python version 3.10, default packages and maturin:
 
-  ```console
+  ```bash
     PyPilot create myenv -v 3.10 -d -p maturin
   ```
 
 - Activate a virtual environment by name:
 
-  ```console
+  ```bash
     PyPilot activate myenv
   ```
 
 - Activate using index number:
 
-  ```console
+  ```bash
     PyPilot activate
-    >> 1. myenv
-    >> 2. mysecondenv
-    >> Please select a virtual environment to activate:
-    >> 1
+    #1. myenv
+    #2. mysecondenv
+    #Please select a virtual environment to activate:
+    #1
   ```
 
 - Delete a virtual environment by name:
 
-  ```console
+  ```bash
     PyPilot delete myenv
   ```
 
 - Delete a virtual environment using index number:
 
-  ```console
+  ```bash
     PyPilot delete
-    >> 1. myenv
-    >> 2. mysecondenv
-    >> Please select a virtual environment to delete:
-    >> 1
+    #1. myenv
+    #2. mysecondenv
+    #Please select a virtual environment to delete:
+    #1
   ```
 
 - List all available virtual environments:
 
-  ```console
+  ```bash
     PyPilot list
   ```
 
 - Uninstall Astral UV:
 
-  ```console
+  ```bash
     PyPilot uninstall-uv
   ```
