@@ -4,6 +4,7 @@ use colored::Colorize;
 use once_cell::sync::Lazy;
 
 use crate::cfg::settings;
+use crate::utility::constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC};
 
 pub struct VenvManager;
 
@@ -28,9 +29,9 @@ impl VenvManager {
                         if entry.file_type().ok()?.is_dir() {
                             let dir_path = entry.path();
                             let python_paths = [
-                                dir_path.join("Scripts").join("python.exe"),
-                                dir_path.join("bin").join("python"),
-                                dir_path.join("bin").join("python3"),
+                                dir_path.join(WIN_PYTHON_EXEC),
+                                dir_path.join(UNIX_PYTHON_EXEC),
+                                dir_path.join(UNIX_PYTHON3_EXEC),
                             ];
                             if python_paths.iter().any(|p| p.exists()) {
                                 entry.file_name().to_str().map(|s| s.to_string())

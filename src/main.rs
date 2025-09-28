@@ -11,6 +11,8 @@ use core::cli::{Cli, Commands};
 use std::io;
 use utility::util;
 
+use crate::cmd::manage::check;
+
 #[tokio::main]
 async fn main() {
     settings::Settings::init().await;
@@ -31,6 +33,9 @@ async fn main() {
         }
 
         Some(Commands::Uninstall) => {
+            if !check().await {
+                utils::exit_with_error("Astral UV is not installed.");
+            }
             if let Err(e) = manage::uninstall(io::stdin()).await {
                 eprintln!("{}", format!("Error uninstalling Astral UV: {}", e).red());
             }
@@ -61,6 +66,11 @@ async fn main() {
                     utils::exit_with_error("Missing name for the environment.");
                 }
             };
+            if !check().await {
+                utils::exit_with_error(
+                    "Astral UV is not installed. Please run 'uv install' to install it.",
+                );
+            }
             let venv = venv::Venv::new(name, python_version, packages, default);
             if let Err(e) = venv.create().await {
                 eprintln!(

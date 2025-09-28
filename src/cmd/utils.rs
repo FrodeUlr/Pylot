@@ -8,16 +8,7 @@ use tokio::{
     process::{Child, Command},
 };
 
-pub async fn is_command_available(cmd: &str, arg: &str) -> bool {
-    Command::new(cmd)
-        .arg(arg)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .await
-        .map(|status| status.success())
-        .unwrap_or(false)
-}
+use crate::utility::constants::{POWERSHELL_CMD, PWSH_CMD};
 
 pub fn create_child_cmd(cmd: &str, args: &[&str]) -> Child {
     Command::new(cmd)
@@ -97,7 +88,12 @@ pub fn confirm<R: std::io::Read>(input: R) -> bool {
 
 pub fn get_parent_shell() -> String {
     if cfg!(target_os = "windows") {
-        return "pwsh".to_string();
+        let shell = if which::which(PWSH_CMD).is_ok() {
+            PWSH_CMD
+        } else {
+            POWERSHELL_CMD
+        };
+        return shell.to_string();
     }
     std::env::var("SHELL").unwrap()
 }
@@ -112,14 +108,13 @@ mod tests {
 
     use super::*;
 
-    #[tokio::test]
-    async fn test_is_command_available() {
+    #[test]
+    fn test_get_parent_shell() {
+        let shell = get_parent_shell();
         if cfg!(target_os = "windows") {
-            let available = is_command_available("cmd", "/C echo Hello").await;
-            assert!(available);
+            assert!(shell == "powershell" || shell == "pwsh");
         } else {
-            let available = is_command_available("ls", "--version").await;
-            assert!(available);
+            assert!(!shell.is_empty());
         }
     }
 

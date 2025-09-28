@@ -1,7 +1,10 @@
 use colored::Colorize;
 
 use super::utils;
-use crate::cfg::settings;
+use crate::{
+    cfg::settings,
+    utility::constants::{BASH_CMD, POWERSHELL_CMD, PWSH_CMD},
+};
 use std::{fs, io};
 
 pub struct Venv {
@@ -50,11 +53,16 @@ impl Venv {
             let venn_path = shellexpand::tilde(&settings.venvs_path).to_string();
 
             let (cmd, vcmd, run) = if cfg!(target_os = "windows") {
+                let pwsh_cmd = if which::which(PWSH_CMD).is_ok() {
+                    PWSH_CMD
+                } else {
+                    POWERSHELL_CMD
+                };
                 let venv_cmd = format!("{}/{}/scripts/activate.ps1", venn_path, self.name);
-                ("pwsh", venv_cmd, "-Command")
+                (pwsh_cmd, venv_cmd, "-Command")
             } else {
                 let venv_cmd = format!("{}/{}/bin/activate", venn_path, self.name);
-                ("bash", venv_cmd, "-c")
+                (BASH_CMD, venv_cmd, "-c")
             };
 
             let mut args: Vec<String> = vec![

@@ -1,4 +1,5 @@
 use crate::cmd::utils::{self, confirm};
+use crate::utility::constants::{BASH_CMD, WINGET_CMD};
 use colored::Colorize;
 
 pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
@@ -6,10 +7,10 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
     println!("{}", "This will run the following command:".yellow());
 
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
-        ("winget", &["install", "astral-sh.uv"])
+        (WINGET_CMD, &["install", "astral-sh.uv"])
     } else {
         (
-            "bash",
+            BASH_CMD,
             &["-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
         )
     };
@@ -33,9 +34,9 @@ pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
     println!("{}", "This will run the following command:".yellow());
 
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
-        ("winget", &["uninstall", "astral-sh.uv"])
+        (WINGET_CMD, &["uninstall", "astral-sh.uv"])
     } else {
-        ("bash", &["-c", "rm ~/.local/bin/uv ~/.local/bin/uvx"])
+        (BASH_CMD, &["-c", "rm ~/.local/bin/uv ~/.local/bin/uvx"])
     };
 
     println!("{}", format!("  {} {}", cmd, args.join(" ")).red());
@@ -53,11 +54,7 @@ pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
 }
 
 pub async fn check() -> bool {
-    if cfg!(target_os = "windows") {
-        utils::is_command_available("where", "uv").await
-    } else {
-        utils::is_command_available("which", "uv").await
-    }
+    which::which("uv").is_ok()
 }
 
 #[cfg(test)]
