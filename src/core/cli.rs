@@ -10,8 +10,8 @@ use cli_styles::custom_styles;
     arg_required_else_help = true
 )]
 #[command(
-    name = "Python Manager",
-    version = "0.2.0",
+    name = "PyPilot",
+    version = "0.3.3",
     author = "Fulrix",
     about = "A simple CLI to manage Python virtual enviroonments using Astral UV",
     styles = custom_styles()
