@@ -1,11 +1,11 @@
-PROJECT_NAME = pypilot
+PROJECT_NAME = PyPilot
 
 ifeq ($(OS),Windows_NT)
 	TARGET_DIR = target/release
 	CARGO_FLAGS = --release
 	MKDIR_CMD = powershell -NoProfile mkdir dist -Force
 	COPY_CMD = powershell -NoProfile cp
-	PROJECT_NAME = pypilot.exe
+	PROJECT_NAME = PyPilot.exe
 else
 	TARGET_DIR = target/x86_64-unknown-linux-musl/release
 	CARGO_FLAGS = --release --target x86_64-unknown-linux-musl

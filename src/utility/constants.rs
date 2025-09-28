@@ -1,3 +1,5 @@
+pub const NAME: &str = env!("CARGO_PKG_NAME");
+pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 pub const WINGET_CMD: &str = "winget";
 pub const BASH_CMD: &str = "bash";
 pub const PWSH_CMD: &str = "pwsh";

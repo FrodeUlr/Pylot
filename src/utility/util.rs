@@ -13,7 +13,7 @@ fn get_index(size: usize) -> Option<usize> {
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).unwrap();
     let trimmed = input.trim();
-    if trimmed.eq_ignore_ascii_case("q") {
+    if trimmed.eq_ignore_ascii_case("q") || trimmed.eq_ignore_ascii_case("c") {
         return None;
     }
     trimmed
@@ -37,9 +37,14 @@ pub async fn find_venv(
                 return None;
             }
             for (i, venv) in venvs.iter().enumerate() {
-                println!("{}. {}", i + 1, venv);
+                println!("{}. {}", (i + 1).to_string().cyan(), venv.green());
             }
-            println!("Please select a virtual environment to {}:", method);
+            println!(
+                "{} {}{}",
+                "Please select a virtual environment to".cyan(),
+                method.yellow(),
+                " (c to cancel):".cyan()
+            );
             match util::get_index(venvs.len()) {
                 None => return None,
                 Some(index) => {

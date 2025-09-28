@@ -1,3 +1,5 @@
+use crate::utility::constants::{AUTHORS, NAME};
+
 use super::cli_styles;
 use clap::{Parser, Subcommand};
 use cli_styles::custom_styles;
@@ -10,9 +12,8 @@ use cli_styles::custom_styles;
     arg_required_else_help = true
 )]
 #[command(
-    name = "PyPilot",
-    version = "0.3.3",
-    author = "Fulrix",
+    name = NAME,
+    author = AUTHORS,
     about = "A simple CLI to manage Python virtual enviroonments using Astral UV",
     styles = custom_styles()
 )]
