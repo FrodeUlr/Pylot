@@ -67,11 +67,7 @@ pub async fn read_requirements_file(requirements: &str) -> Vec<String> {
             .filter(|line| !line.is_empty() && !line.starts_with('#'))
             .collect(),
         Err(e) => {
-            eprintln!(
-                "{}",
-                format!("Error reading requirements file: {}", e).red()
-            );
-            vec![]
+            exit_with_error(&format!("Error reading requirements file: {}", e));
         }
     }
 }

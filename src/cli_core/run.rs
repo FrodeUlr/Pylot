@@ -70,13 +70,14 @@ pub async fn run_create(
             "{}",
             format!("Error creating virtual environment: {}", e).red()
         );
+        venv.delete(false).await;
     }
 }
 
 pub async fn run_delete(name_pos: Option<String>, name: Option<String>) {
     let venv = util::find_venv(name_pos, name, "delete").await;
     if let Some(v) = venv {
-        v.delete().await
+        v.delete(true).await
     }
 }
 
