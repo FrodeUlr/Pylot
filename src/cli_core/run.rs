@@ -43,6 +43,14 @@ pub async fn run_create(
             utils::exit_with_error("Missing name for the environment.");
         }
     };
+    if !check().await {
+        utils::exit_with_error(
+            "Astral UV is not installed. Please run 'uv install' to install it.",
+        );
+    }
+    if venvmngr::VENVMANAGER.check_if_exists(name.clone()).await {
+        utils::exit_with_error("Virtual environment with this name already exists.");
+    }
     let mut packages = packages;
     if !requirements.is_empty() {
         let read_pkgs = util::read_requirements_file(&requirements).await;
@@ -55,14 +63,6 @@ pub async fn run_create(
                 packages.push(req);
             }
         }
-    }
-    if !check().await {
-        utils::exit_with_error(
-            "Astral UV is not installed. Please run 'uv install' to install it.",
-        );
-    }
-    if venvmngr::VENVMANAGER.check_if_exists(name.clone()).await {
-        utils::exit_with_error("Virtual environment with this name already exists.");
     }
     let venv = venv::Venv::new(name, python_version, packages, default);
     if let Err(e) = venv.create().await {
