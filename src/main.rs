@@ -27,8 +27,19 @@ async fn main() {
             name,
             python_version,
             packages,
+            requirements,
             default,
-        }) => run_create(name_pos, name, python_version, packages, default).await,
+        }) => {
+            run_create(
+                name_pos,
+                name,
+                python_version,
+                packages,
+                requirements,
+                default,
+            )
+            .await
+        }
 
         Some(Commands::Delete { name_pos, name }) => run_delete(name_pos, name).await,
 

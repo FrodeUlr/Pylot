@@ -1,12 +1,11 @@
-use crate::venvmngr;
 use colored::Colorize;
+use tokio::fs;
 
 use crate::{
-    cmd::{
-        utils,
-        venv::{self, Venv},
-    },
+    cmd::utils::exit_with_error,
+    cmd::venv::{self, Venv},
     utility::util,
+    venvmngr,
 };
 
 fn get_index(size: usize) -> Option<usize> {
@@ -20,7 +19,7 @@ fn get_index(size: usize) -> Option<usize> {
         .parse::<usize>()
         .ok()
         .filter(|&i| (1..=size).contains(&i))
-        .or_else(|| utils::exit_with_error("Error, please provide a valid index"))
+        .or_else(|| exit_with_error("Error, please provide a valid index"))
 }
 
 pub async fn find_venv(
@@ -54,4 +53,25 @@ pub async fn find_venv(
         }
     };
     Some(venv)
+}
+
+pub async fn read_requirements_file(requirements: &str) -> Vec<String> {
+    if !fs::try_exists(requirements).await.unwrap_or(false) {
+        exit_with_error(&format!("Requirements file '{}' does not exist", requirements).red())
+    }
+    let content = tokio::fs::read_to_string(requirements).await;
+    match content {
+        Ok(c) => c
+            .lines()
+            .map(|line| line.trim().to_string())
+            .filter(|line| !line.is_empty() && !line.starts_with('#'))
+            .collect(),
+        Err(e) => {
+            eprintln!(
+                "{}",
+                format!("Error reading requirements file: {}", e).red()
+            );
+            vec![]
+        }
+    }
 }

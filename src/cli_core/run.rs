@@ -34,6 +34,7 @@ pub async fn run_create(
     name: Option<String>,
     python_version: String,
     packages: Vec<String>,
+    requirements: String,
     default: bool,
 ) {
     let name = match name.or(name_pos) {
@@ -42,6 +43,19 @@ pub async fn run_create(
             utils::exit_with_error("Missing name for the environment.");
         }
     };
+    let mut packages = packages;
+    if !requirements.is_empty() {
+        let read_pkgs = util::read_requirements_file(&requirements).await;
+        for req in read_pkgs {
+            if !packages.contains(&req) {
+                println!(
+                    "{}",
+                    format!("Adding package '{}' from requirements file", req).cyan()
+                );
+                packages.push(req);
+            }
+        }
+    }
     if !check().await {
         utils::exit_with_error(
             "Astral UV is not installed. Please run 'uv install' to install it.",
