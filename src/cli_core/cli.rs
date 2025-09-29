@@ -75,6 +75,13 @@ pub enum Commands {
             num_args = 1..
         )]
         packages: Vec<String>,
+        #[arg(
+            short = 'r',
+            long,
+            help = "Requirements file to install packages from",
+            default_value = ""
+        )]
+        requirements: String,
         #[arg(index = 1, help = "Name of the virtual environment")]
         name_pos: Option<String>,
         #[arg(short, long, help = "Use default packages")]

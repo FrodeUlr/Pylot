@@ -69,6 +69,11 @@ pub async fn run_command(child: &mut Child) -> Result<(), Box<dyn std::error::Er
     };
     if let Err(e) = child_res {
         eprintln!("{}", format!("Error waiting for child: {}", e).red());
+        exit_with_error("Failed to run command");
+    }
+    let status = child_res.unwrap();
+    if !status.success() {
+        return Err(format!("Command exited with status: {}", status).into());
     }
 
     Ok(())

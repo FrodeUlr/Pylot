@@ -34,6 +34,7 @@ pub async fn run_create(
     name: Option<String>,
     python_version: String,
     packages: Vec<String>,
+    requirements: String,
     default: bool,
 ) {
     let name = match name.or(name_pos) {
@@ -50,19 +51,29 @@ pub async fn run_create(
     if venvmngr::VENVMANAGER.check_if_exists(name.clone()).await {
         utils::exit_with_error("Virtual environment with this name already exists.");
     }
+    let mut packages = packages;
+    if !requirements.is_empty() {
+        let read_pkgs = util::read_requirements_file(&requirements).await;
+        for req in read_pkgs {
+            if !packages.contains(&req) {
+                packages.push(req);
+            }
+        }
+    }
     let venv = venv::Venv::new(name, python_version, packages, default);
     if let Err(e) = venv.create().await {
         eprintln!(
             "{}",
             format!("Error creating virtual environment: {}", e).red()
         );
+        venv.delete(false).await;
     }
 }
 
 pub async fn run_delete(name_pos: Option<String>, name: Option<String>) {
     let venv = util::find_venv(name_pos, name, "delete").await;
     if let Some(v) = venv {
-        v.delete().await
+        v.delete(true).await
     }
 }
 

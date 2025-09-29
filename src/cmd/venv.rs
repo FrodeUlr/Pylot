@@ -93,26 +93,33 @@ impl Venv {
         Ok(())
     }
 
-    pub async fn delete(&self) {
+    pub async fn delete(&self, confirm: bool) {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venv_path = format!("{}/{}", path, self.name);
         if !std::path::Path::new(&venv_path).exists() {
             println!("{}", "Virtual environment does not exist".yellow());
             return;
         }
-        println!(
-            "{} {} {} {}",
-            "Deleting virtual environment:".yellow(),
-            self.name.red(),
-            "at".yellow(),
-            venv_path.replace("\\", "/").red()
-        );
-        let choice = utils::confirm(io::stdin());
+        let mut choice = !confirm;
+        if confirm {
+            println!(
+                "{} {} {} {}",
+                "Deleting virtual environment:".yellow(),
+                self.name.red(),
+                "at".yellow(),
+                venv_path.replace("\\", "/").red()
+            );
+            choice = utils::confirm(io::stdin());
+        }
         if !choice {
             return;
         }
         match fs::remove_dir_all(venv_path) {
-            Ok(_) => println!("{} {}", self.name.red(), "has been deleted".green()),
+            Ok(_) => {
+                if confirm {
+                    println!("{} {}", self.name.red(), "has been deleted".green())
+                }
+            }
             Err(e) => println!("{} {}", e.to_string().red(), self.name),
         }
     }
