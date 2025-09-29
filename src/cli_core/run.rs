@@ -56,10 +56,6 @@ pub async fn run_create(
         let read_pkgs = util::read_requirements_file(&requirements).await;
         for req in read_pkgs {
             if !packages.contains(&req) {
-                println!(
-                    "{}",
-                    format!("Adding package '{}' from requirements file", req).cyan()
-                );
                 packages.push(req);
             }
         }
