@@ -154,7 +154,7 @@ impl Venv {
             println!("{}", "Virtual environment does not exist".yellow());
             return;
         }
-        utils::activate_venv_shell(shell.as_str(), cmd);
+        let _ = utils::activate_venv_shell(shell.as_str(), cmd);
     }
 
     pub async fn set_python_version(&mut self) {

@@ -29,13 +29,44 @@ pub fn create_child_cmd_run(cmd: &str, run: &str, args: &[&str]) -> Child {
         .expect("Failed to execute command")
 }
 
-pub fn activate_venv_shell(cmd: &str, args: Vec<String>) {
-    let _ = StdCommand::new(cmd)
-        .arg("-c")
-        .args(args)
-        .spawn()
-        .expect("Failed to activate virtual environment")
-        .wait();
+pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        let error = StdCommand::new(cmd).arg("-c").args(args).exec();
+
+        Err(format!("Failed to execute shell: {}", error).into())
+    }
+
+    #[cfg(not(unix))]
+    {
+        use ctrlc;
+        use std::os::windows::process::CommandExt;
+        use std::sync::{Arc, Mutex};
+        use winapi::um::wincon::GenerateConsoleCtrlEvent;
+
+        let mut child = StdCommand::new(cmd)
+            .arg("-c")
+            .args(args)
+            .creation_flags(0x00000200)
+            .spawn()?;
+
+        let child_id = child.id();
+        let running = Arc::new(Mutex::new(true));
+        let running_clone = running.clone();
+
+        ctrlc::set_handler(move || {
+            unsafe {
+                GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_BREAK_EVENT, child_id);
+            }
+            let mut r = running_clone.lock().unwrap();
+            *r = false;
+        })
+        .expect("Error setting Ctrl-C handler");
+
+        child.wait()?;
+        Ok(())
+    }
 }
 
 pub async fn run_command(child: &mut Child) -> Result<(), Box<dyn std::error::Error>> {
