@@ -3,9 +3,9 @@ use std::fs;
 use colored::Colorize;
 use once_cell::sync::Lazy;
 
+use super::venv::{self, Venv};
 use crate::cfg::settings;
-use crate::cmd::utils;
-use crate::cmd::venv::{self, Venv};
+use crate::shell::processes;
 use crate::utility::constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC};
 use crate::utility::util;
 
@@ -108,6 +108,50 @@ impl VenvManager {
             .parse::<usize>()
             .ok()
             .filter(|&i| (1..=size).contains(&i))
-            .or_else(|| utils::exit_with_error("Error, please provide a valid index"))
+            .or_else(|| processes::exit_with_error("Error, please provide a valid index"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_list_venvs() {
+        let venvs = VENVMANAGER.list().await;
+        // Assuming there are no virtual environments for the test
+        assert!(venvs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_check_if_exists() {
+        let exists = VENVMANAGER
+            .check_if_exists("non_existent_venv".to_string())
+            .await;
+        assert!(!exists);
+    }
+
+    #[tokio::test]
+    async fn test_find_venv_none() {
+        let venv = VENVMANAGER.find_venv(None, None, "activate").await;
+        assert!(venv.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_find_venv_by_name() {
+        let venv = VENVMANAGER
+            .find_venv(None, Some("test_venv".to_string()), "activate")
+            .await;
+        assert!(venv.is_some());
+        assert_eq!(venv.unwrap().name, "test_venv");
+    }
+
+    #[tokio::test]
+    async fn test_find_venv_by_name_pos() {
+        let venv = VENVMANAGER
+            .find_venv(Some("test_venv".to_string()), None, "activate")
+            .await;
+        assert!(venv.is_some());
+        assert_eq!(venv.unwrap().name, "test_venv");
     }
 }

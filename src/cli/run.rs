@@ -3,16 +3,14 @@ use std::io;
 use colored::Colorize;
 
 use crate::{
-    cmd::{
-        manage::{check, install, uninstall},
-        utils, venv, venvmngr,
-    },
+    core::{uv, venv, venvmanager},
+    shell::processes,
     utility::util,
 };
 
-pub async fn run_activate(name_pos: Option<String>, name: Option<String>) {
+pub async fn activate(name_pos: Option<String>, name: Option<String>) {
     //let venv = util::find_venv(name_pos, name, "activate").await;
-    let venv = venvmngr::VENVMANAGER
+    let venv = venvmanager::VENVMANAGER
         .find_venv(name_pos, name, "activate")
         .await;
     if let Some(v) = venv {
@@ -20,19 +18,19 @@ pub async fn run_activate(name_pos: Option<String>, name: Option<String>) {
     }
 }
 
-pub async fn run_check() {
+pub async fn check() {
     println!(
         "{}",
         "Checking if Astral UV is installed and configured...".cyan()
     );
-    if check().await {
+    if uv::check().await {
         println!("{}", "Astral UV is installed".green());
         return;
     }
     println!("{}", "Astral UV was not found".red());
 }
 
-pub async fn run_create(
+pub async fn create(
     name_pos: Option<String>,
     name: Option<String>,
     python_version: String,
@@ -43,16 +41,16 @@ pub async fn run_create(
     let name = match name.or(name_pos) {
         Some(n) => n,
         None => {
-            utils::exit_with_error("Missing name for the environment.");
+            processes::exit_with_error("Missing name for the environment.");
         }
     };
-    if !check().await {
-        utils::exit_with_error(
+    if !uv::check().await {
+        processes::exit_with_error(
             "Astral UV is not installed. Please run 'uv install' to install it.",
         );
     }
-    if venvmngr::VENVMANAGER.check_if_exists(name.clone()).await {
-        utils::exit_with_error("Virtual environment with this name already exists.");
+    if venvmanager::VENVMANAGER.check_if_exists(name.clone()).await {
+        processes::exit_with_error("Virtual environment with this name already exists.");
     }
     let mut packages = packages;
     if !requirements.is_empty() {
@@ -73,8 +71,8 @@ pub async fn run_create(
     }
 }
 
-pub async fn run_delete(name_pos: Option<String>, name: Option<String>) {
-    let venv = venvmngr::VENVMANAGER
+pub async fn delete(name_pos: Option<String>, name: Option<String>) {
+    let venv = venvmanager::VENVMANAGER
         .find_venv(name_pos, name, "delete")
         .await;
     if let Some(v) = venv {
@@ -82,30 +80,45 @@ pub async fn run_delete(name_pos: Option<String>, name: Option<String>) {
     }
 }
 
-pub async fn run_install(update: bool) {
-    if check().await && !update {
+pub async fn install(update: bool) {
+    if uv::check().await && !update {
         println!("{}", "Astral UV is already installed.".yellow());
         return;
     }
-    if let Err(e) = install(io::stdin()).await {
+    if let Err(e) = uv::install(io::stdin()).await {
         eprintln!("{}", format!("Error installing Astral UV: {}", e).red());
     }
 }
 
-pub async fn run_uninstall() {
-    if !check().await {
-        utils::exit_with_error("Astral UV is not installed.");
+pub async fn uninstall() {
+    if !uv::check().await {
+        processes::exit_with_error("Astral UV is not installed.");
     }
-    if let Err(e) = uninstall(io::stdin()).await {
+    if let Err(e) = uv::uninstall(io::stdin()).await {
         eprintln!("{}", format!("Error uninstalling Astral UV: {}", e).red());
     }
 }
 
-pub async fn run_list() {
-    let mut venvs = venvmngr::VENVMANAGER.list().await;
+pub async fn list() {
+    let mut venvs = venvmanager::VENVMANAGER.list().await;
     if venvs.is_empty() {
         println!("{}", "No virtual environments found".yellow());
     } else {
         util::print_venv_table(&mut venvs).await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_check() {
+        let is_installed = uv::check().await;
+        if is_installed {
+            println!("{}", "Astral UV is installed".green());
+        } else {
+            println!("{}", "Astral UV is not installed".red());
+        }
     }
 }

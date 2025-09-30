@@ -1,8 +1,5 @@
 use colored::Colorize;
-use std::{
-    io::{stdout, BufRead, Write},
-    process::{Command as StdCommand, Stdio},
-};
+use std::process::{Command as StdCommand, Stdio};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::{Child, Command},
@@ -110,18 +107,6 @@ pub async fn run_command(child: &mut Child) -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-pub fn confirm<R: std::io::Read>(input: R) -> bool {
-    let mut stdin = std::io::BufReader::new(input);
-    print!("{}", "Do you want to continue? (y/n): ".cyan());
-    let _ = stdout().flush();
-    let mut input_string = String::new();
-    if stdin.read_line(&mut input_string).is_ok() {
-        matches!(input_string.trim(), "y" | "yes")
-    } else {
-        false
-    }
-}
-
 pub fn get_parent_shell() -> String {
     if cfg!(target_os = "windows") {
         let shell = if which::which(PWSH_CMD).is_ok() {
@@ -186,31 +171,20 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_confirm_yes() {
-        let cursor = std::io::Cursor::new("y\n");
-        let result = confirm(cursor);
-        assert!(result);
-    }
-
-    #[test]
-    fn test_confirm_no() {
-        let cursor = std::io::Cursor::new("n\n");
-        let result = confirm(cursor);
-        assert!(!result);
-    }
-
-    #[test]
-    fn test_confirm_invalid() {
-        let cursor = std::io::Cursor::new("x\n");
-        let result = confirm(cursor);
-        assert!(!result);
-    }
-
-    #[test]
-    fn test_confirm_empty() {
-        let cursor = std::io::Cursor::new("\n");
-        let result = confirm(cursor);
-        assert!(!result);
+    #[tokio::test]
+    async fn test_create_child_cmd_run() {
+        if cfg!(target_os = "windows") {
+            let cmd = "cmd";
+            let run = "/C";
+            let args = &["echo", "Hello"];
+            let child = create_child_cmd_run(cmd, run, args);
+            assert!(child.id() > Some(0));
+        } else {
+            let cmd = "sh";
+            let run = "-c";
+            let args = &["echo Hello"];
+            let child = create_child_cmd_run(cmd, run, args);
+            assert!(child.id() > Some(0));
+        }
     }
 }

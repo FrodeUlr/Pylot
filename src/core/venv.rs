@@ -1,9 +1,12 @@
 use colored::Colorize;
 
-use super::utils;
 use crate::{
     cfg::settings,
-    utility::constants::{BASH_CMD, POWERSHELL_CMD, PWSH_CMD},
+    shell::processes,
+    utility::{
+        self,
+        constants::{BASH_CMD, POWERSHELL_CMD, PWSH_CMD},
+    },
 };
 use std::{fs, io};
 use tokio::fs as async_fs;
@@ -46,8 +49,8 @@ impl Venv {
             self.python_version.as_str(),
         ];
         println!("Creating virtual environment: {}", self.name.cyan());
-        let mut child = utils::create_child_cmd("uv", args);
-        utils::run_command(&mut child)
+        let mut child = processes::create_child_cmd("uv", args);
+        processes::run_command(&mut child)
             .await
             .map_err(|_| "Error creating virtual environment".to_string())?;
         let mut pkgs = self.packages.clone();
@@ -92,9 +95,9 @@ impl Venv {
                 .map(String::as_str)
                 .collect::<Vec<_>>()
                 .join(" ");
-            let mut child2 = utils::create_child_cmd_run(cmd, run, &[&agr_str]);
+            let mut child2 = processes::create_child_cmd_run(cmd, run, &[&agr_str]);
 
-            utils::run_command(&mut child2)
+            processes::run_command(&mut child2)
                 .await
                 .map_err(|_| "Error installing packages".to_string())?;
         }
@@ -118,7 +121,7 @@ impl Venv {
                 "at".yellow(),
                 venv_path.replace("\\", "/").red()
             );
-            choice = utils::confirm(io::stdin());
+            choice = utility::util::confirm(io::stdin());
         }
         if !choice {
             return;
@@ -140,7 +143,7 @@ impl Venv {
             self.name.green()
         );
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
-        let shell = utils::get_parent_shell();
+        let shell = processes::get_parent_shell();
         let (cmd, path) = if cfg!(target_os = "windows") {
             let venv_path = format!("{}/{}/scripts/activate.ps1", path, self.name);
             let venv_cmd = format!("{} && {}", venv_path, shell.as_str());
@@ -154,7 +157,7 @@ impl Venv {
             println!("{}", "Virtual environment does not exist".yellow());
             return;
         }
-        let _ = utils::activate_venv_shell(shell.as_str(), cmd);
+        let _ = processes::activate_venv_shell(shell.as_str(), cmd);
     }
 
     pub async fn set_python_version(&mut self) {

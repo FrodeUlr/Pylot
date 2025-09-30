@@ -1,8 +1,8 @@
 use crate::utility::constants::{AUTHORS, NAME};
 
-use super::cli_styles;
+use super::styles;
 use clap::{Parser, Subcommand};
-use cli_styles::custom_styles;
+use styles::custom_styles;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -112,4 +112,14 @@ pub enum Commands {
         #[arg(index = 1, help = "Name of the virtual environment")]
         name_pos: Option<String>,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        Cli::command().debug_assert();
+    }
 }

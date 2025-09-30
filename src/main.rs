@@ -1,15 +1,14 @@
 mod cfg;
-mod cli_core;
-mod cmd;
+mod cli;
+mod core;
+mod shell;
 mod utility;
 
 use cfg::settings;
 use clap::Parser;
-use cli_core::cli::{Cli, Commands};
+use cli::clicmd::{Cli, Commands};
 
-use crate::cli_core::run::{
-    run_activate, run_check, run_create, run_delete, run_install, run_list, run_uninstall,
-};
+use crate::cli::run;
 
 #[tokio::main]
 async fn main() {
@@ -17,9 +16,9 @@ async fn main() {
     let args = Cli::parse();
 
     match args.commands {
-        Some(Commands::Activate { name_pos, name }) => run_activate(name_pos, name).await,
+        Some(Commands::Activate { name_pos, name }) => run::activate(name_pos, name).await,
 
-        Some(Commands::Check) => run_check().await,
+        Some(Commands::Check) => run::check().await,
 
         Some(Commands::Create {
             name_pos,
@@ -29,7 +28,7 @@ async fn main() {
             requirements,
             default,
         }) => {
-            run_create(
+            run::create(
                 name_pos,
                 name,
                 python_version,
@@ -40,13 +39,13 @@ async fn main() {
             .await
         }
 
-        Some(Commands::Delete { name_pos, name }) => run_delete(name_pos, name).await,
+        Some(Commands::Delete { name_pos, name }) => run::delete(name_pos, name).await,
 
-        Some(Commands::List) => run_list().await,
+        Some(Commands::List) => run::list().await,
 
-        Some(Commands::Install { update }) => run_install(update).await,
+        Some(Commands::Install { update }) => run::install(update).await,
 
-        Some(Commands::Uninstall) => run_uninstall().await,
+        Some(Commands::Uninstall) => run::uninstall().await,
 
         None => {
             println!("No command provided");

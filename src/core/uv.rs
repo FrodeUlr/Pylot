@@ -1,5 +1,6 @@
-use crate::cmd::utils::{self, confirm};
+use crate::shell::processes;
 use crate::utility::constants::{BASH_CMD, WINGET_CMD};
+use crate::utility::util::confirm;
 use colored::Colorize;
 
 pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
@@ -22,8 +23,8 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
         return Ok(());
     }
 
-    let mut child = utils::create_child_cmd(cmd, args);
-    utils::run_command(&mut child)
+    let mut child = processes::create_child_cmd(cmd, args);
+    processes::run_command(&mut child)
         .await
         .map_err(|_| "Installation failed".to_string())?;
     Ok(())
@@ -46,8 +47,8 @@ pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
         return Ok(());
     }
 
-    let mut child = utils::create_child_cmd(cmd, args);
-    utils::run_command(&mut child)
+    let mut child = processes::create_child_cmd(cmd, args);
+    processes::run_command(&mut child)
         .await
         .map_err(|_| "Uninstallation failed".to_string())?;
     Ok(())
