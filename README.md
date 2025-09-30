@@ -55,7 +55,7 @@ You can specify location of virtual environments and the default python packages
 
   Output:
 
-  ```bash
+  ```console
     ╭───────┬──────────────┬─────────╮
     │ Index ┆ Name         ┆ Version │
     ╞═══════╪══════════════╪═════════╡
@@ -81,7 +81,7 @@ You can specify location of virtual environments and the default python packages
 
   Output:
 
-  ```bash
+  ```console
     ╭───────┬──────────────┬─────────╮
     │ Index ┆ Name         ┆ Version │
     ╞═══════╪══════════════╪═════════╡
@@ -101,7 +101,7 @@ You can specify location of virtual environments and the default python packages
 
   Output:
 
-  ```bash
+  ```console
     ╭───────┬──────────────┬─────────╮
     │ Index ┆ Name         ┆ Version │
     ╞═══════╪══════════════╪═════════╡
