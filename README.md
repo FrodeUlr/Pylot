@@ -51,8 +51,13 @@ You can specify location of virtual environments and the default python packages
 
   ```bash
     PyPilot activate
-    #1. myenv
-    #2. mysecondenv
+    ╭───────┬──────────────┬─────────╮
+    │ Index ┆ Name         ┆ Version │
+    ╞═══════╪══════════════╪═════════╡
+    │ 1     ┆ MyVenv       ┆ 3.11.13 │
+    ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
+    │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
+    ╰───────┴──────────────┴─────────╯
     #Please select a virtual environment to activate:
     #1
   ```
@@ -67,8 +72,13 @@ You can specify location of virtual environments and the default python packages
 
   ```bash
     PyPilot delete
-    #1. myenv
-    #2. mysecondenv
+    ╭───────┬──────────────┬─────────╮
+    │ Index ┆ Name         ┆ Version │
+    ╞═══════╪══════════════╪═════════╡
+    │ 1     ┆ MyVenv       ┆ 3.11.13 │
+    ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
+    │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
+    ╰───────┴──────────────┴─────────╯
     #Please select a virtual environment to delete:
     #1
   ```
@@ -77,6 +87,13 @@ You can specify location of virtual environments and the default python packages
 
   ```bash
     PyPilot list
+    ╭───────┬──────────────┬─────────╮
+    │ Index ┆ Name         ┆ Version │
+    ╞═══════╪══════════════╪═════════╡
+    │ 1     ┆ MyVenv       ┆ 3.11.13 │
+    ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
+    │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
+    ╰───────┴──────────────┴─────────╯
   ```
 
 - Uninstall Astral UV:
