@@ -1,4 +1,23 @@
-# A manager for python virtual environments made using UV
+# PyPilot
+
+<!--toc:start-->
+
+- [A manager for python virtual environments made using UV](#a-manager-for-python-virtual-environments-made-using-uv)
+- [**Example usage:**](#example-usage)
+  - [Install Astral UV](#install-astral-uv)
+  - [Update Astral UV if it is already installed](#update-astral-uv-if-it-is-already-installed)
+  - [Check if Astral UV is installed](#check-if-astral-uv-is-installed)
+  - [Create a new virtual environment with specific Python version 3.10 and packages maturin, numpy, pandas](#create-a-new-virtual-environment-with-specific-python-version-310-and-packages-maturin-numpy-pandas)
+  - [Create a new virtual environment with specific Python version 3.10, default packages and maturin](#create-a-new-virtual-environment-with-specific-python-version-310-default-packages-and-maturin)
+  - [Activate a virtual environment by name](#activate-a-virtual-environment-by-name)
+  - [Activate a Virtual Environment by Index](#activate-a-virtual-environment-by-index)
+  - [Delete a virtual environment by name](#delete-a-virtual-environment-by-name)
+  - [Delete a virtual environment using index number](#delete-a-virtual-environment-using-index-number)
+  - [List all available virtual environments](#list-all-available-virtual-environments)
+  - [Uninstall Astral UV](#uninstall-astral-uv)
+  <!--toc:end-->
+
+## A manager for python virtual environments made using UV
 
 [![Rust](https://github.com/FrodeUlr/PyPilot/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/FrodeUlr/PyPilot/actions/workflows/rust.yml)
 
@@ -9,110 +28,134 @@ To deactivate the active environment, type `exit` in the terminal.
 
 You can specify location of virtual environments and the default python packages by updating the `settings.toml` file.
 
-**Example usage:**
+## **Example usage:**
 
-- Install Astral UV:
+### Install Astral UV
 
-  ```bash
-    PyPilot install-uv
-  ```
+Run the following command:
 
-- Update Astral UV if it is already installed:
+```bash
+  PyPilot install-uv
+```
 
-  ```bash
-    PyPilot install-uv --update
-  ```
+### Update Astral UV if it is already installed
 
-- Check if Astral UV is installed:
+Run the following command:
 
-  ```bash
-    PyPilot check
-  ```
+```bash
+  PyPilot install-uv --update
+```
 
-- Create a new virtual environment with specific Python version 3.10 and packages maturin, numpy, pandas:
+### Check if Astral UV is installed
 
-  ```bash
-    PyPilot create myenv -v 3.10 -p maturin numpy pandas
-  ```
+Run the following command:
 
-- Create a new virtual environment with specific Python version 3.10, default packages and maturin:
+```bash
+  PyPilot check
+```
 
-  ```bash
-    PyPilot create myenv -v 3.10 -d -p maturin
-  ```
+### Create a new virtual environment with specific Python version 3.10 and packages maturin, numpy, pandas
 
-- Activate a virtual environment by name:
+Run the following command:
 
-  ```bash
-    PyPilot activate myenv
-  ```
+```bash
+  PyPilot create myenv -v 3.10 -p maturin numpy pandas
+```
 
-- Activate using index number:
+### Create a new virtual environment with specific Python version 3.10, default packages and maturin
 
-  ```bash
-    PyPilot activate
-  ```
+Run the following command:
 
-  Output:
+```bash
+  PyPilot create myenv -v 3.10 -d -p maturin
+```
 
-  ```console
-    ╭───────┬──────────────┬─────────╮
-    │ Index ┆ Name         ┆ Version │
-    ╞═══════╪══════════════╪═════════╡
-    │ 1     ┆ MyVenv       ┆ 3.11.13 │
-    ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
-    │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
-    ╰───────┴──────────────┴─────────╯
-    Please select a virtual environment to activate:
-    1
-  ```
+### Activate a virtual environment by name
 
-- Delete a virtual environment by name:
+Run the following command:
 
-  ```bash
-    PyPilot delete myenv
-  ```
+```bash
+  PyPilot activate myenv
+```
 
-- Delete a virtual environment using index number:
+### Activate a Virtual Environment by Index
 
-  ```bash
-    PyPilot delete
-  ```
+Run the following command:
 
-  Output:
+```bash
+  PyPilot activate
+```
 
-  ```console
-    ╭───────┬──────────────┬─────────╮
-    │ Index ┆ Name         ┆ Version │
-    ╞═══════╪══════════════╪═════════╡
-    │ 1     ┆ MyVenv       ┆ 3.11.13 │
-    ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
-    │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
-    ╰───────┴──────────────┴─────────╯
-    Please select a virtual environment to delete:
-    1
-  ```
+You will see a list of available virtual environments:
 
-- List all available virtual environments:
+```text
+  ╭───────┬──────────────┬─────────╮
+  │ Index ┆ Name         ┆ Version │
+  ╞═══════╪══════════════╪═════════╡
+  │ 1     ┆ MyVenv       ┆ 3.11.13 │
+  ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
+  │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
+  ╰───────┴──────────────┴─────────╯
+  Please select a virtual environment to activate:
+```
 
-  ```bash
-    PyPilot list
-  ```
+Type the index number (e.g., `1`) and press Enter.
 
-  Output:
+### Delete a virtual environment by name
 
-  ```console
-    ╭───────┬──────────────┬─────────╮
-    │ Index ┆ Name         ┆ Version │
-    ╞═══════╪══════════════╪═════════╡
-    │ 1     ┆ MyVenv       ┆ 3.11.13 │
-    ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
-    │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
-    ╰───────┴──────────────┴─────────╯
-  ```
+Run the following command:
 
-- Uninstall Astral UV:
+```bash
+  PyPilot delete myenv
+```
 
-  ```bash
-    PyPilot uninstall-uv
-  ```
+### Delete a virtual environment using index number
+
+Run the following command:
+
+```bash
+  PyPilot delete
+```
+
+You will see a list of available virtual environments:
+
+```text
+  ╭───────┬──────────────┬─────────╮
+  │ Index ┆ Name         ┆ Version │
+  ╞═══════╪══════════════╪═════════╡
+  │ 1     ┆ MyVenv       ┆ 3.11.13 │
+  ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
+  │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
+  ╰───────┴──────────────┴─────────╯
+  Please select a virtual environment to delete:
+```
+
+Type the index number (e.g., `1`) and press Enter.
+
+### List all available virtual environments
+
+Run the following command:
+
+```bash
+  PyPilot list
+```
+
+You will see a list of available virtual environments:
+
+```text
+  ╭───────┬──────────────┬─────────╮
+  │ Index ┆ Name         ┆ Version │
+  ╞═══════╪══════════════╪═════════╡
+  │ 1     ┆ MyVenv       ┆ 3.11.13 │
+  ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
+  │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
+  ╰───────┴──────────────┴─────────╯
+```
+
+### Uninstall Astral UV
+
+Run the following command:
+
+```bash
+  PyPilot uninstall-uv
+```
