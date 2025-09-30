@@ -52,3 +52,90 @@ async fn main() {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        let result = 2 + 2;
+        assert_eq!(result, 4);
+    }
+
+    #[test]
+    fn test_cli_output_help() {
+        assert_cli::Assert::main_binary()
+            .with_args(&["--help"])
+            .succeeds()
+            .and()
+            .stdout()
+            .contains("A simple CLI to manage Python virtual enviroonments using Astral UV")
+            .unwrap();
+    }
+
+    #[test]
+    fn test_cli_output_version() {
+        let version = env!("CARGO_PKG_VERSION");
+        assert_cli::Assert::main_binary()
+            .with_args(&["--version"])
+            .succeeds()
+            .and()
+            .stdout()
+            .contains(format!("PyPilot {}", version).as_str())
+            .unwrap();
+    }
+
+    #[test]
+    fn test_cli_output_check() {
+        assert_cli::Assert::main_binary()
+            .with_args(&["check"])
+            .succeeds()
+            .and()
+            .stdout()
+            .contains("Checking if Astral UV is installed and configured...")
+            .unwrap();
+    }
+
+    #[test]
+    fn test_cli_output_activate() {
+        assert_cli::Assert::main_binary()
+            .with_args(&["activate"])
+            .succeeds()
+            .and()
+            .stdout()
+            .contains("No virtual environments found")
+            .unwrap();
+    }
+
+    #[test]
+    fn test_cli_output_delete() {
+        assert_cli::Assert::main_binary()
+            .with_args(&["delete"])
+            .succeeds()
+            .and()
+            .stdout()
+            .contains("No virtual environments found")
+            .unwrap();
+    }
+
+    #[test]
+    fn test_cli_output_delete_name() {
+        assert_cli::Assert::main_binary()
+            .with_args(&["delete", "myvenv"])
+            .succeeds()
+            .and()
+            .stdout()
+            .contains("Virtual environment does not exist")
+            .unwrap();
+    }
+
+    #[test]
+    fn test_cli_output_activate_name() {
+        assert_cli::Assert::main_binary()
+            .with_args(&["activate", "myvenv"])
+            .succeeds()
+            .and()
+            .stdout()
+            .contains("Virtual environment does not exist")
+            .unwrap();
+    }
+}
