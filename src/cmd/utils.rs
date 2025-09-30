@@ -33,7 +33,7 @@ pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<(), Box<dyn s
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        let error = StdCommand::new(cmd).arg("-c").args(args).exec(); // This replaces the current process
+        let error = StdCommand::new(cmd).arg("-c").args(args).exec();
 
         Err(format!("Failed to execute shell: {}", error).into())
     }
@@ -56,11 +56,9 @@ pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<(), Box<dyn s
         let running_clone = running.clone();
 
         ctrlc::set_handler(move || {
-            // Send CTRL_BREAK_EVENT to the child process group
             unsafe {
                 GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_BREAK_EVENT, child_id);
             }
-            // Optionally, mark as not running
             let mut r = running_clone.lock().unwrap();
             *r = false;
         })
