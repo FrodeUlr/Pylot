@@ -6,10 +6,9 @@ mod utility;
 use cfg::settings;
 use clap::Parser;
 use cli_core::cli::{Cli, Commands};
-use cmd::venvmngr;
 
 use crate::cli_core::run::{
-    run_activate, run_check, run_create, run_delete, run_install, run_uninstall,
+    run_activate, run_check, run_create, run_delete, run_install, run_list, run_uninstall,
 };
 
 #[tokio::main]
@@ -43,9 +42,7 @@ async fn main() {
 
         Some(Commands::Delete { name_pos, name }) => run_delete(name_pos, name).await,
 
-        Some(Commands::List) => {
-            venvmngr::VENVMANAGER.list(Some(true)).await;
-        }
+        Some(Commands::List) => run_list().await,
 
         Some(Commands::Install { update }) => run_install(update).await,
 

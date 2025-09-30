@@ -6,18 +6,27 @@ use crate::{
     utility::constants::{BASH_CMD, POWERSHELL_CMD, PWSH_CMD},
 };
 use std::{fs, io};
+use tokio::fs as async_fs;
 
 pub struct Venv {
-    name: String,
-    python_version: String,
-    packages: Vec<String>,
-    default: bool,
+    pub name: String,
+    pub path: String,
+    pub python_version: String,
+    pub packages: Vec<String>,
+    pub default: bool,
 }
 
 impl Venv {
-    pub fn new(name: String, python_version: String, packages: Vec<String>, default: bool) -> Self {
+    pub fn new(
+        name: String,
+        path: String,
+        python_version: String,
+        packages: Vec<String>,
+        default: bool,
+    ) -> Self {
         Venv {
             name,
+            path,
             python_version,
             packages,
             default,
@@ -147,6 +156,23 @@ impl Venv {
         }
         utils::activate_venv_shell(shell.as_str(), cmd);
     }
+
+    pub async fn set_python_version(&mut self) {
+        let cfg_path = format!("{}/pyvenv.cfg", self.path);
+        if !async_fs::try_exists(&cfg_path).await.unwrap_or(false) {
+            return;
+        }
+        if let Ok(content) = tokio::fs::read_to_string(cfg_path).await {
+            for line in content.lines() {
+                if line.starts_with("version") {
+                    let parts: Vec<&str> = line.split('=').collect();
+                    if parts.len() == 2 {
+                        self.python_version = parts[1].trim().to_string();
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -155,7 +181,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_venv() {
-        let venv = Venv::new("test_venv".to_string(), "3.8".to_string(), vec![], false);
+        let venv = Venv::new(
+            "test_venv".to_string(),
+            "".to_string(),
+            "3.8".to_string(),
+            vec![],
+            false,
+        );
         assert_eq!(venv.name, "test_venv");
         assert_eq!(venv.python_version, "3.8");
     }
@@ -164,6 +196,7 @@ mod tests {
     async fn test_venv_clean() {
         let venv = Venv::new(
             "test_venv_clean".to_string(),
+            "".to_string(),
             "3.9".to_string(),
             vec!["numpy".to_string(), "pandas".to_string()],
             false,

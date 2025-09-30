@@ -11,7 +11,10 @@ use crate::{
 };
 
 pub async fn run_activate(name_pos: Option<String>, name: Option<String>) {
-    let venv = util::find_venv(name_pos, name, "activate").await;
+    //let venv = util::find_venv(name_pos, name, "activate").await;
+    let venv = venvmngr::VENVMANAGER
+        .find_venv(name_pos, name, "activate")
+        .await;
     if let Some(v) = venv {
         v.activate().await
     }
@@ -60,7 +63,7 @@ pub async fn run_create(
             }
         }
     }
-    let venv = venv::Venv::new(name, python_version, packages, default);
+    let venv = venv::Venv::new(name, "".to_string(), python_version, packages, default);
     if let Err(e) = venv.create().await {
         eprintln!(
             "{}",
@@ -71,7 +74,9 @@ pub async fn run_create(
 }
 
 pub async fn run_delete(name_pos: Option<String>, name: Option<String>) {
-    let venv = util::find_venv(name_pos, name, "delete").await;
+    let venv = venvmngr::VENVMANAGER
+        .find_venv(name_pos, name, "delete")
+        .await;
     if let Some(v) = venv {
         v.delete(true).await
     }
@@ -93,5 +98,14 @@ pub async fn run_uninstall() {
     }
     if let Err(e) = uninstall(io::stdin()).await {
         eprintln!("{}", format!("Error uninstalling Astral UV: {}", e).red());
+    }
+}
+
+pub async fn run_list() {
+    let mut venvs = venvmngr::VENVMANAGER.list().await;
+    if venvs.is_empty() {
+        println!("{}", "No virtual environments found".yellow());
+    } else {
+        util::print_venv_table(&mut venvs).await;
     }
 }

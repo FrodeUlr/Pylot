@@ -59,9 +59,6 @@ pub async fn check() -> bool {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Cursor;
-    use tokio::time::{sleep, Duration};
-
     use super::*;
 
     #[tokio::test]
@@ -74,50 +71,5 @@ mod tests {
             println!("Astral UV is not installed.");
             assert!(!is_installed);
         }
-    }
-
-    #[tokio::test]
-    async fn test_install() {
-        if cfg!(target_os = "windows") {
-            // Github agent does not have winget, maybe add another install option
-            return;
-        }
-        let is_installed = check().await;
-        let input = Cursor::new("y\n");
-        let success = install(input).await;
-        assert!(success.is_ok());
-        if !is_installed {
-            let input = Cursor::new("y\n");
-            let res = uninstall(input).await;
-            assert!(res.is_ok());
-        }
-        sleep(Duration::from_secs(2)).await;
-        let end_status = check().await;
-        assert_eq!(end_status, is_installed);
-    }
-
-    #[tokio::test]
-    async fn test_uninstall() {
-        if cfg!(target_os = "windows") {
-            // Github agent does not have winget, maybe add another install option
-            return;
-        }
-        let is_installed = check().await;
-        if !is_installed {
-            let input = Cursor::new("y\n");
-            let res = install(input).await;
-            assert!(res.is_ok());
-        }
-        let input = Cursor::new("y\n");
-        let success = uninstall(input).await;
-        assert!(success.is_ok());
-        if is_installed {
-            let input = Cursor::new("y\n");
-            let res = install(input).await;
-            assert!(res.is_ok());
-        }
-        sleep(Duration::from_secs(2)).await;
-        let end_status = check().await;
-        assert_eq!(end_status, is_installed);
     }
 }

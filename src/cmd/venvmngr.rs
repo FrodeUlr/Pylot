@@ -4,7 +4,10 @@ use colored::Colorize;
 use once_cell::sync::Lazy;
 
 use crate::cfg::settings;
+use crate::cmd::utils;
+use crate::cmd::venv::{self, Venv};
 use crate::utility::constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC};
+use crate::utility::util;
 
 pub struct VenvManager;
 
@@ -15,15 +18,11 @@ impl VenvManager {
         VenvManager
     }
 
-    pub async fn list(&self, print: Option<bool>) -> Vec<String> {
-        let print = print.unwrap_or(true);
-        if print {
-            println!("{}", "Listing virtual environments".cyan());
-        }
+    pub async fn list(&self) -> Vec<Venv> {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
-        let venvs: Vec<String> = match fs::read_dir(&path) {
+        let venvs: Vec<Venv> = match fs::read_dir(&path) {
             Ok(entries) => {
-                let venvs: Vec<String> = entries
+                let venvs: Vec<Venv> = entries
                     .filter_map(Result::ok)
                     .filter_map(|entry| {
                         if entry.file_type().ok()?.is_dir() {
@@ -34,7 +33,13 @@ impl VenvManager {
                                 dir_path.join(UNIX_PYTHON3_EXEC),
                             ];
                             if python_paths.iter().any(|p| p.exists()) {
-                                entry.file_name().to_str().map(|s| s.to_string())
+                                Some(Venv::new(
+                                    entry.file_name().to_str()?.to_string(),
+                                    dir_path.to_str()?.to_string(),
+                                    "".to_string(),
+                                    vec![],
+                                    false,
+                                ))
                             } else {
                                 None
                             }
@@ -43,21 +48,9 @@ impl VenvManager {
                         }
                     })
                     .collect();
-                if venvs.is_empty() && print {
-                    println!("{}", "No virtual environments found".yellow());
-                } else if print {
-                    for venv in &venvs {
-                        println!("{}", venv.green());
-                    }
-                }
                 venvs
             }
-            Err(_) => {
-                if print {
-                    println!("{}", "Error reading virtual environments directory".red());
-                }
-                Vec::new()
-            }
+            Err(_) => Vec::new(),
         };
         venvs
     }
@@ -66,5 +59,55 @@ impl VenvManager {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venv_path = format!("{}/{}", path, name);
         std::path::Path::new(&venv_path).exists()
+    }
+
+    pub async fn find_venv(
+        &self,
+        name_pos: Option<String>,
+        name: Option<String>,
+        method: &str,
+    ) -> Option<Venv> {
+        let venv = match name.or(name_pos) {
+            Some(n) => venv::Venv::new(n, "".to_string(), "".to_string(), vec![], false),
+            None => {
+                let mut venvs = self.list().await;
+                if venvs.is_empty() {
+                    println!("{}", "No virtual environments found".yellow());
+                    return None;
+                }
+                util::print_venv_table(&mut venvs).await;
+                println!(
+                    "{} {}{}",
+                    "Please select a virtual environment to".cyan(),
+                    method.yellow(),
+                    " (c to cancel):".cyan()
+                );
+                match self.get_index(venvs.len()) {
+                    None => return None,
+                    Some(index) => venv::Venv::new(
+                        venvs[index - 1].name.clone(),
+                        "".to_string(),
+                        "".to_string(),
+                        vec![],
+                        false,
+                    ),
+                }
+            }
+        };
+        Some(venv)
+    }
+
+    fn get_index(&self, size: usize) -> Option<usize> {
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).unwrap();
+        let trimmed = input.trim();
+        if trimmed.eq_ignore_ascii_case("q") || trimmed.eq_ignore_ascii_case("c") {
+            return None;
+        }
+        trimmed
+            .parse::<usize>()
+            .ok()
+            .filter(|&i| (1..=size).contains(&i))
+            .or_else(|| utils::exit_with_error("Error, please provide a valid index"))
     }
 }
