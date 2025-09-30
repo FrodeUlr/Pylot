@@ -119,7 +119,6 @@ mod tests {
     #[tokio::test]
     async fn test_list_venvs() {
         let venvs = VENVMANAGER.list().await;
-        // Assuming there are no virtual environments for the test
         assert!(venvs.is_empty());
     }
 

@@ -55,12 +55,10 @@ impl Settings {
                 Config::default()
             });
 
-        // Use the config to load the settings
         let new_settings: Settings = settings
             .try_deserialize()
             .unwrap_or_else(|_| Settings::default());
 
-        // Validate the venv Path
         new_settings.validate_venv_path();
 
         let mut settings_lock = SETTINGS.lock().expect("Failed to lock settings");

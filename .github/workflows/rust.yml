@@ -28,7 +28,7 @@ jobs:
           name: coverage-report
           path: lcov.info
       - name: Install lcov
-        run: sudo apt-get update && sudo apt-get install -y lcov
+        run: sudo apt-get install -y lcov
       - name: Generate HTML report
         run: |
           mkdir -p coverage
