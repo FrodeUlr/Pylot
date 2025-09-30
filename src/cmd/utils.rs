@@ -29,13 +29,22 @@ pub fn create_child_cmd_run(cmd: &str, run: &str, args: &[&str]) -> Child {
         .expect("Failed to execute command")
 }
 
-pub fn activate_venv_shell(cmd: &str, args: Vec<String>) {
-    let _ = StdCommand::new(cmd)
-        .arg("-c")
-        .args(args)
-        .spawn()
-        .expect("Failed to activate virtual environment")
-        .wait();
+pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        let error = StdCommand::new(cmd).arg("-c").args(args).exec(); // This replaces the current process
+
+        Err(format!("Failed to execute shell: {}", error).into())
+    }
+
+    #[cfg(not(unix))]
+    {
+        let mut child = StdCommand::new(cmd).arg("-c").args(args).spawn()?;
+
+        child.wait()?;
+        Ok(())
+    }
 }
 
 pub async fn run_command(child: &mut Child) -> Result<(), Box<dyn std::error::Error>> {
