@@ -39,7 +39,6 @@ impl Venv {
     pub async fn create(&self) -> Result<(), String> {
         let settings = settings::Settings::get_settings();
         let pwd = std::env::current_dir().unwrap();
-        // set pwd to settings venvs_path
         let path = shellexpand::tilde(&settings.venvs_path).to_string();
         std::env::set_current_dir(&path).unwrap();
         let args = &[

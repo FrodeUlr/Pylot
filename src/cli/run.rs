@@ -9,7 +9,6 @@ use crate::{
 };
 
 pub async fn activate(name_pos: Option<String>, name: Option<String>) {
-    //let venv = util::find_venv(name_pos, name, "activate").await;
     let venv = venvmanager::VENVMANAGER
         .find_venv(name_pos, name, "activate")
         .await;
