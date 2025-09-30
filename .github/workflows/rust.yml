@@ -27,6 +27,17 @@ jobs:
         with:
           name: coverage-report
           path: lcov.info
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
+      - name: Generate HTML report
+        run: |
+          mkdir -p coverage
+          genhtml lcov.info --output-directory coverage
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
