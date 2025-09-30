@@ -2,9 +2,9 @@ name: Rust
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,31 +13,37 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Update rustc
-      run: rustup target add x86_64-unknown-linux-musl
-    - name: Build
-      run: make package
-    - name: Run tests
-      run: make test
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: linux-binary
-        path: dist
+      - uses: actions/checkout@v4
+      - name: Update rustc
+        run: rustup target add x86_64-unknown-linux-musl
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Build
+        run: make package
+      - name: Run tests
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: lcov.info
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binary
+          path: dist
 
   build-windows:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: make package
-    - name: Run tests
-      run: make test
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: windows-binary
-        path: dist
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make package
+      - name: Run tests
+        run: make test
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binary
+          path: dist
