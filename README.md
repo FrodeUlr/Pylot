@@ -51,6 +51,11 @@ You can specify location of virtual environments and the default python packages
 
   ```bash
     PyPilot activate
+  ```
+
+  Output:
+
+  ```bash
     ╭───────┬──────────────┬─────────╮
     │ Index ┆ Name         ┆ Version │
     ╞═══════╪══════════════╪═════════╡
@@ -58,8 +63,8 @@ You can specify location of virtual environments and the default python packages
     ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
     │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
     ╰───────┴──────────────┴─────────╯
-    #Please select a virtual environment to activate:
-    #1
+    Please select a virtual environment to activate:
+    1
   ```
 
 - Delete a virtual environment by name:
@@ -72,6 +77,11 @@ You can specify location of virtual environments and the default python packages
 
   ```bash
     PyPilot delete
+  ```
+
+  Output:
+
+  ```bash
     ╭───────┬──────────────┬─────────╮
     │ Index ┆ Name         ┆ Version │
     ╞═══════╪══════════════╪═════════╡
@@ -79,14 +89,19 @@ You can specify location of virtual environments and the default python packages
     ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
     │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
     ╰───────┴──────────────┴─────────╯
-    #Please select a virtual environment to delete:
-    #1
+    Please select a virtual environment to delete:
+    1
   ```
 
 - List all available virtual environments:
 
   ```bash
     PyPilot list
+  ```
+
+  Output:
+
+  ```bash
     ╭───────┬──────────────┬─────────╮
     │ Index ┆ Name         ┆ Version │
     ╞═══════╪══════════════╪═════════╡
