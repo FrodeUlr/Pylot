@@ -27,23 +27,11 @@ jobs:
         with:
           name: coverage-report
           path: lcov.info
-      # - name: Install lcov
-      #   run: sudo apt-get install -y lcov
-      # - name: Generate HTML report
-      #   run: |
-      #     mkdir -p coverage
-      #     genhtml lcov.info --output-directory coverage
-      # - name: Upload coverage report
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: coverage-html
-      #     path: coverage
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
           files: ./lcov.info
-          use_oidc: true
-          #token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:

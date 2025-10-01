@@ -115,8 +115,11 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore = "Only run in github actions"]
     async fn test_list_venvs() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
         let venvs = VENVMANAGER.list().await;
         assert!(venvs.is_empty());
     }
@@ -130,8 +133,11 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Only run in github actions"]
     async fn test_find_venv_none() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
         let venv = VENVMANAGER.find_venv(None, None, "activate").await;
         assert!(venv.is_none());
     }

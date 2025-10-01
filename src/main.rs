@@ -91,8 +91,11 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Only run in github actions"]
     fn test_cli_output_activate() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
         assert_cli::Assert::main_binary()
             .with_args(&["activate"])
             .succeeds()
@@ -103,8 +106,11 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Only run in github actions"]
     fn test_cli_output_delete() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
         assert_cli::Assert::main_binary()
             .with_args(&["delete"])
             .succeeds()
