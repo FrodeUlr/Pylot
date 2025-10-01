@@ -115,6 +115,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore = "Only run in github actions"]
     async fn test_list_venvs() {
         let venvs = VENVMANAGER.list().await;
         assert!(venvs.is_empty());
@@ -129,6 +130,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "Only run in github actions"]
     async fn test_find_venv_none() {
         let venv = VENVMANAGER.find_venv(None, None, "activate").await;
         assert!(venv.is_none());

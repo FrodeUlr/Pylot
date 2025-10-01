@@ -91,6 +91,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Only run in github actions"]
     fn test_cli_output_activate() {
         assert_cli::Assert::main_binary()
             .with_args(&["activate"])
@@ -102,6 +103,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Only run in github actions"]
     fn test_cli_output_delete() {
         assert_cli::Assert::main_binary()
             .with_args(&["delete"])
