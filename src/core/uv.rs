@@ -1,5 +1,8 @@
 use crate::shell::processes;
-use crate::utility::constants::{BASH_CMD, WINGET_CMD};
+use crate::utility::constants::{
+    BASH_CMD, UV_UNIX_INSTALL_ARGS, UV_UNIX_UNINSTALL_ARGS, UV_WINGET_INSTALL_ARGS,
+    UV_WINGET_UNINSTALL_ARGS, WINGET_CMD,
+};
 use crate::utility::util::confirm;
 use colored::Colorize;
 
@@ -8,12 +11,9 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
     println!("{}", "This will run the following command:".yellow());
 
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
-        (WINGET_CMD, &["install", "astral-sh.uv"])
+        (WINGET_CMD, UV_WINGET_INSTALL_ARGS)
     } else {
-        (
-            BASH_CMD,
-            &["-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
-        )
+        (BASH_CMD, UV_UNIX_INSTALL_ARGS)
     };
 
     println!("{}", format!("  {} {}", cmd, args.join(" ")).red());
@@ -23,7 +23,7 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
         return Ok(());
     }
 
-    let mut child = processes::create_child_cmd(cmd, args);
+    let mut child = processes::create_child_cmd(cmd, args, "");
     processes::run_command(&mut child)
         .await
         .map_err(|_| "Installation failed".to_string())?;
@@ -35,9 +35,9 @@ pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
     println!("{}", "This will run the following command:".yellow());
 
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
-        (WINGET_CMD, &["uninstall", "astral-sh.uv"])
+        (WINGET_CMD, UV_WINGET_UNINSTALL_ARGS)
     } else {
-        (BASH_CMD, &["-c", "rm ~/.local/bin/uv ~/.local/bin/uvx"])
+        (BASH_CMD, UV_UNIX_UNINSTALL_ARGS)
     };
 
     println!("{}", format!("  {} {}", cmd, args.join(" ")).red());
@@ -47,7 +47,7 @@ pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
         return Ok(());
     }
 
-    let mut child = processes::create_child_cmd(cmd, args);
+    let mut child = processes::create_child_cmd(cmd, args, "");
     processes::run_command(&mut child)
         .await
         .map_err(|_| "Uninstallation failed".to_string())?;

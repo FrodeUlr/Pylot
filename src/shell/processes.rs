@@ -7,19 +7,12 @@ use tokio::{
 
 use crate::utility::constants::{POWERSHELL_CMD, PWSH_CMD};
 
-pub fn create_child_cmd(cmd: &str, args: &[&str]) -> Child {
-    Command::new(cmd)
-        .args(args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to execute command")
-}
-
-pub fn create_child_cmd_run(cmd: &str, run: &str, args: &[&str]) -> Child {
-    Command::new(cmd)
-        .arg(run)
-        .args(args)
+pub fn create_child_cmd(cmd: &str, args: &[&str], run: &str) -> Child {
+    let mut cmd = Command::new(cmd);
+    if !run.is_empty() {
+        cmd.arg(run);
+    }
+    cmd.args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -144,12 +137,12 @@ mod tests {
         if cfg!(target_os = "windows") {
             let cmd = "cmd";
             let args = &["/C", "echo", "Hello"];
-            let child = create_child_cmd(cmd, args);
+            let child = create_child_cmd(cmd, args, "");
             assert!(child.id() > Some(0));
         } else {
             let cmd = "ls";
             let args = &["-lah"];
-            let child = create_child_cmd(cmd, args);
+            let child = create_child_cmd(cmd, args, "");
             assert!(child.id() > Some(0));
         }
     }
@@ -159,13 +152,13 @@ mod tests {
         if cfg!(target_os = "windows") {
             let cmd = "cmd";
             let args = &["/C", "echo", "Hello"];
-            let mut child = create_child_cmd(cmd, args);
+            let mut child = create_child_cmd(cmd, args, "");
             let res = run_command(&mut child).await;
             assert!(res.is_ok());
         } else {
             let cmd = "ls";
             let args = &["-lah"];
-            let mut child = create_child_cmd(cmd, args);
+            let mut child = create_child_cmd(cmd, args, "");
             let res = run_command(&mut child).await;
             assert!(res.is_ok());
         }
@@ -177,13 +170,13 @@ mod tests {
             let cmd = "cmd";
             let run = "/C";
             let args = &["echo", "Hello"];
-            let child = create_child_cmd_run(cmd, run, args);
+            let child = create_child_cmd(cmd, args, run);
             assert!(child.id() > Some(0));
         } else {
             let cmd = "sh";
             let run = "-c";
             let args = &["echo Hello"];
-            let child = create_child_cmd_run(cmd, run, args);
+            let child = create_child_cmd(cmd, args, run);
             assert!(child.id() > Some(0));
         }
     }

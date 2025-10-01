@@ -5,7 +5,7 @@ use colored::Colorize;
 use crate::{
     core::{uv, venv, venvmanager},
     shell::processes,
-    utility::util,
+    utility::{constants::ERROR_CREATING_VENV, util},
 };
 
 pub async fn activate(name_pos: Option<String>, name: Option<String>) {
@@ -62,10 +62,7 @@ pub async fn create(
     }
     let venv = venv::Venv::new(name, "".to_string(), python_version, packages, default);
     if let Err(e) = venv.create().await {
-        eprintln!(
-            "{}",
-            format!("Error creating virtual environment: {}", e).red()
-        );
+        eprintln!("{}", format!("{}: {}", ERROR_CREATING_VENV, e).red());
         venv.delete(false).await;
     }
 }

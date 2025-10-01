@@ -5,7 +5,9 @@ use crate::{
     shell::processes,
     utility::{
         self,
-        constants::{BASH_CMD, POWERSHELL_CMD, PWSH_CMD},
+        constants::{
+            BASH_CMD, ERROR_CREATING_VENV, ERROR_VENV_NOT_EXISTS, POWERSHELL_CMD, PWSH_CMD,
+        },
     },
 };
 use std::{fs, io};
@@ -48,17 +50,17 @@ impl Venv {
             self.python_version.as_str(),
         ];
         println!("Creating virtual environment: {}", self.name.cyan());
-        let mut child = processes::create_child_cmd("uv", args);
+        let mut child = processes::create_child_cmd("uv", args, "");
         processes::run_command(&mut child)
             .await
-            .map_err(|_| "Error creating virtual environment".to_string())?;
+            .map_err(|_| ERROR_CREATING_VENV.to_string())?;
         let mut pkgs = self.packages.clone();
         if self.default {
             let default_pkgs = settings.default_pkgs.clone();
             pkgs.extend(default_pkgs);
         }
         if !pkgs.is_empty() {
-            let venn_path = shellexpand::tilde(&settings.venvs_path).to_string();
+            let venv_path = shellexpand::tilde(&settings.venvs_path).to_string();
 
             let (cmd, vcmd, run) = if cfg!(target_os = "windows") {
                 let pwsh_cmd = if which::which(PWSH_CMD).is_ok() {
@@ -66,10 +68,10 @@ impl Venv {
                 } else {
                     POWERSHELL_CMD
                 };
-                let venv_cmd = format!("{}/{}/scripts/activate.ps1", venn_path, self.name);
+                let venv_cmd = format!("{}/{}/scripts/activate.ps1", venv_path, self.name);
                 (pwsh_cmd, venv_cmd, "-Command")
             } else {
-                let venv_cmd = format!("{}/{}/bin/activate", venn_path, self.name);
+                let venv_cmd = format!("{}/{}/bin/activate", venv_path, self.name);
                 (BASH_CMD, venv_cmd, "-c")
             };
 
@@ -94,7 +96,7 @@ impl Venv {
                 .map(String::as_str)
                 .collect::<Vec<_>>()
                 .join(" ");
-            let mut child2 = processes::create_child_cmd_run(cmd, run, &[&agr_str]);
+            let mut child2 = processes::create_child_cmd(cmd, &[&agr_str], run);
 
             processes::run_command(&mut child2)
                 .await
@@ -108,7 +110,7 @@ impl Venv {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venv_path = format!("{}/{}", path, self.name);
         if !std::path::Path::new(&venv_path).exists() {
-            println!("{}", "Virtual environment does not exist".yellow());
+            eprintln!("{}", ERROR_VENV_NOT_EXISTS.red());
             return;
         }
         let mut choice = !confirm;
@@ -153,7 +155,7 @@ impl Venv {
             (vec!["-c".to_string(), venv_cmd], venv_path)
         };
         if !std::path::Path::new(&path).exists() {
-            println!("{}", "Virtual environment does not exist".yellow());
+            eprintln!("{}", ERROR_VENV_NOT_EXISTS.red());
             return;
         }
         let _ = processes::activate_venv_shell(shell.as_str(), cmd);

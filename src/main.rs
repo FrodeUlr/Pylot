@@ -55,6 +55,8 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
+    use crate::utility::constants::ERROR_VENV_NOT_EXISTS;
+
     #[test]
     fn test_cli_output_help() {
         assert_cli::Assert::main_binary()
@@ -117,8 +119,8 @@ mod tests {
             .with_args(&["delete", "myvenv"])
             .succeeds()
             .and()
-            .stdout()
-            .contains("Virtual environment does not exist")
+            .stderr()
+            .contains(ERROR_VENV_NOT_EXISTS)
             .unwrap();
     }
 
@@ -128,8 +130,8 @@ mod tests {
             .with_args(&["activate", "myvenv"])
             .succeeds()
             .and()
-            .stdout()
-            .contains("Virtual environment does not exist")
+            .stderr()
+            .contains(ERROR_VENV_NOT_EXISTS)
             .unwrap();
     }
 }
