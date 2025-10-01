@@ -1,5 +1,3 @@
-use colored::Colorize;
-
 use crate::{
     cfg::settings,
     shell::processes,
@@ -10,6 +8,7 @@ use crate::{
         },
     },
 };
+use colored::Colorize;
 use std::{fs, io};
 use tokio::fs as async_fs;
 

@@ -1,11 +1,10 @@
+use crate::utility::constants::{POWERSHELL_CMD, PWSH_CMD};
 use colored::Colorize;
 use std::process::{Command as StdCommand, Stdio};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::{Child, Command},
 };
-
-use crate::utility::constants::{POWERSHELL_CMD, PWSH_CMD};
 
 pub fn create_child_cmd(cmd: &str, args: &[&str], run: &str) -> Child {
     let mut cmd = Command::new(cmd);

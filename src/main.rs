@@ -4,11 +4,10 @@ mod core;
 mod shell;
 mod utility;
 
+use crate::cli::run;
 use cfg::settings;
 use clap::Parser;
 use cli::clicmd::{Cli, Commands};
-
-use crate::cli::run;
 
 #[tokio::main]
 async fn main() {

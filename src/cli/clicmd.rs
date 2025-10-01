@@ -1,6 +1,5 @@
-use crate::utility::constants::{AUTHORS, NAME};
-
 use super::styles;
+use crate::utility::constants::{AUTHORS, NAME};
 use clap::{Parser, Subcommand};
 use styles::custom_styles;
 

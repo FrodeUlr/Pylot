@@ -1,13 +1,11 @@
-use std::fs;
-
-use colored::Colorize;
-use once_cell::sync::Lazy;
-
 use super::venv::{self, Venv};
 use crate::cfg::settings;
 use crate::shell::processes;
 use crate::utility::constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC};
 use crate::utility::util;
+use colored::Colorize;
+use once_cell::sync::Lazy;
+use std::fs;
 
 pub struct VenvManager;
 

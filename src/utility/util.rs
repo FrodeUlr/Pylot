@@ -1,10 +1,8 @@
-use std::io::{stdout, BufRead, Write};
-
+use crate::{core::venv::Venv, shell::processes::exit_with_error};
 use colored::Colorize;
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
+use std::io::{stdout, BufRead, Write};
 use tokio::fs;
-
-use crate::{core::venv::Venv, shell::processes::exit_with_error};
 
 pub async fn read_requirements_file(requirements: &str) -> Vec<String> {
     if !fs::try_exists(requirements).await.unwrap_or(false) {
