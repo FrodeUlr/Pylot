@@ -10,24 +10,6 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
-    name: coverage
-    runs-on: ubuntu-latest
-    container:
-      image: xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Generate code coverage
-        run: |
-          cargo +nightly tarpaulin --ignored --verbose --all-features --workspace --timeout 120 --out xml
-
-      - name: Upload to codecov.io
-        uses: codecov/codecov-action@v2
-        with:
-          fail_ci_if_error: true
   build-linux:
     runs-on: ubuntu-latest
     steps:
@@ -38,24 +20,29 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Build
         run: make package
-      # - name: Run tests
-      #   run: cargo llvm-cov --workspace --lcov --output-path lcov.info
-      # - name: Upload coverage artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: coverage-report
-      #     path: lcov.info
-      # - name: Install lcov
-      #   run: sudo apt-get install -y lcov
-      # - name: Generate HTML report
-      #   run: |
-      #     mkdir -p coverage
-      #     genhtml lcov.info --output-directory coverage
+      - name: Run tests
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: lcov.info
+      - name: Install lcov
+        run: sudo apt-get install -y lcov
+      - name: Generate HTML report
+        run: |
+          mkdir -p coverage
+          genhtml lcov.info --output-directory coverage
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-html
           path: coverage
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
