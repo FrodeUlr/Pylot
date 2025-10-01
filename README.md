@@ -19,7 +19,7 @@
 
 ## A manager for python virtual environments made using UV
 
-[![Rust](https://github.com/FrodeUlr/PyPilot/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/FrodeUlr/PyPilot/actions/workflows/rust.yml)
+[![Rust](https://github.com/FrodeUlr/PyPilot/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/FrodeUlr/PyPilot/actions/workflows/rust.yml) [![codecov](https://codecov.io/github/FrodeUlr/PyPilot/graph/badge.svg?token=BNWQAU7KR2)](https://codecov.io/github/FrodeUlr/PyPilot)
 
 `PyPilot` assists you in installing, updating and removing [Astral UV](https://docs.astral.sh/uv/).  
 You can use `PyPilot` to create and remove virtual environments, which are created using `UV`.  
