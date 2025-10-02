@@ -31,19 +31,7 @@ impl Default for Settings {
 
 impl Settings {
     pub async fn init() {
-        let exe_dir = match env::current_exe() {
-            Ok(exe_path) => exe_path
-                .parent()
-                .unwrap_or_else(|| {
-                    println!("Could not determine the executable directory");
-                    std::path::Path::new(".")
-                })
-                .to_path_buf(),
-            Err(_) => {
-                println!("Could not determine the executable directory");
-                PathBuf::from(".")
-            }
-        };
+        let exe_dir = Self::get_exe_dir(env::current_exe);
 
         let settings_path = exe_dir.join("settings.toml");
 
@@ -79,6 +67,26 @@ impl Settings {
             println!("Creating venvs folder: {}", path);
             std::fs::create_dir_all(&path).expect("Failed to create venvs folder");
         }
+    }
+
+    fn get_exe_dir<F>(current_exe_fn: F) -> PathBuf
+    where
+        F: Fn() -> std::io::Result<PathBuf>,
+    {
+        let exe_dir = match current_exe_fn() {
+            Ok(exe_path) => exe_path
+                .parent()
+                .unwrap_or_else(|| {
+                    println!("Could not determine the executable directory");
+                    std::path::Path::new(".")
+                })
+                .to_path_buf(),
+            Err(_) => {
+                println!("Could not determine the executable directory");
+                PathBuf::from(".")
+            }
+        };
+        exe_dir
     }
 }
 
@@ -160,5 +168,26 @@ mod tests {
 
         let result: Result<Settings, _> = toml::from_str(toml_str);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_exe_dir() {
+        let fake_current_exe = || Ok(PathBuf::from("/usr/local/bin/pymngr"));
+        let exe_dir = Settings::get_exe_dir(fake_current_exe);
+        assert_eq!(exe_dir, PathBuf::from("/usr/local/bin"));
+    }
+
+    #[test]
+    fn test_get_exe_dir_error() {
+        let fake_current_exe = || Err(std::io::Error::other("error"));
+        let exe_dir = Settings::get_exe_dir(fake_current_exe);
+        assert_eq!(exe_dir, PathBuf::from("."));
+    }
+
+    #[test]
+    fn test_get_exe_dir_no_parent() {
+        let fake_current_exe = || Ok(PathBuf::from("pymngr"));
+        let exe_dir = Settings::get_exe_dir(fake_current_exe);
+        assert_eq!(exe_dir, PathBuf::from(""));
     }
 }
