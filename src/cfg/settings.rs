@@ -83,7 +83,6 @@ impl Settings {
 }
 
 #[cfg(test)]
-#[cfg_attr(coverage, coverage(off))]
 mod tests {
     use super::*;
 
@@ -120,5 +119,46 @@ mod tests {
         let settings = Settings::default();
         let empty_vec: Vec<String> = Vec::new();
         assert_eq!(settings.default_pkgs, empty_vec);
+    }
+
+    #[tokio::test]
+    async fn test_init() {
+        Settings::init().await;
+        let settings = Settings::get_settings();
+        assert_eq!(settings.venvs_path, "~/pymngr/venvs");
+    }
+
+    #[test]
+    fn test_settings_deserialize() {
+        let toml_str = r#"
+            venvs_path = "~/custom/venvs"
+            default_pkgs = ["numpy", "pandas"]
+        "#;
+
+        let settings: Settings = toml::from_str(toml_str).unwrap();
+        assert_eq!(settings.venvs_path, "~/custom/venvs");
+        assert_eq!(settings.default_pkgs, vec!["numpy", "pandas"]);
+    }
+
+    #[test]
+    fn test_settings_deserialize_missing_fields() {
+        let toml_str = r#"
+            default_pkgs = ["requests"]
+        "#;
+
+        let settings: Settings = toml::from_str(toml_str).unwrap();
+        assert_eq!(settings.venvs_path, "~/pymngr/venvs");
+        assert_eq!(settings.default_pkgs, vec!["requests"]);
+    }
+
+    #[test]
+    fn test_settings_deserialize_invalid() {
+        let toml_str = r#"
+            venvs_path = 123
+            default_pkgs = "not_a_list"
+        "#;
+
+        let result: Result<Settings, _> = toml::from_str(toml_str);
+        assert!(result.is_err());
     }
 }
