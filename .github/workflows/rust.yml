@@ -21,7 +21,7 @@ jobs:
       - name: Build
         run: make package
       - name: Run tests and coverage
-        run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info -- --nocapture
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
