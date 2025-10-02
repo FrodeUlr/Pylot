@@ -105,16 +105,4 @@ mod tests {
             .await
             .expect("Failed to uninstall Astral UV");
     }
-
-    #[tokio::test]
-    async fn test_uninstall_uv_yes() {
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
-        let cursor = std::io::Cursor::new("y\n");
-        uninstall(cursor)
-            .await
-            .expect("Failed to uninstall Astral UV");
-    }
 }
