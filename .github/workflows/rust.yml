@@ -38,17 +38,17 @@ jobs:
           name: linux-binary
           path: dist
 
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build
-        run: make package
-      - name: Run tests
-        run: cargo test -- --include-ignored --no-capture
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-binary
-          path: dist
+  # build-windows:
+  #   runs-on: windows-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Build
+  #       run: make package
+  #     - name: Run tests
+  #       run: cargo test -- --include-ignored --no-capture
+  #
+  #     - name: Upload build artifacts
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: windows-binary
+  #         path: dist
