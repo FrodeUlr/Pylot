@@ -20,7 +20,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Build
         run: make package
-      - name: Run tests
+      - name: Run tests and coverage
         run: cargo llvm-cov --workspace --lcov --output-path lcov.info
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
