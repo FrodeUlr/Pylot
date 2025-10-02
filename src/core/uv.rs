@@ -73,4 +73,26 @@ mod tests {
             assert!(!is_installed);
         }
     }
+
+    #[tokio::test]
+    async fn test_install_uv() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
+        let cursor = std::io::Cursor::new("y\n");
+        install(cursor).await.expect("Failed to install Astral UV");
+    }
+
+    #[tokio::test]
+    async fn test_uninstall_uv() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
+        let cursor = std::io::Cursor::new("y\n");
+        uninstall(cursor)
+            .await
+            .expect("Failed to uninstall Astral UV");
+    }
 }
