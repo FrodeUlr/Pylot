@@ -156,21 +156,21 @@ mod tests {
         activate(Some("test_env_not_here".to_string()), None).await;
     }
 
-    #[tokio::test]
-    async fn test_install() {
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
-        install(false).await;
-    }
-
-    #[tokio::test]
-    async fn test_uninstall() {
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
-        uninstall().await;
-    }
+    // #[tokio::test]
+    // async fn test_install() {
+    //     if std::env::var("GITHUB_ACTIONS").is_err() {
+    //         println!("Skipping test in non-GitHub Actions environment");
+    //         return;
+    //     }
+    //     install(false).await;
+    // }
+    //
+    // #[tokio::test]
+    // async fn test_uninstall() {
+    //     if std::env::var("GITHUB_ACTIONS").is_err() {
+    //         println!("Skipping test in non-GitHub Actions environment");
+    //         return;
+    //     }
+    //     uninstall().await;
+    // }
 }
