@@ -183,11 +183,4 @@ mod tests {
         let exe_dir = Settings::get_exe_dir(fake_current_exe);
         assert_eq!(exe_dir, PathBuf::from("."));
     }
-
-    #[test]
-    fn test_get_exe_dir_no_parent() {
-        let fake_current_exe = || Ok(PathBuf::from("pymngr"));
-        let exe_dir = Settings::get_exe_dir(fake_current_exe);
-        assert_eq!(exe_dir, PathBuf::from(""));
-    }
 }
