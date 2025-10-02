@@ -80,8 +80,11 @@ mod tests {
             println!("Skipping test in non-GitHub Actions environment");
             return;
         }
-        let cursor = std::io::Cursor::new("y\n");
-        install(cursor).await.expect("Failed to install Astral UV");
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            install(cursor).await.expect("Failed to install Astral UV");
+        }
     }
 
     #[tokio::test]
