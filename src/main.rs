@@ -54,7 +54,12 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::utility::constants::ERROR_VENV_NOT_EXISTS;
+    use clap::Parser;
+
+    use crate::{
+        cli::clicmd::{Cli, Commands},
+        utility::constants::ERROR_VENV_NOT_EXISTS,
+    };
 
     #[test]
     fn test_cli_output_help() {
@@ -140,5 +145,96 @@ mod tests {
             .stderr()
             .contains(ERROR_VENV_NOT_EXISTS)
             .unwrap();
+    }
+
+    #[test]
+    fn test_activate_command() {
+        let args = Cli::try_parse_from(["program", "activate", "my-venv"]).unwrap();
+
+        match args.commands {
+            Some(Commands::Activate { name_pos, name }) => {
+                assert_eq!(name_pos, Some("my-venv".to_string()));
+                assert_eq!(name, None);
+            }
+            _ => panic!("Expected Activate command"),
+        }
+    }
+
+    #[test]
+    fn test_activate_with_flag() {
+        let args = Cli::try_parse_from(["program", "activate", "--name", "my-venv"]).unwrap();
+
+        match args.commands {
+            Some(Commands::Activate { name_pos, name }) => {
+                assert_eq!(name_pos, None);
+                assert_eq!(name, Some("my-venv".to_string()));
+            }
+            _ => panic!("Expected Activate command"),
+        }
+    }
+
+    #[test]
+    fn test_create_command() {
+        let args = Cli::try_parse_from([
+            "program",
+            "create",
+            "my-venv",
+            "--python-version",
+            "3.11",
+            "--packages",
+            "requests",
+            "numpy",
+            "--default",
+        ])
+        .unwrap();
+
+        match args.commands {
+            Some(Commands::Create {
+                name_pos,
+                python_version,
+                packages,
+                default,
+                ..
+            }) => {
+                assert_eq!(name_pos, Some("my-venv".to_string()));
+                assert_eq!(python_version, "3.11");
+                assert_eq!(packages, vec!["requests", "numpy"]);
+                assert!(default);
+            }
+            _ => panic!("Expected Create command"),
+        }
+    }
+
+    #[test]
+    fn test_list_command() {
+        let args = Cli::try_parse_from(["program", "list"]).unwrap();
+
+        assert!(matches!(args.commands, Some(Commands::List)));
+    }
+
+    #[test]
+    fn test_no_command() {
+        let result = Cli::try_parse_from(["program"]);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_install_with_update() {
+        let args = Cli::try_parse_from(["program", "install", "--update"]).unwrap();
+
+        match args.commands {
+            Some(Commands::Install { update }) => {
+                assert!(update);
+            }
+            _ => panic!("Expected Install command"),
+        }
+    }
+
+    #[test]
+    fn test_invalid_command_fails() {
+        let result = Cli::try_parse_from(["program", "invalid-command"]);
+
+        assert!(result.is_err());
     }
 }
