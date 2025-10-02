@@ -4,6 +4,9 @@ version = "0.4.3"
 edition = "2021"
 authors = ["Fulrix"]
 
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(coverage)'] }
+
 [dependencies]
 clap = { version = "4.5.48", features = ["derive"] }
 colored = "3.0.0"
