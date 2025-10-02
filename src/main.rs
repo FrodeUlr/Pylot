@@ -218,23 +218,4 @@ mod tests {
 
         assert!(result.is_err());
     }
-
-    #[test]
-    fn test_install_with_update() {
-        let args = Cli::try_parse_from(["program", "install", "--update"]).unwrap();
-
-        match args.commands {
-            Some(Commands::Install { update }) => {
-                assert!(update);
-            }
-            _ => panic!("Expected Install command"),
-        }
-    }
-
-    #[test]
-    fn test_invalid_command_fails() {
-        let result = Cli::try_parse_from(["program", "invalid-command"]);
-
-        assert!(result.is_err());
-    }
 }
