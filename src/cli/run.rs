@@ -121,23 +121,23 @@ mod tests {
         list().await;
     }
 
-    // #[tokio::test]
-    // async fn test_create() {
-    //     if std::env::var("GITHUB_ACTIONS").is_err() {
-    //         println!("Skipping test in non-GitHub Actions environment");
-    //         return;
-    //     }
-    //     create(
-    //         Some("test_env".to_string()),
-    //         None,
-    //         "3.8".to_string(),
-    //         vec!["requests".to_string()],
-    //         "".to_string(),
-    //         false,
-    //     )
-    //     .await;
-    // }
-    //
+    #[tokio::test]
+    async fn test_create() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
+        create(
+            Some("test_env".to_string()),
+            None,
+            "3.8".to_string(),
+            vec!["requests".to_string()],
+            "".to_string(),
+            false,
+        )
+        .await;
+    }
+
     #[tokio::test]
     async fn test_delete() {
         if std::env::var("GITHUB_ACTIONS").is_err() {
