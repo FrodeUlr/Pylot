@@ -115,4 +115,62 @@ mod tests {
             println!("{}", "Astral UV is not installed".red());
         }
     }
+
+    #[tokio::test]
+    async fn test_list() {
+        list().await;
+    }
+
+    #[tokio::test]
+    async fn test_create() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
+        create(
+            Some("test_env".to_string()),
+            None,
+            "3.8".to_string(),
+            vec!["requests".to_string()],
+            "".to_string(),
+            false,
+        )
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_delete() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
+        delete(Some("test_env".to_string()), None).await;
+    }
+
+    #[tokio::test]
+    async fn test_activate() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
+        activate(Some("test_env_not_here".to_string()), None).await;
+    }
+
+    #[tokio::test]
+    async fn test_install() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
+        install(false).await;
+    }
+
+    #[tokio::test]
+    async fn test_uninstall() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
+        uninstall().await;
+    }
 }
