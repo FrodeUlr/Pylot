@@ -69,6 +69,17 @@ mod tests {
         fs::remove_file(test_file).await.unwrap();
     }
 
+    #[tokio::test]
+    async fn test_read_requirements_file_nonexistent() {
+        let test_file = "nonexistent_requirements.txt";
+        let result = std::panic::catch_unwind(|| {
+            let _ = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(read_requirements_file(test_file));
+        });
+        assert!(result.is_err());
+    }
+
     #[test]
     fn test_confirm_yes() {
         let cursor = std::io::Cursor::new("y\n");
