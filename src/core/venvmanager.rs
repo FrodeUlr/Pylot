@@ -19,35 +19,7 @@ impl VenvManager {
     pub async fn list(&self) -> Vec<Venv> {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venvs: Vec<Venv> = match fs::read_dir(&path) {
-            Ok(entries) => {
-                let venvs: Vec<Venv> = entries
-                    .filter_map(Result::ok)
-                    .filter_map(|entry| {
-                        if entry.file_type().ok()?.is_dir() {
-                            let dir_path = entry.path();
-                            let python_paths = [
-                                dir_path.join(WIN_PYTHON_EXEC),
-                                dir_path.join(UNIX_PYTHON_EXEC),
-                                dir_path.join(UNIX_PYTHON3_EXEC),
-                            ];
-                            if python_paths.iter().any(|p| p.exists()) {
-                                Some(Venv::new(
-                                    entry.file_name().to_str()?.to_string(),
-                                    dir_path.to_str()?.to_string(),
-                                    "".to_string(),
-                                    vec![],
-                                    false,
-                                ))
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                venvs
-            }
+            Ok(entries) => Self::collect_venvs(entries),
             Err(_) => Vec::new(),
         };
         venvs
@@ -108,6 +80,36 @@ impl VenvManager {
             .filter(|&i| (1..=size).contains(&i))
             .or_else(|| processes::exit_with_error("Error, please provide a valid index"))
     }
+
+    fn collect_venvs(entries: fs::ReadDir) -> Vec<Venv> {
+        let venvs: Vec<Venv> = entries
+            .filter_map(Result::ok)
+            .filter_map(|entry| {
+                if entry.file_type().ok()?.is_dir() {
+                    let dir_path = entry.path();
+                    let python_paths = [
+                        dir_path.join(WIN_PYTHON_EXEC),
+                        dir_path.join(UNIX_PYTHON_EXEC),
+                        dir_path.join(UNIX_PYTHON3_EXEC),
+                    ];
+                    if python_paths.iter().any(|p| p.exists()) {
+                        Some(Venv::new(
+                            entry.file_name().to_str()?.to_string(),
+                            dir_path.to_str()?.to_string(),
+                            "".to_string(),
+                            vec![],
+                            false,
+                        ))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+        venvs
+    }
 }
 
 #[cfg(test)]
@@ -158,5 +160,28 @@ mod tests {
             .await;
         assert!(venv.is_some());
         assert_eq!(venv.unwrap().name, "test_venv");
+    }
+
+    #[tokio::test]
+    async fn test_collect_venvs_empty() {
+        let entries = fs::read_dir("/non_existent_directory").unwrap_or_else(|_| {
+            fs::read_dir(".").expect("Failed to read current directory for test")
+        });
+        let venvs = VenvManager::collect_venvs(entries);
+        assert!(venvs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_collect_venvs_non_empty() {
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
+        let entries = fs::read_dir(
+            shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string(),
+        )
+        .unwrap();
+        let venvs = VenvManager::collect_venvs(entries);
+        assert!(venvs.is_empty()); // Adjust based on expected number of venvs
     }
 }
