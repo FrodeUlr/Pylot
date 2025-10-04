@@ -1,13 +1,13 @@
 use super::venv::{self, Venv};
 use crate::{
     constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC},
-    processes, settings,
+    settings,
 };
 use colored::Colorize;
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
 use once_cell::sync::Lazy;
-use std::fs;
-use std::io::Write;
+use std::io::{self, BufRead, Write};
+use std::{fs, io::stdout};
 
 pub struct VenvManager;
 
@@ -54,33 +54,41 @@ impl VenvManager {
                     method.yellow(),
                     " (c to cancel):".cyan()
                 );
-                match self.get_index(venvs.len()) {
-                    None => return None,
-                    Some(index) => venv::Venv::new(
+                match self.get_index(io::stdin(), venvs.len()) {
+                    Ok(index) => venv::Venv::new(
                         venvs[index - 1].name.clone(),
                         "".to_string(),
                         "".to_string(),
                         vec![],
                         false,
                     ),
+                    Err(e) => {
+                        println!("{}", e.yellow());
+                        return None;
+                    }
                 }
             }
         };
         Some(venv)
     }
 
-    fn get_index(&self, size: usize) -> Option<usize> {
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).unwrap();
-        let trimmed = input.trim();
+    fn get_index<R: std::io::Read>(&self, input: R, size: usize) -> Result<usize, String> {
+        let mut input_string = String::new();
+        let mut stdin = std::io::BufReader::new(input);
+        let _ = stdout().flush();
+        let _ = stdin.read_line(&mut input_string).is_ok();
+        let trimmed = input_string.trim();
         if trimmed.eq_ignore_ascii_case("q") || trimmed.eq_ignore_ascii_case("c") {
-            return None;
+            return Err("Cancelled by user".to_string());
         }
-        trimmed
+        let idx = trimmed
             .parse::<usize>()
-            .ok()
-            .filter(|&i| (1..=size).contains(&i))
-            .or_else(|| processes::exit_with_error("Error, please provide a valid index"))
+            .map_err(|_| "Error: please provide a valid number!".to_string())?;
+        if (1..=size).contains(&idx) {
+            Ok(idx)
+        } else {
+            Err("Error: index out of range!".to_string())
+        }
     }
 
     fn collect_venvs(&self, entries: fs::ReadDir) -> Vec<Venv> {
@@ -252,9 +260,31 @@ mod tests {
         assert!(output_str.contains("3.11"));
     }
 
-    // #[test]
-    // fn test_get_index_valid() {
-    //     let index = VENVMANAGER.get_index(5);
-    //     assert!(index.is_none());
-    // }
+    #[test]
+    fn test_get_index_valid() {
+        let cursor = std::io::Cursor::new("2\n");
+        let index = VENVMANAGER.get_index(cursor, 5);
+        assert!(index.is_ok());
+    }
+
+    #[test]
+    fn test_get_index_invalid() {
+        let cursor = std::io::Cursor::new("10\n");
+        let index = VENVMANAGER.get_index(cursor, 5);
+        assert!(index.is_err());
+    }
+
+    #[test]
+    fn test_get_index_cancel() {
+        let cursor = std::io::Cursor::new("c\n");
+        let index = VENVMANAGER.get_index(cursor, 5);
+        assert!(index.is_err());
+    }
+
+    #[test]
+    fn test_get_index_non_number() {
+        let cursor = std::io::Cursor::new("abc\n");
+        let index = VENVMANAGER.get_index(cursor, 5);
+        assert!(index.is_err());
+    }
 }
