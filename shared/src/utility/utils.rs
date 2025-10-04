@@ -37,13 +37,21 @@ pub fn confirm<R: std::io::Read>(input: R) -> bool {
 mod tests {
     use super::*;
 
+    use std::io::{self, Read};
+
     struct ErrorReader;
 
-    impl std::io::Read for ErrorReader {
-        fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
-            Err(std::io::Error::other("Error".to_string()))
+    impl Read for ErrorReader {
+        fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+            Err(io::Error::new(io::ErrorKind::Other, "simulated error"))
         }
     }
+
+    #[test]
+    fn test_confirm_error_returns_false() {
+        assert!(!confirm(ErrorReader));
+    }
+
     #[tokio::test]
     async fn test_read_requirements_file() {
         let test_file = "test_requirements.txt";
@@ -72,13 +80,6 @@ mod tests {
         {
             assert!(true);
         }
-    }
-
-    #[test]
-    fn test_confirm_error() {
-        let error_reader = ErrorReader;
-        let result = confirm(error_reader);
-        assert!(!result);
     }
 
     #[test]
