@@ -74,13 +74,7 @@ impl Settings {
         F: Fn() -> std::io::Result<PathBuf>,
     {
         let exe_dir = match current_exe_fn() {
-            Ok(exe_path) => exe_path
-                .parent()
-                .unwrap_or_else(|| {
-                    println!("Could not determine the executable directory");
-                    std::path::Path::new(".")
-                })
-                .to_path_buf(),
+            Ok(exe_path) => exe_path.parent().unwrap().to_path_buf(),
             Err(_) => {
                 println!("Could not determine the executable directory");
                 PathBuf::from(".")
