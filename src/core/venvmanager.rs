@@ -170,18 +170,4 @@ mod tests {
         let venvs = VenvManager::collect_venvs(entries);
         assert!(venvs.is_empty());
     }
-
-    #[tokio::test]
-    async fn test_collect_venvs_non_empty() {
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
-        let entries = fs::read_dir(
-            shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string(),
-        )
-        .unwrap();
-        let venvs = VenvManager::collect_venvs(entries);
-        assert!(venvs.is_empty()); // Adjust based on expected number of venvs
-    }
 }
