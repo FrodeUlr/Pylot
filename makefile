@@ -89,10 +89,10 @@ package: build
 	@$(call echo_line,--- Copy build files to /dist ---,GREEN)
 	@$(MKDIR_CMD)
 	@$(COPY_CMD) $(TARGET_DIR)/$(PROJECT_NAME) dist/
-	@$(COPY_CMD) $(PROJECT_NAME)/settings.toml dist/
+	@$(COPY_CMD) PyPilot/settings.toml dist/
 
 rebuild: clean build
 
 debug:
 	@cargo build
-	@$(COPY_CMD) $(PROJECT_NAME)/settings.toml target/debug/
+	@$(COPY_CMD) PyPilot/settings.toml target/debug/
