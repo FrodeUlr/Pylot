@@ -1,9 +1,9 @@
 use super::venv::{self, Venv};
 use crate::cfg::settings;
-use crate::utility::constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC};
 use crate::utility::util;
 use colored::Colorize;
 use once_cell::sync::Lazy;
+use pypilotlib::constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC};
 use pypilotlib::processes;
 use std::fs;
 

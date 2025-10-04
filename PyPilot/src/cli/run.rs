@@ -1,8 +1,7 @@
-use crate::{
-    core::{uv, venv, venvmanager},
-    utility::{constants::ERROR_CREATING_VENV, util},
-};
+use crate::core::{uv, venv, venvmanager};
+use crate::utility::util;
 use colored::Colorize;
+use pypilotlib::constants::ERROR_CREATING_VENV;
 use pypilotlib::processes;
 use std::io;
 

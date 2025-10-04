@@ -1,7 +1,6 @@
 mod cfg;
 mod cli;
 mod core;
-//mod shell;
 mod utility;
 
 use crate::cli::run;
@@ -56,10 +55,8 @@ async fn main() {
 mod tests {
     use clap::Parser;
 
-    use crate::{
-        cli::clicmd::{Cli, Commands},
-        utility::constants::ERROR_VENV_NOT_EXISTS,
-    };
+    use crate::cli::clicmd::{Cli, Commands};
+    use pypilotlib::constants::ERROR_VENV_NOT_EXISTS;
 
     #[test]
     fn test_cli_output_help() {
