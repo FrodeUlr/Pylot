@@ -105,12 +105,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_check() {
-        let is_installed = uv::check().await;
-        if is_installed {
-            println!("{}", "Astral UV is installed".green());
-        } else {
-            println!("{}", "Astral UV is not installed".red());
-        }
+        check().await;
     }
 
     #[tokio::test]
