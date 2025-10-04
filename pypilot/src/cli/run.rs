@@ -1,6 +1,6 @@
-use crate::core::{uv, venv, venvmanager};
 use colored::Colorize;
-use pypilotlib::{constants::ERROR_CREATING_VENV, processes, utils};
+use shared::venvmanager;
+use shared::{constants::ERROR_CREATING_VENV, processes, utils, uv, venv};
 use std::io;
 
 pub async fn activate(name_pos: Option<String>, name: Option<String>) {

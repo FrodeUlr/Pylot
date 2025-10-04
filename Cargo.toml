@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["PyPilot", "pypilotlib"]
+members = ["pypilot", "shared"]

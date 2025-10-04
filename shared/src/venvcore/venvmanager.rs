@@ -1,10 +1,11 @@
 use super::venv::{self, Venv};
-use crate::cfg::settings;
+use crate::{
+    constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC},
+    processes, settings,
+};
 use colored::Colorize;
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
 use once_cell::sync::Lazy;
-use pypilotlib::constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC};
-use pypilotlib::processes;
 use std::fs;
 use std::io::Write;
 
@@ -138,8 +139,6 @@ impl VenvManager {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::venvmanager;
-
     use super::*;
 
     #[tokio::test]
@@ -215,7 +214,7 @@ mod tests {
                 default: true,
             },
         ];
-        venvmanager::VENVMANAGER.print_venv_table(&mut venvs).await;
+        VENVMANAGER.print_venv_table(&mut venvs).await;
     }
 
     #[tokio::test]
@@ -238,7 +237,7 @@ mod tests {
         ];
 
         let mut output = Vec::new();
-        venvmanager::VENVMANAGER
+        VENVMANAGER
             .print_venv_table_to(&mut output, &mut venvs)
             .await;
 

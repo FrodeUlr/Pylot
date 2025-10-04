@@ -1,10 +1,8 @@
-use crate::cfg::settings;
-use colored::Colorize;
-use pypilotlib::constants::{
-    BASH_CMD, ERROR_CREATING_VENV, ERROR_VENV_NOT_EXISTS, POWERSHELL_CMD, PWSH_CMD,
+use crate::{
+    constants::{BASH_CMD, ERROR_CREATING_VENV, ERROR_VENV_NOT_EXISTS, POWERSHELL_CMD, PWSH_CMD},
+    processes, settings, utils,
 };
-use pypilotlib::processes;
-use pypilotlib::utils;
+use colored::Colorize;
 use std::{fs, io};
 use tokio::fs as async_fs;
 
