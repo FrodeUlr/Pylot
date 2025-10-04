@@ -5,7 +5,7 @@ ifeq ($(OS),Windows_NT)
 	CARGO_FLAGS = --release
 	MKDIR_CMD = powershell -NoProfile mkdir dist -Force
 	COPY_CMD = powershell -NoProfile cp
-	PROJECT_NAME = PyPilot.exe
+	PROJECT_NAME = pypilot.exe
 	YELLOW = Yellow
 	GREEN = Green
 else

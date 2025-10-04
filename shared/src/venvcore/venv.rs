@@ -32,18 +32,8 @@ impl Venv {
     }
 
     pub async fn create(&self) -> Result<(), String> {
-        let settings = settings::Settings::get_settings();
-        let pwd = std::env::current_dir().unwrap();
-        let path = shellexpand::tilde(&settings.venvs_path).to_string();
-        std::env::set_current_dir(&path).unwrap();
-        let args = &[
-            "venv",
-            self.name.as_str(),
-            "--python",
-            self.python_version.as_str(),
-        ];
-        println!("Creating virtual environment: {}", self.name.cyan());
-        let mut child = processes::create_child_cmd("uv", args, "");
+        let (settings, pwd, args) = self.get_settings_pwd_args();
+        let mut child = processes::create_child_cmd("uv", &args, "");
         processes::run_command(&mut child)
             .await
             .map_err(|_| ERROR_CREATING_VENV.to_string())?;
@@ -55,40 +45,7 @@ impl Venv {
         if !pkgs.is_empty() {
             let venv_path = shellexpand::tilde(&settings.venvs_path).to_string();
 
-            let (cmd, vcmd, run) = if cfg!(target_os = "windows") {
-                let pwsh_cmd = if which::which(PWSH_CMD).is_ok() {
-                    PWSH_CMD
-                } else {
-                    POWERSHELL_CMD
-                };
-                let venv_cmd = format!("{}/{}/scripts/activate.ps1", venv_path, self.name);
-                (pwsh_cmd, venv_cmd, "-Command")
-            } else {
-                let venv_cmd = format!("{}/{}/bin/activate", venv_path, self.name);
-                (BASH_CMD, venv_cmd, "-c")
-            };
-
-            let mut args: Vec<String> = vec![
-                vcmd,
-                "&&".to_string(),
-                "uv".to_string(),
-                "pip".to_string(),
-                "install".to_string(),
-            ];
-            if !cfg!(target_os = "windows") {
-                args.insert(0, "source".to_string());
-            }
-            args.push(pkgs.join(" "));
-            println!(
-                "{} {}",
-                "Installing package(s):".cyan(),
-                pkgs.join(", ").cyan()
-            );
-            let agr_str = args
-                .iter()
-                .map(String::as_str)
-                .collect::<Vec<_>>()
-                .join(" ");
+            let (cmd, run, agr_str) = self.generate_command(pkgs, venv_path);
             let mut child2 = processes::create_child_cmd(cmd, &[&agr_str], run);
 
             processes::run_command(&mut child2)
@@ -97,6 +54,63 @@ impl Venv {
         }
         std::env::set_current_dir(pwd).unwrap();
         Ok(())
+    }
+
+    fn get_settings_pwd_args(&self) -> (settings::Settings, std::path::PathBuf, [&str; 4]) {
+        let settings = settings::Settings::get_settings();
+        let pwd = std::env::current_dir().unwrap();
+        let path = shellexpand::tilde(&settings.venvs_path).to_string();
+        std::env::set_current_dir(&path).unwrap();
+        let args = [
+            "venv",
+            self.name.as_str(),
+            "--python",
+            self.python_version.as_str(),
+        ];
+        println!("Creating virtual environment: {}", self.name.cyan());
+        (settings, pwd, args)
+    }
+
+    fn generate_command(
+        &self,
+        pkgs: Vec<String>,
+        venv_path: String,
+    ) -> (&str, &'static str, String) {
+        let (cmd, vcmd, run) = if cfg!(target_os = "windows") {
+            let pwsh_cmd = if which::which(PWSH_CMD).is_ok() {
+                PWSH_CMD
+            } else {
+                POWERSHELL_CMD
+            };
+            let venv_cmd = format!("{}/{}/scripts/activate.ps1", venv_path, self.name);
+            (pwsh_cmd, venv_cmd, "-Command")
+        } else {
+            let venv_cmd = format!("{}/{}/bin/activate", venv_path, self.name);
+            (BASH_CMD, venv_cmd, "-c")
+        };
+
+        let mut args: Vec<String> = vec![
+            vcmd,
+            "&&".to_string(),
+            "uv".to_string(),
+            "pip".to_string(),
+            "install".to_string(),
+        ];
+        if !cfg!(target_os = "windows") {
+            args.insert(0, "source".to_string());
+        }
+        args.push(pkgs.join(" "));
+        println!(
+            "{} {}",
+            "Installing package(s):".cyan(),
+            pkgs.join(", ").cyan()
+        );
+        let agr_str = args
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+            .join(" ");
+        (cmd, run, agr_str)
     }
 
     pub async fn delete(&self, confirm: bool) {
@@ -201,5 +215,53 @@ mod tests {
         assert_eq!(venv.name, "test_venv_clean");
         assert_eq!(venv.python_version, "3.9");
         assert_eq![venv.packages, &["numpy", "pandas"]]
+    }
+
+    #[test]
+    fn test_generate_command() {
+        let venv = Venv::new(
+            "test_venv_cmd".to_string(),
+            "".to_string(),
+            "3.10".to_string(),
+            vec!["requests".to_string()],
+            true,
+        );
+        let (cmd, run, agr_str) = venv.generate_command(
+            vec!["requests".to_string(), "flask".to_string()],
+            "/home/user/.virtualenvs".to_string(),
+        );
+        if cfg!(target_os = "windows") {
+            assert_eq!(cmd, PWSH_CMD);
+            assert_eq!(run, "-Command");
+            assert!(agr_str.contains("activate.ps1"));
+            assert!(agr_str.contains("uv pip install requests flask"));
+        } else {
+            assert_eq!(cmd, BASH_CMD);
+            assert_eq!(run, "-c");
+            assert!(agr_str.contains("activate"));
+            assert!(agr_str.contains("uv pip install requests flask"));
+        }
+    }
+
+    #[test]
+    fn test_get_settings_pwd_args() {
+        let pwd_start = std::env::current_dir().unwrap();
+        let venv = Venv::new(
+            "test_venv_args".to_string(),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        let (settings, pwd, args) = venv.get_settings_pwd_args();
+        assert_eq!(args[0], "venv");
+        assert_eq!(args[1], "test_venv_args");
+        assert_eq!(args[2], "--python");
+        assert_eq!(args[3], "3.11");
+        assert_eq!(
+            settings.venvs_path,
+            settings::Settings::get_settings().venvs_path
+        );
+        assert_eq!(pwd, pwd_start);
     }
 }
