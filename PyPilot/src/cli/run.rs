@@ -1,8 +1,6 @@
 use crate::core::{uv, venv, venvmanager};
-use crate::utility::util;
 use colored::Colorize;
-use pypilotlib::constants::ERROR_CREATING_VENV;
-use pypilotlib::processes;
+use pypilotlib::{constants::ERROR_CREATING_VENV, processes, utils};
 use std::io;
 
 pub async fn activate(name_pos: Option<String>, name: Option<String>) {
@@ -50,7 +48,7 @@ pub async fn create(
     }
     let mut packages = packages;
     if !requirements.is_empty() {
-        let read_pkgs = util::read_requirements_file(&requirements).await;
+        let read_pkgs = utils::read_requirements_file(&requirements).await;
         for req in read_pkgs {
             if !packages.contains(&req) {
                 packages.push(req);
@@ -97,7 +95,7 @@ pub async fn list() {
     if venvs.is_empty() {
         println!("{}", "No virtual environments found".yellow());
     } else {
-        util::print_venv_table(&mut venvs).await;
+        venvmanager::VENVMANAGER.print_venv_table(&mut venvs).await;
     }
 }
 

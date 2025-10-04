@@ -1,11 +1,12 @@
 use super::venv::{self, Venv};
 use crate::cfg::settings;
-use crate::utility::util;
 use colored::Colorize;
+use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
 use once_cell::sync::Lazy;
 use pypilotlib::constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC};
 use pypilotlib::processes;
 use std::fs;
+use std::io::Write;
 
 pub struct VenvManager;
 
@@ -45,7 +46,7 @@ impl VenvManager {
                     println!("{}", "No virtual environments found".yellow());
                     return None;
                 }
-                util::print_venv_table(&mut venvs).await;
+                self.print_venv_table(&mut venvs).await;
                 println!(
                     "{} {}{}",
                     "Please select a virtual environment to".cyan(),
@@ -110,10 +111,35 @@ impl VenvManager {
             .collect();
         venvs
     }
+
+    pub async fn print_venv_table(&self, venvs: &mut [Venv]) {
+        self.print_venv_table_to(&mut std::io::stdout(), venvs)
+            .await;
+    }
+
+    async fn print_venv_table_to<W: Write>(&self, writer: &mut W, venvs: &mut [Venv]) {
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL)
+            .apply_modifier(UTF8_ROUND_CORNERS)
+            .set_content_arrangement(ContentArrangement::Dynamic)
+            .set_header(vec!["Index", "Name", "Version"]);
+        for (index, venv) in venvs.iter_mut().enumerate() {
+            venv.set_python_version().await;
+            table.add_row(vec![
+                (index + 1).to_string(),
+                venv.name.clone(),
+                venv.python_version.clone(),
+            ]);
+        }
+        writeln!(writer, "{}", table).unwrap();
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::core::venvmanager;
+
     use super::*;
 
     #[tokio::test]
@@ -169,5 +195,57 @@ mod tests {
         });
         let venvs = VenvManager::collect_venvs(entries);
         assert!(venvs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_print_table() {
+        let mut venvs = vec![
+            Venv {
+                name: "venv1".to_string(),
+                python_version: "3.10".to_string(),
+                path: "/some/path".to_string(),
+                packages: Vec::new(),
+                default: false,
+            },
+            Venv {
+                name: "venv2".to_string(),
+                python_version: "3.11".to_string(),
+                path: "/other/path".to_string(),
+                packages: Vec::new(),
+                default: true,
+            },
+        ];
+        venvmanager::VENVMANAGER.print_venv_table(&mut venvs).await;
+    }
+
+    #[tokio::test]
+    async fn test_print_venv_table() {
+        let mut venvs = vec![
+            Venv {
+                name: "venv1".to_string(),
+                python_version: "3.10".to_string(),
+                path: "/some/path".to_string(),
+                packages: Vec::new(),
+                default: false,
+            },
+            Venv {
+                name: "venv2".to_string(),
+                python_version: "3.11".to_string(),
+                path: "/other/path".to_string(),
+                packages: Vec::new(),
+                default: true,
+            },
+        ];
+
+        let mut output = Vec::new();
+        venvmanager::VENVMANAGER
+            .print_venv_table_to(&mut output, &mut venvs)
+            .await;
+
+        let output_str = String::from_utf8(output).unwrap();
+        assert!(output_str.contains("venv1"));
+        assert!(output_str.contains("3.10"));
+        assert!(output_str.contains("venv2"));
+        assert!(output_str.contains("3.11"));
     }
 }
