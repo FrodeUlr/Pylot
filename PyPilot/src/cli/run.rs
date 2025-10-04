@@ -1,9 +1,9 @@
 use crate::{
     core::{uv, venv, venvmanager},
-    shell::processes,
     utility::{constants::ERROR_CREATING_VENV, util},
 };
 use colored::Colorize;
+use pypilotlib::processes;
 use std::io;
 
 pub async fn activate(name_pos: Option<String>, name: Option<String>) {

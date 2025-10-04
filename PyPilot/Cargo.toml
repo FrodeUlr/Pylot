@@ -1,0 +1,24 @@
+[package]
+name = "PyPilot"
+version = "0.4.4"
+edition = "2021"
+authors = ["Fulrix"]
+
+[dependencies]
+pypilotlib = { path = "../pypilotlib" }
+clap = { version = "4.5.48", features = ["derive"] }
+colored = "3.0.0"
+comfy-table = "7.2.1"
+config = "0.15.16"
+ctrlc = "3.5.0"
+once_cell = "1.21.3"
+serde = { version = "1.0.226", features = ["derive"] }
+tokio = { version = "1.47.1", features = ["full"] }
+serde_path_to_error = "0.1.20"
+shellexpand = "3.1.1"
+winapi = "0.3.9"
+which = "8.0.0"
+
+[dev-dependencies]
+assert_cli = "0.6.3"
+toml = "0.9.7"

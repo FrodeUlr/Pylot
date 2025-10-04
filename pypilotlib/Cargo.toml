@@ -1,0 +1,12 @@
+[package]
+name = "pypilotlib"
+version = "0.1.0"
+edition = "2021"
+authors = ["Fulrix"]
+
+[dependencies]
+colored = "3.0.0"
+tokio = { version = "1.47.1", features = ["full"] }
+ctrlc = "3.5.0"
+winapi = "0.3.9"
+which = "8.0.0"

@@ -1,6 +1,7 @@
-use crate::{core::venv::Venv, shell::processes::exit_with_error};
+use crate::core::venv::Venv;
 use colored::Colorize;
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
+use pypilotlib::processes::exit_with_error;
 use std::io::{stdout, BufRead, Write};
 use tokio::fs;
 

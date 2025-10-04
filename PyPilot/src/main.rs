@@ -1,7 +1,7 @@
 mod cfg;
 mod cli;
 mod core;
-mod shell;
+//mod shell;
 mod utility;
 
 use crate::cli::run;

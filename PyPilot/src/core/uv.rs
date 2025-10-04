@@ -1,10 +1,10 @@
-use crate::shell::processes;
 use crate::utility::constants::{
     BASH_CMD, UV_UNIX_INSTALL_ARGS, UV_UNIX_UNINSTALL_ARGS, UV_WINGET_INSTALL_ARGS,
     UV_WINGET_UNINSTALL_ARGS, WINGET_CMD,
 };
 use crate::utility::util::confirm;
 use colored::Colorize;
+use pypilotlib::processes;
 
 pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
     println!("{}", "Installing Astral UV...".yellow());
