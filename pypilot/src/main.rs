@@ -1,13 +1,9 @@
-mod cfg;
 mod cli;
-mod core;
-mod shell;
-mod utility;
 
 use crate::cli::run;
-use cfg::settings;
 use clap::Parser;
 use cli::clicmd::{Cli, Commands};
+use shared::settings;
 
 #[tokio::main]
 async fn main() {
@@ -56,10 +52,8 @@ async fn main() {
 mod tests {
     use clap::Parser;
 
-    use crate::{
-        cli::clicmd::{Cli, Commands},
-        utility::constants::ERROR_VENV_NOT_EXISTS,
-    };
+    use crate::cli::clicmd::{Cli, Commands};
+    use shared::constants::ERROR_VENV_NOT_EXISTS;
 
     #[test]
     fn test_cli_output_help() {
@@ -80,7 +74,7 @@ mod tests {
             .succeeds()
             .and()
             .stdout()
-            .contains(format!("PyPilot {}", version).as_str())
+            .contains(format!("pypilot {}", version).as_str())
             .unwrap();
     }
 

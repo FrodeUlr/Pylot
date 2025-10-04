@@ -1,5 +1,4 @@
 use super::styles;
-use crate::utility::constants::{AUTHORS, NAME};
 use clap::{Parser, Subcommand};
 use styles::custom_styles;
 
@@ -11,8 +10,8 @@ use styles::custom_styles;
     arg_required_else_help = true
 )]
 #[command(
-    name = NAME,
-    author = AUTHORS,
+    name = env!("CARGO_PKG_NAME"),
+    author = env!("CARGO_PKG_AUTHORS"),
     about = "A simple CLI to manage Python virtual enviroonments using Astral UV",
     styles = custom_styles()
 )]

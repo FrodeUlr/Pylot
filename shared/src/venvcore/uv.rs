@@ -1,9 +1,11 @@
-use crate::shell::processes;
-use crate::utility::constants::{
-    BASH_CMD, UV_UNIX_INSTALL_ARGS, UV_UNIX_UNINSTALL_ARGS, UV_WINGET_INSTALL_ARGS,
-    UV_WINGET_UNINSTALL_ARGS, WINGET_CMD,
+use crate::{
+    core::processes,
+    utility::constants::{
+        BASH_CMD, UV_UNIX_INSTALL_ARGS, UV_UNIX_UNINSTALL_ARGS, UV_WINGET_INSTALL_ARGS,
+        UV_WINGET_UNINSTALL_ARGS, WINGET_CMD,
+    },
+    utils::confirm,
 };
-use crate::utility::util::confirm;
 use colored::Colorize;
 
 pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {

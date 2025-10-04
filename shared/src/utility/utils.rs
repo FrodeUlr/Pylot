@@ -1,8 +1,8 @@
-use crate::{core::venv::Venv, shell::processes::exit_with_error};
 use colored::Colorize;
-use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
 use std::io::{stdout, BufRead, Write};
 use tokio::fs;
+
+use crate::processes::exit_with_error;
 
 pub async fn read_requirements_file(requirements: &str) -> Vec<String> {
     if !fs::try_exists(requirements).await.unwrap_or(false) {
@@ -19,26 +19,6 @@ pub async fn read_requirements_file(requirements: &str) -> Vec<String> {
             exit_with_error(&format!("Error reading requirements file: {}", e));
         }
     }
-}
-pub async fn print_venv_table(venvs: &mut [Venv]) {
-    print_venv_table_to(&mut std::io::stdout(), venvs).await;
-}
-async fn print_venv_table_to<W: Write>(writer: &mut W, venvs: &mut [Venv]) {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL)
-        .apply_modifier(UTF8_ROUND_CORNERS)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["Index", "Name", "Version"]);
-    for (index, venv) in venvs.iter_mut().enumerate() {
-        venv.set_python_version().await;
-        table.add_row(vec![
-            (index + 1).to_string(),
-            venv.name.clone(),
-            venv.python_version.clone(),
-        ]);
-    }
-    writeln!(writer, "{}", table).unwrap();
 }
 
 pub fn confirm<R: std::io::Read>(input: R) -> bool {
@@ -134,55 +114,5 @@ mod tests {
         let cursor = std::io::Cursor::new("YES\n");
         let result = confirm(cursor);
         assert!(result);
-    }
-
-    #[tokio::test]
-    async fn test_print_table() {
-        let mut venvs = vec![
-            Venv {
-                name: "venv1".to_string(),
-                python_version: "3.10".to_string(),
-                path: "/some/path".to_string(),
-                packages: Vec::new(),
-                default: false,
-            },
-            Venv {
-                name: "venv2".to_string(),
-                python_version: "3.11".to_string(),
-                path: "/other/path".to_string(),
-                packages: Vec::new(),
-                default: true,
-            },
-        ];
-        print_venv_table(&mut venvs).await;
-    }
-
-    #[tokio::test]
-    async fn test_print_venv_table() {
-        let mut venvs = vec![
-            Venv {
-                name: "venv1".to_string(),
-                python_version: "3.10".to_string(),
-                path: "/some/path".to_string(),
-                packages: Vec::new(),
-                default: false,
-            },
-            Venv {
-                name: "venv2".to_string(),
-                python_version: "3.11".to_string(),
-                path: "/other/path".to_string(),
-                packages: Vec::new(),
-                default: true,
-            },
-        ];
-
-        let mut output = Vec::new();
-        print_venv_table_to(&mut output, &mut venvs).await;
-
-        let output_str = String::from_utf8(output).unwrap();
-        assert!(output_str.contains("venv1"));
-        assert!(output_str.contains("3.10"));
-        assert!(output_str.contains("venv2"));
-        assert!(output_str.contains("3.11"));
     }
 }

@@ -1,2 +1,0 @@
-[coverage]
-exclude-regex = [".*::tests::.*", ".*::test_.*", ".*_test::.*"]

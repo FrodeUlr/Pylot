@@ -1,9 +1,6 @@
-use crate::{
-    core::{uv, venv, venvmanager},
-    shell::processes,
-    utility::{constants::ERROR_CREATING_VENV, util},
-};
 use colored::Colorize;
+use shared::venvmanager;
+use shared::{constants::ERROR_CREATING_VENV, processes, utils, uv, venv};
 use std::io;
 
 pub async fn activate(name_pos: Option<String>, name: Option<String>) {
@@ -51,7 +48,7 @@ pub async fn create(
     }
     let mut packages = packages;
     if !requirements.is_empty() {
-        let read_pkgs = util::read_requirements_file(&requirements).await;
+        let read_pkgs = utils::read_requirements_file(&requirements).await;
         for req in read_pkgs {
             if !packages.contains(&req) {
                 packages.push(req);
@@ -98,7 +95,7 @@ pub async fn list() {
     if venvs.is_empty() {
         println!("{}", "No virtual environments found".yellow());
     } else {
-        util::print_venv_table(&mut venvs).await;
+        venvmanager::VENVMANAGER.print_venv_table(&mut venvs).await;
     }
 }
 
@@ -108,12 +105,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_check() {
-        let is_installed = uv::check().await;
-        if is_installed {
-            println!("{}", "Astral UV is installed".green());
-        } else {
-            println!("{}", "Astral UV is not installed".red());
-        }
+        check().await;
     }
 
     #[tokio::test]

@@ -1,7 +1,3 @@
-// Package: PyPilot
-pub const NAME: &str = env!("CARGO_PKG_NAME");
-pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
-
 // Windows-specific constants
 pub const PWSH_CMD: &str = "pwsh";
 pub const POWERSHELL_CMD: &str = "powershell";
@@ -29,8 +25,6 @@ mod tests {
 
     #[test]
     fn test_constants() {
-        assert_eq!(NAME, "PyPilot");
-        assert_eq!(AUTHORS, "Fulrix");
         assert_eq!(WINGET_CMD, "winget");
         assert_eq!(BASH_CMD, "bash");
         assert_eq!(PWSH_CMD, "pwsh");
