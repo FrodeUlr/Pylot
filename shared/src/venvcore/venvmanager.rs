@@ -21,7 +21,7 @@ impl VenvManager {
     pub async fn list(&self) -> Vec<Venv> {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venvs: Vec<Venv> = match fs::read_dir(&path) {
-            Ok(entries) => Self::collect_venvs(entries),
+            Ok(entries) => self.collect_venvs(entries),
             Err(_) => Vec::new(),
         };
         venvs
@@ -83,7 +83,7 @@ impl VenvManager {
             .or_else(|| processes::exit_with_error("Error, please provide a valid index"))
     }
 
-    fn collect_venvs(entries: fs::ReadDir) -> Vec<Venv> {
+    fn collect_venvs(&self, entries: fs::ReadDir) -> Vec<Venv> {
         let venvs: Vec<Venv> = entries
             .filter_map(Result::ok)
             .filter_map(|entry| {
@@ -192,7 +192,7 @@ mod tests {
         let entries = fs::read_dir("/non_existent_directory").unwrap_or_else(|_| {
             fs::read_dir(".").expect("Failed to read current directory for test")
         });
-        let venvs = VenvManager::collect_venvs(entries);
+        let venvs = VENVMANAGER.collect_venvs(entries);
         assert!(venvs.is_empty());
     }
 
@@ -205,6 +205,7 @@ mod tests {
                 path: "/some/path".to_string(),
                 packages: Vec::new(),
                 default: false,
+                settings: settings::Settings::get_settings(),
             },
             Venv {
                 name: "venv2".to_string(),
@@ -212,6 +213,7 @@ mod tests {
                 path: "/other/path".to_string(),
                 packages: Vec::new(),
                 default: true,
+                settings: settings::Settings::get_settings(),
             },
         ];
         VENVMANAGER.print_venv_table(&mut venvs).await;
@@ -226,6 +228,7 @@ mod tests {
                 path: "/some/path".to_string(),
                 packages: Vec::new(),
                 default: false,
+                settings: settings::Settings::get_settings(),
             },
             Venv {
                 name: "venv2".to_string(),
@@ -233,6 +236,7 @@ mod tests {
                 path: "/other/path".to_string(),
                 packages: Vec::new(),
                 default: true,
+                settings: settings::Settings::get_settings(),
             },
         ];
 
@@ -247,4 +251,10 @@ mod tests {
         assert!(output_str.contains("venv2"));
         assert!(output_str.contains("3.11"));
     }
+
+    // #[test]
+    // fn test_get_index_valid() {
+    //     let index = VENVMANAGER.get_index(5);
+    //     assert!(index.is_none());
+    // }
 }

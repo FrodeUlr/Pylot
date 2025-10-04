@@ -12,6 +12,7 @@ pub struct Venv {
     pub python_version: String,
     pub packages: Vec<String>,
     pub default: bool,
+    pub settings: settings::Settings,
 }
 
 impl Venv {
@@ -28,22 +29,23 @@ impl Venv {
             python_version,
             packages,
             default,
+            settings: settings::Settings::get_settings(),
         }
     }
 
     pub async fn create(&self) -> Result<(), String> {
-        let (settings, pwd, args) = self.get_settings_pwd_args();
+        let (pwd, args) = self.get_pwd_args();
         let mut child = processes::create_child_cmd("uv", &args, "");
         processes::run_command(&mut child)
             .await
             .map_err(|_| ERROR_CREATING_VENV.to_string())?;
         let mut pkgs = self.packages.clone();
         if self.default {
-            let default_pkgs = settings.default_pkgs.clone();
+            let default_pkgs = self.settings.default_pkgs.clone();
             pkgs.extend(default_pkgs);
         }
         if !pkgs.is_empty() {
-            let venv_path = shellexpand::tilde(&settings.venvs_path).to_string();
+            let venv_path = shellexpand::tilde(&self.settings.venvs_path).to_string();
 
             let (cmd, run, agr_str) = self.generate_command(pkgs, venv_path);
             let mut child2 = processes::create_child_cmd(cmd, &[&agr_str], run);
@@ -56,10 +58,71 @@ impl Venv {
         Ok(())
     }
 
-    fn get_settings_pwd_args(&self) -> (settings::Settings, std::path::PathBuf, [&str; 4]) {
-        let settings = settings::Settings::get_settings();
+    pub async fn delete(&self, confirm: bool) {
+        let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
+        let venv_path = format!("{}/{}", path, self.name);
+        if !std::path::Path::new(&venv_path).exists() {
+            eprintln!("{}", ERROR_VENV_NOT_EXISTS.red());
+            return;
+        }
+        let mut choice = !confirm;
+        if confirm {
+            println!(
+                "{} {} {} {}",
+                "Deleting virtual environment:".yellow(),
+                self.name.red(),
+                "at".yellow(),
+                venv_path.replace("\\", "/").red()
+            );
+            choice = utils::confirm(io::stdin());
+        }
+        if !choice {
+            return;
+        }
+        match fs::remove_dir_all(venv_path) {
+            Ok(_) => {
+                if confirm {
+                    println!("{} {}", self.name.red(), "has been deleted".green())
+                }
+            }
+            Err(e) => println!("{} {}", e.to_string().red(), self.name),
+        }
+    }
+
+    pub async fn activate(&self) {
+        println!(
+            "{} {}",
+            "Activating virtual environment:".cyan(),
+            self.name.green()
+        );
+        let (shell, cmd, path) = self.get_shell_cmd();
+        if !std::path::Path::new(&path).exists() {
+            eprintln!("{}", ERROR_VENV_NOT_EXISTS.red());
+            return;
+        }
+        let _ = processes::activate_venv_shell(shell.as_str(), cmd);
+    }
+
+    pub async fn set_python_version(&mut self) {
+        let cfg_path = format!("{}/pyvenv.cfg", self.path);
+        if !async_fs::try_exists(&cfg_path).await.unwrap_or(false) {
+            return;
+        }
+        if let Ok(content) = tokio::fs::read_to_string(cfg_path).await {
+            for line in content.lines() {
+                if line.starts_with("version") {
+                    let parts: Vec<&str> = line.split('=').collect();
+                    if parts.len() == 2 {
+                        self.python_version = parts[1].trim().to_string();
+                    }
+                }
+            }
+        }
+    }
+
+    fn get_pwd_args(&self) -> (std::path::PathBuf, [&str; 4]) {
         let pwd = std::env::current_dir().unwrap();
-        let path = shellexpand::tilde(&settings.venvs_path).to_string();
+        let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
         std::env::set_current_dir(&path).unwrap();
         let args = [
             "venv",
@@ -68,7 +131,7 @@ impl Venv {
             self.python_version.as_str(),
         ];
         println!("Creating virtual environment: {}", self.name.cyan());
-        (settings, pwd, args)
+        (pwd, args)
     }
 
     fn generate_command(
@@ -113,44 +176,8 @@ impl Venv {
         (cmd, run, agr_str)
     }
 
-    pub async fn delete(&self, confirm: bool) {
-        let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
-        let venv_path = format!("{}/{}", path, self.name);
-        if !std::path::Path::new(&venv_path).exists() {
-            eprintln!("{}", ERROR_VENV_NOT_EXISTS.red());
-            return;
-        }
-        let mut choice = !confirm;
-        if confirm {
-            println!(
-                "{} {} {} {}",
-                "Deleting virtual environment:".yellow(),
-                self.name.red(),
-                "at".yellow(),
-                venv_path.replace("\\", "/").red()
-            );
-            choice = utils::confirm(io::stdin());
-        }
-        if !choice {
-            return;
-        }
-        match fs::remove_dir_all(venv_path) {
-            Ok(_) => {
-                if confirm {
-                    println!("{} {}", self.name.red(), "has been deleted".green())
-                }
-            }
-            Err(e) => println!("{} {}", e.to_string().red(), self.name),
-        }
-    }
-
-    pub async fn activate(&self) {
-        println!(
-            "{} {}",
-            "Activating virtual environment:".cyan(),
-            self.name.green()
-        );
-        let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
+    fn get_shell_cmd(&self) -> (String, Vec<String>, String) {
+        let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
         let shell = processes::get_parent_shell();
         let (cmd, path) = if cfg!(target_os = "windows") {
             let venv_path = format!("{}/{}/scripts/activate.ps1", path, self.name);
@@ -161,28 +188,7 @@ impl Venv {
             let venv_cmd = format!("source {} && {} -i", venv_path, shell.as_str());
             (vec!["-c".to_string(), venv_cmd], venv_path)
         };
-        if !std::path::Path::new(&path).exists() {
-            eprintln!("{}", ERROR_VENV_NOT_EXISTS.red());
-            return;
-        }
-        let _ = processes::activate_venv_shell(shell.as_str(), cmd);
-    }
-
-    pub async fn set_python_version(&mut self) {
-        let cfg_path = format!("{}/pyvenv.cfg", self.path);
-        if !async_fs::try_exists(&cfg_path).await.unwrap_or(false) {
-            return;
-        }
-        if let Ok(content) = tokio::fs::read_to_string(cfg_path).await {
-            for line in content.lines() {
-                if line.starts_with("version") {
-                    let parts: Vec<&str> = line.split('=').collect();
-                    if parts.len() == 2 {
-                        self.python_version = parts[1].trim().to_string();
-                    }
-                }
-            }
-        }
+        (shell, cmd, path)
     }
 }
 
@@ -253,15 +259,11 @@ mod tests {
             vec![],
             false,
         );
-        let (settings, pwd, args) = venv.get_settings_pwd_args();
+        let (pwd, args) = venv.get_pwd_args();
         assert_eq!(args[0], "venv");
         assert_eq!(args[1], "test_venv_args");
         assert_eq!(args[2], "--python");
         assert_eq!(args[3], "3.11");
-        assert_eq!(
-            settings.venvs_path,
-            settings::Settings::get_settings().venvs_path
-        );
         assert_eq!(pwd, pwd_start);
     }
 }
