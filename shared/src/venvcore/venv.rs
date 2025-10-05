@@ -126,6 +126,7 @@ impl Venv {
     fn get_pwd_args(&self) -> Option<(std::path::PathBuf, [&str; 4])> {
         let pwd = std::env::current_dir().unwrap();
         let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
+        println!("Using venvs path: {}", path.cyan());
         if path.is_empty() {
             eprintln!("{}", "Error: venvs_path is not set in settings".red());
             return None;
