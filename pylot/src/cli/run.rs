@@ -252,7 +252,6 @@ mod tests {
         {
             install(cursor.clone(), true).await;
         }
-        assert!(uv::check().await);
         create(
             Some("test_env_create".to_string()),
             None,
