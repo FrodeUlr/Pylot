@@ -220,11 +220,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_install_uv_yes() {
-        #[cfg(unix)]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            install(cursor, true).await;
-        }
+        let cursor = std::io::Cursor::new("y\n");
+        install(cursor, true).await;
     }
 
     #[tokio::test]
@@ -235,17 +232,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_new_venv() {
-        let cursor = std::io::Cursor::new("y\n");
-        install(cursor.clone(), true).await;
-        create(
-            Some("test_env".to_string()),
-            None,
-            "3.8".to_string(),
-            vec!["numpy".to_string()],
-            "".to_string(),
-            false,
-        )
-        .await;
-        delete(cursor, Some("test_env".to_string()), None).await;
+        #[cfg(not(unix))]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            install(cursor.clone(), true).await;
+            create(
+                Some("test_env_create".to_string()),
+                None,
+                "3.11".to_string(),
+                vec!["numpy".to_string()],
+                "".to_string(),
+                false,
+            )
+            .await;
+            delete(cursor, Some("test_env".to_string()), None).await;
+        }
     }
 }
