@@ -15,7 +15,7 @@ pub struct Settings {
 }
 
 fn default_venv_path() -> String {
-    String::from("~/pymngr/venvs")
+    String::from("~/pylot/venvs")
 }
 
 static SETTINGS: Lazy<Mutex<Settings>> = Lazy::new(|| Mutex::new(Settings::default()));
