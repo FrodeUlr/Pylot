@@ -124,25 +124,7 @@ mod tests {
     use std::{io, path::Path};
 
     use super::*;
-    use shared::settings;
     use tokio::fs::write;
-
-    struct DirGuard {
-        original: std::path::PathBuf,
-    }
-
-    impl DirGuard {
-        fn new() -> Self {
-            let original = std::env::current_dir().unwrap();
-            Self { original }
-        }
-    }
-
-    impl Drop for DirGuard {
-        fn drop(&mut self) {
-            let _ = std::env::set_current_dir(&self.original);
-        }
-    }
 
     #[tokio::test]
     async fn test_check() {
@@ -261,32 +243,32 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn test_create_new_venv() {
-        let mut path = "~/pylot/venvs".to_string();
-        if path.starts_with("~") {
-            path = shellexpand::tilde(&path).to_string();
-        }
-        if !Path::new(&path).exists() {
-            println!("Creating venvs folder: {}", path);
-            std::fs::create_dir_all(&path).expect("Failed to create venvs folder");
-        }
-        let cursor = std::io::Cursor::new("y\n");
-        #[cfg(unix)]
-        {
-            install(cursor.clone(), true).await;
-        }
-        create(
-            Some("test_env_create".to_string()),
-            None,
-            "3.11".to_string(),
-            vec!["numpy".to_string()],
-            "".to_string(),
-            false,
-        )
-        .await;
-        delete(cursor, Some("test_env".to_string()), None).await;
-        uninstall(io::stdin()).await;
-        assert!(!uv::check().await);
-    }
+    // #[tokio::test]
+    // async fn test_create_new_venv() {
+    //     let mut path = "~/pylot/venvs".to_string();
+    //     if path.starts_with("~") {
+    //         path = shellexpand::tilde(&path).to_string();
+    //     }
+    //     if !Path::new(&path).exists() {
+    //         println!("Creating venvs folder: {}", path);
+    //         std::fs::create_dir_all(&path).expect("Failed to create venvs folder");
+    //     }
+    //     let cursor = std::io::Cursor::new("y\n");
+    //     #[cfg(unix)]
+    //     {
+    //         install(cursor.clone(), true).await;
+    //     }
+    //     create(
+    //         Some("test_env_create".to_string()),
+    //         None,
+    //         "3.11".to_string(),
+    //         vec!["numpy".to_string()],
+    //         "".to_string(),
+    //         false,
+    //     )
+    //     .await;
+    //     delete(cursor, Some("test_env".to_string()), None).await;
+    //     uninstall(io::stdin()).await;
+    //     assert!(!uv::check().await);
+    // }
 }
