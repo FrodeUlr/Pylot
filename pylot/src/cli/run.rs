@@ -28,7 +28,7 @@ pub async fn create(
     name_pos: Option<String>,
     name: Option<String>,
     python_version: String,
-    packages: Vec<String>,
+    mut packages: Vec<String>,
     requirements: String,
     default: bool,
 ) {
@@ -57,7 +57,15 @@ pub async fn create(
         );
         return;
     }
-    let mut packages = packages;
+    update_packages_from_requirements(requirements, &mut packages).await;
+    let venv = venv::Venv::new(name, "".to_string(), python_version, packages, default);
+    if let Err(e) = venv.create().await {
+        eprintln!("{}", format!("{}: {}", ERROR_CREATING_VENV, e).red());
+        venv.delete(false).await;
+    }
+}
+
+async fn update_packages_from_requirements(requirements: String, packages: &mut Vec<String>) {
     if !requirements.is_empty() {
         let read_pkgs = utils::read_requirements_file(&requirements).await;
         for req in read_pkgs {
@@ -65,11 +73,6 @@ pub async fn create(
                 packages.push(req);
             }
         }
-    }
-    let venv = venv::Venv::new(name, "".to_string(), python_version, packages, default);
-    if let Err(e) = venv.create().await {
-        eprintln!("{}", format!("{}: {}", ERROR_CREATING_VENV, e).red());
-        venv.delete(false).await;
     }
 }
 
@@ -117,6 +120,7 @@ async fn print_venvs(mut venvs: Vec<venv::Venv>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio::fs::write;
 
     #[tokio::test]
     async fn test_check() {
@@ -184,5 +188,17 @@ mod tests {
             false,
         )
         .await
+    }
+
+    #[tokio::test]
+    async fn update_packages_from_requirements_test() {
+        let requirements = "test_requirements.txt".to_string();
+        let mut packages = vec!["numpy".to_string()];
+        let _ = write(&requirements, "pandas\nscipy\n").await;
+        update_packages_from_requirements(requirements.clone(), &mut packages).await;
+        assert!(packages.contains(&"numpy".to_string()));
+        assert!(packages.contains(&"pandas".to_string()));
+        assert!(packages.contains(&"scipy".to_string()));
+        std::fs::remove_file(requirements).unwrap();
     }
 }
