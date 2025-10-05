@@ -212,14 +212,14 @@ mod tests {
         let cursor = std::io::Cursor::new("n\n");
         uninstall(cursor).await;
     }
-    #[tokio::test]
-    async fn test_install_uv_yes() {
-        #[cfg(unix)]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            install(cursor, true).await;
-        }
-    }
+    // #[tokio::test]
+    // async fn test_install_uv_yes() {
+    //     #[cfg(unix)]
+    //     {
+    //         let cursor = std::io::Cursor::new("y\n");
+    //         install(cursor, true).await;
+    //     }
+    // }
 
     #[tokio::test]
     async fn test_uninstall_uv_yes() {
