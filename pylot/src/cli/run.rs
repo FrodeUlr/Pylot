@@ -249,7 +249,10 @@ mod tests {
         let pwd = std::env::current_dir().unwrap();
         settings::Settings::init().await;
         let cursor = std::io::Cursor::new("y\n");
-        install(cursor.clone(), true).await;
+        #[cfg(unix)]
+        {
+            install(cursor.clone(), true).await;
+        }
         create(
             Some("test_env_create".to_string()),
             None,
