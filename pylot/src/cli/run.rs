@@ -124,6 +124,7 @@ mod tests {
     use std::io;
 
     use super::*;
+    use shared::settings;
     use tokio::fs::write;
 
     #[tokio::test]
@@ -245,6 +246,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_new_venv() {
+        settings::Settings::init().await;
         let cursor = std::io::Cursor::new("y\n");
         #[cfg(unix)]
         {
