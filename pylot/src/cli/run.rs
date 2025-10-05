@@ -96,7 +96,8 @@ pub async fn install<R: std::io::Read>(input: R, update: bool) {
 
 pub async fn uninstall<R: std::io::Read>(input: R) {
     if !uv::check().await {
-        processes::exit_with_error("Astral UV is not installed.");
+        eprintln!("{}", "Astral UV is not installed.".yellow());
+        return;
     }
     if let Err(e) = uv::uninstall(input).await {
         eprintln!("{}", format!("Error uninstalling Astral UV: {}", e).red());
@@ -212,14 +213,15 @@ mod tests {
         let cursor = std::io::Cursor::new("n\n");
         uninstall(cursor).await;
     }
-    // #[tokio::test]
-    // async fn test_install_uv_yes() {
-    //     #[cfg(unix)]
-    //     {
-    //         let cursor = std::io::Cursor::new("y\n");
-    //         install(cursor, true).await;
-    //     }
-    // }
+
+    #[tokio::test]
+    async fn test_install_uv_yes() {
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            install(cursor, true).await;
+        }
+    }
 
     #[tokio::test]
     async fn test_uninstall_uv_yes() {
