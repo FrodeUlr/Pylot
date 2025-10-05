@@ -155,19 +155,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete() {
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
         delete(io::stdin(), Some("test_env".to_string()), None).await;
     }
 
     #[tokio::test]
     async fn test_activate() {
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
         activate(Some("test_env_not_here".to_string()), None).await;
     }
 
