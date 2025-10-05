@@ -1,4 +1,4 @@
-# PyPilot
+# Pylot
 
 <!--toc:start-->
 
@@ -19,10 +19,10 @@
 
 ## A manager for python virtual environments made using UV
 
-[![Rust](https://github.com/FrodeUlr/pypilot/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/FrodeUlr/pypilot/actions/workflows/rust.yml) [![codecov](https://codecov.io/github/FrodeUlr/pypilot/graph/badge.svg?token=BNWQAU7KR2)](https://codecov.io/github/FrodeUlr/pypilot)
+[![Rust](https://github.com/FrodeUlr/pylot/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/FrodeUlr/pylot/actions/workflows/rust.yml) [![codecov](https://codecov.io/github/FrodeUlr/pylot/graph/badge.svg?token=BNWQAU7KR2)](https://codecov.io/github/FrodeUlr/pylot)
 
-`PyPilot` assists you in installing, updating and removing [Astral UV](https://docs.astral.sh/uv/).  
-You can use `PyPilot` to create and remove virtual environments, which are created using `UV`.  
+`Pylot` assists you in installing, updating and removing [Astral UV](https://docs.astral.sh/uv/).  
+You can use `Pylot` to create and remove virtual environments, which are created using `UV`.  
 When activated, the virtual environment will be invoked in a child shell session in your current shell.  
 To deactivate the active environment, type `exit` in the terminal.
 
@@ -35,7 +35,7 @@ You can specify location of virtual environments and the default python packages
 Run the following command:
 
 ```bash
-  pypilot install-uv
+  pylot install-uv
 ```
 
 ### Update Astral UV if it is already installed
@@ -43,7 +43,7 @@ Run the following command:
 Run the following command:
 
 ```bash
-  pypilot install-uv --update
+  pylot install-uv --update
 ```
 
 ### Check if Astral UV is installed
@@ -51,7 +51,7 @@ Run the following command:
 Run the following command:
 
 ```bash
-  pypilot check
+  pylot check
 ```
 
 ### Create a new virtual environment with specific Python version 3.10 and packages maturin, numpy, pandas
@@ -59,7 +59,7 @@ Run the following command:
 Run the following command:
 
 ```bash
-  pypilot create myenv -v 3.10 -p maturin numpy pandas
+  pylot create myenv -v 3.10 -p maturin numpy pandas
 ```
 
 ### Create a new virtual environment with specific Python version 3.10, default packages and maturin
@@ -67,7 +67,7 @@ Run the following command:
 Run the following command:
 
 ```bash
-  pypilot create myenv -v 3.10 -d -p maturin
+  pylot create myenv -v 3.10 -d -p maturin
 ```
 
 ### Activate a virtual environment by name
@@ -75,7 +75,7 @@ Run the following command:
 Run the following command:
 
 ```bash
-  pypilot activate myenv
+  pylot activate myenv
 ```
 
 ### Activate a Virtual Environment by Index
@@ -83,7 +83,7 @@ Run the following command:
 Run the following command:
 
 ```bash
-  pypilot activate
+  pylot activate
 ```
 
 You will see a list of available virtual environments:
@@ -106,7 +106,7 @@ Type the index number (e.g., `1`) and press Enter.
 Run the following command:
 
 ```bash
-  pypilot delete myenv
+  pylot delete myenv
 ```
 
 ### Delete a virtual environment using index number
@@ -114,7 +114,7 @@ Run the following command:
 Run the following command:
 
 ```bash
-  pypilot delete
+  pylot delete
 ```
 
 You will see a list of available virtual environments:
@@ -137,7 +137,7 @@ Type the index number (e.g., `1`) and press Enter.
 Run the following command:
 
 ```bash
-  pypilot list
+  pylot list
 ```
 
 You will see a list of available virtual environments:
@@ -157,5 +157,5 @@ You will see a list of available virtual environments:
 Run the following command:
 
 ```bash
-  pypilot uninstall-uv
+  pylot uninstall-uv
 ```

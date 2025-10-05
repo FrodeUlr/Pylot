@@ -1,11 +1,11 @@
-PROJECT_NAME = pypilot
+PROJECT_NAME = pylot
 
 ifeq ($(OS),Windows_NT)
 	TARGET_DIR = target/release
 	CARGO_FLAGS = --release
 	MKDIR_CMD = powershell -NoProfile mkdir dist -Force
 	COPY_CMD = powershell -NoProfile cp
-	PROJECT_NAME = pypilot.exe
+	PROJECT_NAME = pylot.exe
 	YELLOW = Yellow
 	GREEN = Green
 else
@@ -89,10 +89,10 @@ package: build
 	@$(call echo_line,--- Copy build files to /dist ---,GREEN)
 	@$(MKDIR_CMD)
 	@$(COPY_CMD) $(TARGET_DIR)/$(PROJECT_NAME) dist/
-	@$(COPY_CMD) pypilot/settings.toml dist/
+	@$(COPY_CMD) pylot/settings.toml dist/
 
 rebuild: clean build
 
 debug:
 	@cargo build
-	@$(COPY_CMD) pypilot/settings.toml target/debug/
+	@$(COPY_CMD) pylot/settings.toml target/debug/

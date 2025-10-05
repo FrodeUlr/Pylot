@@ -74,7 +74,7 @@ mod tests {
             .succeeds()
             .and()
             .stdout()
-            .contains(format!("pypilot {}", version).as_str())
+            .contains(format!("pylot {}", version).as_str())
             .unwrap();
     }
 

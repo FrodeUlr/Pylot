@@ -1,4 +1,4 @@
-venvs_path = "~/PyPilot/venvs"
+venvs_path = "~/pylot/venvs"
 default_pkgs = [
   "neovim",
   "pyvim",
