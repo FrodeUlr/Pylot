@@ -1,6 +1,6 @@
 use colored::Colorize;
 use shared::venvmanager;
-use shared::{constants::ERROR_CREATING_VENV, processes, utils, uv, venv};
+use shared::{constants::ERROR_CREATING_VENV, utils, uv, venv};
 
 pub async fn activate(name_pos: Option<String>, name: Option<String>) {
     let venv = venvmanager::VENVMANAGER
