@@ -6,7 +6,13 @@ use crate::processes::exit_with_error;
 
 pub async fn read_requirements_file(requirements: &str) -> Vec<String> {
     if !fs::try_exists(requirements).await.unwrap_or(false) {
-        exit_with_error(&format!("Requirements file '{}' does not exist", requirements).red())
+        eprint!(
+            "{} {} {}",
+            "Error: Requiremnets file".red(),
+            requirements.red(),
+            "does not exist".red()
+        );
+        return vec![];
     }
     let content = tokio::fs::read_to_string(requirements).await;
     match content {

@@ -1,3 +1,5 @@
+use std::io;
+
 use colored::Colorize;
 use shared::venvmanager;
 use shared::{constants::ERROR_CREATING_VENV, utils, uv, venv};
@@ -60,7 +62,7 @@ pub async fn create(
     let venv = venv::Venv::new(name, "".to_string(), python_version, packages, default);
     if let Err(e) = venv.create().await {
         eprintln!("{}", format!("{}: {}", ERROR_CREATING_VENV, e).red());
-        venv.delete(false).await;
+        venv.delete(io::stdin(), false).await;
     }
 }
 
@@ -75,12 +77,12 @@ async fn update_packages_from_requirements(requirements: String, packages: &mut 
     }
 }
 
-pub async fn delete(name_pos: Option<String>, name: Option<String>) {
+pub async fn delete<R: std::io::Read>(input: R, name_pos: Option<String>, name: Option<String>) {
     let venv = venvmanager::VENVMANAGER
         .find_venv(name_pos, name, "delete")
         .await;
     if let Some(v) = venv {
-        v.delete(true).await
+        v.delete(input, true).await
     }
 }
 
@@ -119,6 +121,8 @@ async fn print_venvs(mut venvs: Vec<venv::Venv>) {
 
 #[cfg(test)]
 mod tests {
+    use std::io;
+
     use super::*;
     use tokio::fs::write;
 
@@ -155,7 +159,7 @@ mod tests {
             println!("Skipping test in non-GitHub Actions environment");
             return;
         }
-        delete(Some("test_env".to_string()), None).await;
+        delete(io::stdin(), Some("test_env".to_string()), None).await;
     }
 
     #[tokio::test]
@@ -232,7 +236,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_new_venv() {
         let cursor = std::io::Cursor::new("y\n");
-        install(cursor, true).await;
+        install(cursor.clone(), true).await;
         create(
             Some("test_env".to_string()),
             None,
@@ -242,5 +246,6 @@ mod tests {
             false,
         )
         .await;
+        delete(cursor, Some("test_env".to_string()), None).await;
     }
 }

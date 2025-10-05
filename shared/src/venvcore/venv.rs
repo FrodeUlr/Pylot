@@ -3,7 +3,7 @@ use crate::{
     processes, settings, utils,
 };
 use colored::Colorize;
-use std::{fs, io};
+use std::fs;
 use tokio::fs as async_fs;
 
 pub struct Venv {
@@ -58,7 +58,7 @@ impl Venv {
         Ok(())
     }
 
-    pub async fn delete(&self, confirm: bool) {
+    pub async fn delete<R: std::io::Read>(&self, input: R, confirm: bool) {
         let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
         let venv_path = format!("{}/{}", path, self.name);
         if !std::path::Path::new(&venv_path).exists() {
@@ -74,7 +74,7 @@ impl Venv {
                 "at".yellow(),
                 venv_path.replace("\\", "/").red()
             );
-            choice = utils::confirm(io::stdin());
+            choice = utils::confirm(input);
         }
         if !choice {
             return;

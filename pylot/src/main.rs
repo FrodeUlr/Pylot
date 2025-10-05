@@ -36,7 +36,7 @@ async fn main() {
             .await
         }
 
-        Some(Commands::Delete { name_pos, name }) => run::delete(name_pos, name).await,
+        Some(Commands::Delete { name_pos, name }) => run::delete(io::stdin(), name_pos, name).await,
 
         Some(Commands::List) => run::list().await,
 
