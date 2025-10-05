@@ -113,7 +113,7 @@ mod tests {
         };
         let settings_lock = Mutex::new(settings);
         let settings = settings_lock.lock().unwrap();
-        assert_eq!(settings.venvs_path, "~/pymngr/venvs");
+        assert_eq!(settings.venvs_path, "~/pylot/venvs");
     }
 
     #[test]
@@ -127,7 +127,7 @@ mod tests {
     async fn test_init() {
         Settings::init().await;
         let settings = Settings::get_settings();
-        assert_eq!(settings.venvs_path, "~/pymngr/venvs");
+        assert_eq!(settings.venvs_path, "~/pylot/venvs");
     }
 
     #[test]
@@ -149,7 +149,7 @@ mod tests {
         "#;
 
         let settings: Settings = toml::from_str(toml_str).unwrap();
-        assert_eq!(settings.venvs_path, "~/pymngr/venvs");
+        assert_eq!(settings.venvs_path, "~/pylot/venvs");
         assert_eq!(settings.default_pkgs, vec!["requests"]);
     }
 

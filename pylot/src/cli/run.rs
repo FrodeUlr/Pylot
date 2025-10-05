@@ -121,7 +121,7 @@ async fn print_venvs(mut venvs: Vec<venv::Venv>) {
 
 #[cfg(test)]
 mod tests {
-    use std::{io, path::Path};
+    use std::io;
 
     use super::*;
     use tokio::fs::write;
