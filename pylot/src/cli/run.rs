@@ -246,12 +246,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_new_venv() {
+        let pwd = std::env::current_dir().unwrap();
         settings::Settings::init().await;
         let cursor = std::io::Cursor::new("y\n");
-        #[cfg(unix)]
-        {
-            install(cursor.clone(), true).await;
-        }
+        install(cursor.clone(), true).await;
         create(
             Some("test_env_create".to_string()),
             None,
@@ -264,5 +262,6 @@ mod tests {
         delete(cursor, Some("test_env".to_string()), None).await;
         uninstall(io::stdin()).await;
         assert!(!uv::check().await);
+        std::env::set_current_dir(&pwd).unwrap();
     }
 }
