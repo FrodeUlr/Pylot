@@ -1,7 +1,6 @@
 use colored::Colorize;
 use shared::venvmanager;
 use shared::{constants::ERROR_CREATING_VENV, processes, utils, uv, venv};
-use std::io;
 
 pub async fn activate(name_pos: Option<String>, name: Option<String>) {
     let venv = venvmanager::VENVMANAGER
@@ -85,21 +84,21 @@ pub async fn delete(name_pos: Option<String>, name: Option<String>) {
     }
 }
 
-pub async fn install(update: bool) {
+pub async fn install<R: std::io::Read>(input: R, update: bool) {
     if uv::check().await && !update {
         println!("{}", "Astral UV is already installed.".yellow());
         return;
     }
-    if let Err(e) = uv::install(io::stdin()).await {
+    if let Err(e) = uv::install(input).await {
         eprintln!("{}", format!("Error installing Astral UV: {}", e).red());
     }
 }
 
-pub async fn uninstall() {
+pub async fn uninstall<R: std::io::Read>(input: R) {
     if !uv::check().await {
         processes::exit_with_error("Astral UV is not installed.");
     }
-    if let Err(e) = uv::uninstall(io::stdin()).await {
+    if let Err(e) = uv::uninstall(input).await {
         eprintln!("{}", format!("Error uninstalling Astral UV: {}", e).red());
     }
 }
@@ -200,5 +199,31 @@ mod tests {
         assert!(packages.contains(&"pandas".to_string()));
         assert!(packages.contains(&"scipy".to_string()));
         std::fs::remove_file(requirements).unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_install_uv_no() {
+        let cursor = std::io::Cursor::new("n\n");
+        install(cursor, false).await;
+    }
+
+    #[tokio::test]
+    async fn test_uninstall_uv_no() {
+        let cursor = std::io::Cursor::new("n\n");
+        uninstall(cursor).await;
+    }
+    #[tokio::test]
+    async fn test_install_uv_yes() {
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            install(cursor, true).await;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_uninstall_uv_yes() {
+        let cursor = std::io::Cursor::new("y\n");
+        uninstall(cursor).await;
     }
 }
