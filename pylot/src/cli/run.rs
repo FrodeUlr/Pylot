@@ -220,14 +220,34 @@ mod tests {
 
     #[tokio::test]
     async fn test_install_uv_yes() {
-        let cursor = std::io::Cursor::new("y\n");
-        install(cursor, true).await;
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            install(cursor, true).await;
+            assert!(uv::check().await);
+        }
+        #[cfg(not(unix))]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            install(cursor, true).await;
+        }
     }
 
     #[tokio::test]
     async fn test_uninstall_uv_yes() {
-        let cursor = std::io::Cursor::new("y\n");
-        uninstall(cursor).await;
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            install(cursor.clone(), true).await;
+            assert!(uv::check().await);
+            uninstall(cursor).await;
+            assert!(!uv::check().await);
+        }
+        #[cfg(not(unix))]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            uninstall(cursor).await;
+        }
     }
 
     #[tokio::test]
