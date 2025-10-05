@@ -102,7 +102,11 @@ pub async fn uninstall() {
 }
 
 pub async fn list() {
-    let mut venvs = venvmanager::VENVMANAGER.list().await;
+    let venvs = venvmanager::VENVMANAGER.list().await;
+    print_venvs(venvs).await;
+}
+
+async fn print_venvs(mut venvs: Vec<venv::Venv>) {
     if venvs.is_empty() {
         println!("{}", "No virtual environments found".yellow());
     } else {
@@ -122,6 +126,23 @@ mod tests {
     #[tokio::test]
     async fn test_list() {
         list().await;
+    }
+
+    #[tokio::test]
+    async fn test_print_venvs_empty() {
+        print_venvs(vec![]).await;
+    }
+
+    #[tokio::test]
+    async fn test_print_venvs_non_empty() {
+        let venv = venv::Venv::new(
+            "test_env".to_string(),
+            "/path/to/test_env".to_string(),
+            "3.8".to_string(),
+            vec!["numpy".to_string()],
+            false,
+        );
+        print_venvs(vec![venv]).await;
     }
 
     #[tokio::test]
