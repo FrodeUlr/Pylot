@@ -228,4 +228,19 @@ mod tests {
         let cursor = std::io::Cursor::new("y\n");
         uninstall(cursor).await;
     }
+
+    #[tokio::test]
+    async fn test_create_new_venv() {
+        let cursor = std::io::Cursor::new("y\n");
+        install(cursor, true).await;
+        create(
+            Some("test_env".to_string()),
+            None,
+            "3.8".to_string(),
+            vec!["numpy".to_string()],
+            "".to_string(),
+            false,
+        )
+        .await;
+    }
 }
