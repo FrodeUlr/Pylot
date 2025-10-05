@@ -35,16 +35,27 @@ pub async fn create(
     let name = match name.or(name_pos) {
         Some(n) => n,
         None => {
-            processes::exit_with_error("Missing name for the environment.");
+            eprintln!("{}", "Error: Missing name for the environment.".red());
+            return;
         }
     };
     if !uv::check().await {
-        processes::exit_with_error(
-            "Astral UV is not installed. Please run 'uv install' to install it.",
+        eprintln!(
+            "{}",
+            "Astral UV is not installed. Please run 'install-uv to install it.".red()
         );
+        return;
     }
     if venvmanager::VENVMANAGER.check_if_exists(name.clone()).await {
-        processes::exit_with_error("Virtual environment with this name already exists.");
+        eprintln!(
+            "{}",
+            format!(
+                "Error: A virtual environment with the name '{}' already exists.",
+                name
+            )
+            .red()
+        );
+        return;
     }
     let mut packages = packages;
     if !requirements.is_empty() {
@@ -129,5 +140,28 @@ mod tests {
             return;
         }
         activate(Some("test_env_not_here".to_string()), None).await;
+    }
+
+    #[tokio::test]
+    async fn test_create_missing_name() {
+        create(None, None, "3.8".to_string(), vec![], "".to_string(), false).await;
+    }
+
+    #[tokio::test]
+    async fn test_create_missing_uv() {
+        //only run on github agents
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
+        create(
+            Some("test_env".to_string()),
+            None,
+            "3.8".to_string(),
+            vec![],
+            "".to_string(),
+            false,
+        )
+        .await
     }
 }
