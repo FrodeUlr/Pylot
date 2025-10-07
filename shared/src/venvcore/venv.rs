@@ -3,7 +3,7 @@ use crate::{
     processes, settings, utils,
 };
 use colored::Colorize;
-use std::{fs, io};
+use std::fs;
 use tokio::fs as async_fs;
 
 pub struct Venv {
@@ -34,31 +34,34 @@ impl Venv {
     }
 
     pub async fn create(&self) -> Result<(), String> {
-        let (pwd, args) = self.get_pwd_args();
-        let mut child = processes::create_child_cmd("uv", &args, "");
-        processes::run_command(&mut child)
-            .await
-            .map_err(|_| ERROR_CREATING_VENV.to_string())?;
-        let mut pkgs = self.packages.clone();
-        if self.default {
-            let default_pkgs = self.settings.default_pkgs.clone();
-            pkgs.extend(default_pkgs);
-        }
-        if !pkgs.is_empty() {
-            let venv_path = shellexpand::tilde(&self.settings.venvs_path).to_string();
-
-            let (cmd, run, agr_str) = self.generate_command(pkgs, venv_path);
-            let mut child2 = processes::create_child_cmd(cmd, &[&agr_str], run);
-
-            processes::run_command(&mut child2)
+        if let Some((pwd, args)) = self.get_pwd_args() {
+            let mut child = processes::create_child_cmd("uv", &args, "");
+            processes::run_command(&mut child)
                 .await
-                .map_err(|_| "Error installing packages".to_string())?;
+                .map_err(|_| ERROR_CREATING_VENV.to_string())?;
+            let mut pkgs = self.packages.clone();
+            if self.default {
+                let default_pkgs = self.settings.default_pkgs.clone();
+                pkgs.extend(default_pkgs);
+            }
+            if !pkgs.is_empty() {
+                let venv_path = shellexpand::tilde(&self.settings.venvs_path).to_string();
+
+                let (cmd, run, agr_str) = self.generate_command(pkgs, venv_path);
+                let mut child2 = processes::create_child_cmd(cmd, &[&agr_str], run);
+
+                processes::run_command(&mut child2)
+                    .await
+                    .map_err(|_| "Error installing packages".to_string())?;
+            }
+            std::env::set_current_dir(pwd).unwrap();
+            Ok(())
+        } else {
+            Err("Error getting current directory".to_string())
         }
-        std::env::set_current_dir(pwd).unwrap();
-        Ok(())
     }
 
-    pub async fn delete(&self, confirm: bool) {
+    pub async fn delete<R: std::io::Read>(&self, input: R, confirm: bool) {
         let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
         let venv_path = format!("{}/{}", path, self.name);
         if !std::path::Path::new(&venv_path).exists() {
@@ -74,7 +77,7 @@ impl Venv {
                 "at".yellow(),
                 venv_path.replace("\\", "/").red()
             );
-            choice = utils::confirm(io::stdin());
+            choice = utils::confirm(input);
         }
         if !choice {
             return;
@@ -120,7 +123,7 @@ impl Venv {
         }
     }
 
-    fn get_pwd_args(&self) -> (std::path::PathBuf, [&str; 4]) {
+    fn get_pwd_args(&self) -> Option<(std::path::PathBuf, [&str; 4])> {
         let pwd = std::env::current_dir().unwrap();
         let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
         std::env::set_current_dir(&path).unwrap();
@@ -131,7 +134,7 @@ impl Venv {
             self.python_version.as_str(),
         ];
         println!("Creating virtual environment: {}", self.name.cyan());
-        (pwd, args)
+        Some((pwd, args))
     }
 
     fn generate_command(
@@ -259,11 +262,14 @@ mod tests {
             vec![],
             false,
         );
-        let (pwd, args) = venv.get_pwd_args();
-        assert_eq!(args[0], "venv");
-        assert_eq!(args[1], "test_venv_args");
-        assert_eq!(args[2], "--python");
-        assert_eq!(args[3], "3.11");
-        assert_eq!(pwd, pwd_start);
+        if let Some((pwd, args)) = venv.get_pwd_args() {
+            assert_eq!(args[0], "venv");
+            assert_eq!(args[1], "test_venv_args");
+            assert_eq!(args[2], "--python");
+            assert_eq!(args[3], "3.11");
+            assert_eq!(pwd, pwd_start);
+        } else {
+            panic!("get_pwd_args returned None");
+        }
     }
 }

@@ -15,7 +15,7 @@ pub struct Settings {
 }
 
 fn default_venv_path() -> String {
-    String::from("~/pymngr/venvs")
+    String::from("~/pylot/venvs")
 }
 
 static SETTINGS: Lazy<Mutex<Settings>> = Lazy::new(|| Mutex::new(Settings::default()));
@@ -91,29 +91,29 @@ mod tests {
     #[test]
     fn test_default_venv_path() {
         let settings = Settings::default();
-        assert_eq!(settings.venvs_path, "~/pymngr/venvs");
+        assert_eq!(settings.venvs_path, "~/pylot/venvs");
     }
 
     #[test]
     fn test_validate_venv_path() {
         let settings = Settings {
-            venvs_path: "~/pymngr/venvs".to_string(),
+            venvs_path: "~/pylot/venvs".to_string(),
             default_pkgs: vec![],
         };
         settings.validate_venv_path();
-        let expected_path = shellexpand::tilde("~/pymngr/venvs").to_string();
+        let expected_path = shellexpand::tilde("~/pylot/venvs").to_string();
         assert!(Path::new(&expected_path).exists());
     }
 
     #[test]
     fn test_get_settings() {
         let settings = Settings {
-            venvs_path: "~/pymngr/venvs".to_string(),
+            venvs_path: "~/pylot/venvs".to_string(),
             default_pkgs: vec![],
         };
         let settings_lock = Mutex::new(settings);
         let settings = settings_lock.lock().unwrap();
-        assert_eq!(settings.venvs_path, "~/pymngr/venvs");
+        assert_eq!(settings.venvs_path, "~/pylot/venvs");
     }
 
     #[test]
@@ -127,7 +127,7 @@ mod tests {
     async fn test_init() {
         Settings::init().await;
         let settings = Settings::get_settings();
-        assert_eq!(settings.venvs_path, "~/pymngr/venvs");
+        assert_eq!(settings.venvs_path, "~/pylot/venvs");
     }
 
     #[test]
@@ -149,7 +149,7 @@ mod tests {
         "#;
 
         let settings: Settings = toml::from_str(toml_str).unwrap();
-        assert_eq!(settings.venvs_path, "~/pymngr/venvs");
+        assert_eq!(settings.venvs_path, "~/pylot/venvs");
         assert_eq!(settings.default_pkgs, vec!["requests"]);
     }
 
@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_get_exe_dir() {
-        let fake_current_exe = || Ok(PathBuf::from("/usr/local/bin/pymngr"));
+        let fake_current_exe = || Ok(PathBuf::from("/usr/local/bin/pylot"));
         let exe_dir = Settings::get_exe_dir(fake_current_exe);
         assert_eq!(exe_dir, PathBuf::from("/usr/local/bin"));
     }

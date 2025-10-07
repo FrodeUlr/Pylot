@@ -1,5 +1,7 @@
 mod cli;
 
+use std::io;
+
 use crate::cli::run;
 use clap::Parser;
 use cli::clicmd::{Cli, Commands};
@@ -34,13 +36,13 @@ async fn main() {
             .await
         }
 
-        Some(Commands::Delete { name_pos, name }) => run::delete(name_pos, name).await,
+        Some(Commands::Delete { name_pos, name }) => run::delete(io::stdin(), name_pos, name).await,
 
         Some(Commands::List) => run::list().await,
 
-        Some(Commands::Install { update }) => run::install(update).await,
+        Some(Commands::Install { update }) => run::install(io::stdin(), update).await,
 
-        Some(Commands::Uninstall) => run::uninstall().await,
+        Some(Commands::Uninstall) => run::uninstall(io::stdin()).await,
 
         None => {
             println!("No command provided");
