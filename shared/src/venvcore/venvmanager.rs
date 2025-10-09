@@ -148,6 +148,7 @@ impl VenvManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::tempdir;
 
     #[tokio::test]
     async fn test_list_venvs() {
@@ -197,9 +198,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_collect_venvs_empty() {
-        let entries = fs::read_dir("/non_existent_directory").unwrap_or_else(|_| {
-            fs::read_dir(".").expect("Failed to read current directory for test")
-        });
+        let tmp_dir = tempdir().unwrap();
+        let entries = fs::read_dir(tmp_dir.path()).unwrap();
         let venvs = VENVMANAGER.collect_venvs(entries);
         assert!(venvs.is_empty());
     }

@@ -76,9 +76,8 @@ mod tests {
         {
             let test_file = "nonexistent_requirements.txt";
             let result = std::panic::catch_unwind(|| {
-                let _ = tokio::runtime::Runtime::new()
-                    .unwrap()
-                    .block_on(read_requirements_file(test_file));
+                let _ = tokio::runtime::Handle::current()
+                    .block_on(async { read_requirements_file(test_file).await });
             });
             assert!(result.is_err());
         }
