@@ -78,10 +78,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_install_uv_yes() {
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
         #[cfg(unix)]
         {
             let cursor = std::io::Cursor::new("y\n");
@@ -91,20 +87,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_install_uv_no() {
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
         let cursor = std::io::Cursor::new("n\n");
         install(cursor).await.expect("Failed to install Astral UV");
     }
 
     #[tokio::test]
     async fn test_uninstall_uv_no() {
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
         let cursor = std::io::Cursor::new("n\n");
         uninstall(cursor)
             .await
