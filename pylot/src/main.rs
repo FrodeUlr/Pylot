@@ -61,6 +61,7 @@ mod tests {
     fn test_cli_output_help() {
         assert_cli::Assert::main_binary()
             .with_args(&["--help"])
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
             .succeeds()
             .and()
             .stdout()
@@ -73,6 +74,7 @@ mod tests {
         let version = env!("CARGO_PKG_VERSION");
         assert_cli::Assert::main_binary()
             .with_args(&["--version"])
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
             .succeeds()
             .and()
             .stdout()
@@ -84,6 +86,7 @@ mod tests {
     fn test_cli_output_check() {
         assert_cli::Assert::main_binary()
             .with_args(&["check"])
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
             .succeeds()
             .and()
             .stdout()
@@ -99,6 +102,7 @@ mod tests {
         }
         assert_cli::Assert::main_binary()
             .with_args(&["activate"])
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
             .succeeds()
             .and()
             .stdout()
@@ -114,6 +118,7 @@ mod tests {
         }
         assert_cli::Assert::main_binary()
             .with_args(&["delete"])
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
             .succeeds()
             .and()
             .stdout()
@@ -125,6 +130,7 @@ mod tests {
     fn test_cli_output_delete_name() {
         assert_cli::Assert::main_binary()
             .with_args(&["delete", "myvenv"])
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
             .succeeds()
             .and()
             .stderr()
@@ -136,6 +142,7 @@ mod tests {
     fn test_cli_output_activate_name() {
         assert_cli::Assert::main_binary()
             .with_args(&["activate", "myvenv"])
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
             .succeeds()
             .and()
             .stderr()
