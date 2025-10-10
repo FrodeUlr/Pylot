@@ -1,0 +1,10 @@
+venvs_path = "~/pylot/venvs"
+default_pkgs = [
+  "neovim",
+  "pyvim",
+  "pylint",
+  "pydantic",
+  "jupyter",
+  "jupyterthemes",
+  "ruff-lsp",
+]
