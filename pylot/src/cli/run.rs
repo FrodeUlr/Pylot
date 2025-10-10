@@ -170,6 +170,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_missing_uv() {
+        let cursor = std::io::Cursor::new("y\n");
+        uninstall(cursor.clone()).await;
         //only run on github agents
         if std::env::var("GITHUB_ACTIONS").is_err() {
             println!("Skipping test in non-GitHub Actions environment");
@@ -183,9 +185,7 @@ mod tests {
             "".to_string(),
             false,
         )
-        .await;
-        let cursor = std::io::Cursor::new("y\n");
-        delete(cursor, None, Some("test_env".to_string())).await
+        .await
     }
 
     #[tokio::test]
@@ -245,32 +245,45 @@ mod tests {
         }
     }
 
-    // #[tokio::test]
-    // async fn test_create_new_venv() {
-    //     let mut path = "~/pylot/venvs".to_string();
-    //     if path.starts_with("~") {
-    //         path = shellexpand::tilde(&path).to_string();
-    //     }
-    //     if !Path::new(&path).exists() {
-    //         println!("Creating venvs folder: {}", path);
-    //         std::fs::create_dir_all(&path).expect("Failed to create venvs folder");
-    //     }
-    //     let cursor = std::io::Cursor::new("y\n");
-    //     #[cfg(unix)]
-    //     {
-    //         install(cursor.clone(), true).await;
-    //     }
-    //     create(
-    //         Some("test_env_create".to_string()),
-    //         None,
-    //         "3.11".to_string(),
-    //         vec!["numpy".to_string()],
-    //         "".to_string(),
-    //         false,
-    //     )
-    //     .await;
-    //     delete(cursor, Some("test_env".to_string()), None).await;
-    //     uninstall(io::stdin()).await;
-    //     assert!(!uv::check().await);
-    // }
+    #[tokio::test]
+    async fn test_create_new_venv() {
+        let cursor = std::io::Cursor::new("y\n");
+        install(cursor.clone(), false).await;
+        //only run on github agents
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
+        create(
+            Some("test_env".to_string()),
+            None,
+            "3.8".to_string(),
+            vec![],
+            "".to_string(),
+            false,
+        )
+        .await;
+        uninstall(cursor).await;
+    }
+
+    #[tokio::test]
+    async fn test_create_new_venv_default() {
+        let cursor = std::io::Cursor::new("y\n");
+        install(cursor.clone(), false).await;
+        //only run on github agents
+        if std::env::var("GITHUB_ACTIONS").is_err() {
+            println!("Skipping test in non-GitHub Actions environment");
+            return;
+        }
+        create(
+            Some("test_env".to_string()),
+            None,
+            "3.8".to_string(),
+            vec![],
+            "".to_string(),
+            true,
+        )
+        .await;
+        uninstall(cursor).await;
+    }
 }
