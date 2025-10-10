@@ -247,43 +247,59 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_new_venv() {
-        let cursor = std::io::Cursor::new("y\n");
-        install(cursor.clone(), false).await;
-        //only run on github agents
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            install(cursor.clone(), false).await;
+            //only run on github agents
+            if std::env::var("GITHUB_ACTIONS").is_err() {
+                println!("Skipping test in non-GitHub Actions environment");
+                return;
+            }
+            create(
+                None,
+                Some("test_env".to_string()),
+                "3.8".to_string(),
+                vec![],
+                "".to_string(),
+                false,
+            )
+            .await;
+            uninstall(cursor).await;
         }
-        create(
-            Some("test_env".to_string()),
-            None,
-            "3.8".to_string(),
-            vec![],
-            "".to_string(),
-            false,
-        )
-        .await;
-        uninstall(cursor).await;
+        #[cfg(not(unix))]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            uninstall(cursor).await;
+        }
     }
 
     #[tokio::test]
     async fn test_create_new_venv_default() {
-        let cursor = std::io::Cursor::new("y\n");
-        install(cursor.clone(), false).await;
-        //only run on github agents
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            install(cursor.clone(), false).await;
+            //only run on github agents
+            if std::env::var("GITHUB_ACTIONS").is_err() {
+                println!("Skipping test in non-GitHub Actions environment");
+                return;
+            }
+            create(
+                None,
+                Some("test_env".to_string()),
+                "3.8".to_string(),
+                vec![],
+                "".to_string(),
+                true,
+            )
+            .await;
+            uninstall(cursor).await;
         }
-        create(
-            Some("test_env".to_string()),
-            None,
-            "3.8".to_string(),
-            vec![],
-            "".to_string(),
-            true,
-        )
-        .await;
-        uninstall(cursor).await;
+        #[cfg(not(unix))]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            uninstall(cursor).await;
+        }
     }
 }
