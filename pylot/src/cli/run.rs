@@ -183,7 +183,9 @@ mod tests {
             "".to_string(),
             false,
         )
-        .await
+        .await;
+        let cursor = std::io::Cursor::new("y\n");
+        delete(cursor, None, Some("test_env".to_string())).await
     }
 
     #[tokio::test]
