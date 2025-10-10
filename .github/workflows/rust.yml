@@ -22,7 +22,7 @@ jobs:
       - name: Install nextest
         run: cargo install cargo-nextest --locked
       - name: Run nextest
-        run: cargo nextest run --workspace --no-fail-fast --config-path ./nextest.xml --profile ci
+        run: cargo nextest run --workspace --no-fail-fast --config-file ./nextest.xml --profile ci
       - name: Upload test results to Codecov
         uses: codecov/test-results-action@v1
         with:
