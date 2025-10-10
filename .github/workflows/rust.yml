@@ -29,7 +29,7 @@ jobs:
       - name: Upload test results to Codecov
         uses: codecov/test-results-action@v1
         with:
-          files: ./target/nextest/ci/junit-result.xml
+          files: ./target/nextest/ci/junit.xml
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Run coverage
         run: cargo llvm-cov --workspace --lcov --output-path lcov.info -- --nocapture
