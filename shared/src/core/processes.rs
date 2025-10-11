@@ -2,7 +2,7 @@ use crate::utility::constants::{POWERSHELL_CMD, PWSH_CMD};
 use colored::Colorize;
 use std::process::{Command as StdCommand, Stdio};
 use tokio::{
-    io::{AsyncBufReadExt, BufReader},
+    io::{AsyncBufRead, AsyncBufReadExt, BufReader},
     process::{Child, Command},
 };
 
@@ -58,6 +58,47 @@ pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<(), Box<dyn s
     }
 }
 
+async fn run_command_with_handlers<
+    RO: AsyncBufRead + Unpin + Send + 'static,
+    RE: AsyncBufRead + Unpin + Send + 'static,
+    F,
+    G,
+>(
+    stdout_reader: RO,
+    stderr_reader: RE,
+    mut handle_stdout: F,
+    mut handle_stderr: G,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    F: FnMut(String) + Send + 'static,
+    G: FnMut(String) + Send + 'static,
+{
+    let stdout_task = tokio::spawn(async move {
+        let mut lines = stdout_reader.lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            handle_stdout(line);
+        }
+    });
+
+    let stderr_task = tokio::spawn(async move {
+        let mut lines = stderr_reader.lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            handle_stderr(line);
+        }
+    });
+
+    let (stdout_res, stderr_res) = tokio::join!(stdout_task, stderr_task);
+
+    if let Err(e) = stdout_res {
+        return Err(format!("Error reading stdout: {}", e).into());
+    }
+    if let Err(e) = stderr_res {
+        return Err(format!("Error reading stderr: {}", e).into());
+    }
+
+    Ok(())
+}
+
 pub async fn run_command(child: &mut Child) -> Result<(), Box<dyn std::error::Error>> {
     let stdout = child.stdout.take().expect("Failed to open stdout");
     let stderr = child.stderr.take().expect("Failed to open stderr");
@@ -65,36 +106,13 @@ pub async fn run_command(child: &mut Child) -> Result<(), Box<dyn std::error::Er
     let stdout_reader = BufReader::new(stdout);
     let stderr_reader = BufReader::new(stderr);
 
-    let stdout_task = tokio::spawn(async move {
-        let mut lines = stdout_reader.lines();
-        while let Ok(Some(line)) = lines.next_line().await {
-            println!("{}", line.green());
-        }
-    });
-
-    let stderr_task = tokio::spawn(async move {
-        let mut lines = stderr_reader.lines();
-        while let Ok(Some(line)) = lines.next_line().await {
-            eprintln!("{}", line.yellow());
-        }
-    });
-
-    let (stdout_res, stderr_res, child_res) = tokio::join!(stdout_task, stderr_task, child.wait());
-
-    if let Err(e) = stdout_res {
-        eprintln!("{}", format!("Error reading stdout: {}", e).red());
-    };
-    if let Err(e) = stderr_res {
-        eprintln!("{}", format!("Error reading stderr: {}", e).red());
-    };
-    if let Err(e) = child_res {
-        return Err(format!("Error waiting for child: {}", e).into());
-    }
-    let status = child_res.unwrap();
-    if !status.success() {
-        return Err(format!("Command exited with status: {}", status).into());
-    }
-
+    run_command_with_handlers(
+        stdout_reader,
+        stderr_reader,
+        |line| println!("{}", line.green()),
+        |line| eprintln!("{}", line.yellow()),
+    )
+    .await?;
     Ok(())
 }
 
@@ -172,5 +190,32 @@ mod tests {
             let child = create_child_cmd(cmd, args, run);
             assert!(child.id() > Some(0));
         }
+    }
+
+    #[tokio::test]
+    async fn test_run_command_with_handlers() {
+        use std::io::Cursor;
+        use std::sync::{Arc, Mutex};
+        use tokio::io::BufReader;
+        let stdout_data = Cursor::new("line1\nline2\n");
+        let stderr_data = Cursor::new("err1\nerr2\n");
+
+        let stdout_lines = Arc::new(Mutex::new(Vec::new()));
+        let stderr_lines = Arc::new(Mutex::new(Vec::new()));
+
+        let stdout_lines_clone = Arc::clone(&stdout_lines);
+        let stderr_lines_clone = Arc::clone(&stderr_lines);
+
+        run_command_with_handlers(
+            BufReader::new(stdout_data),
+            BufReader::new(stderr_data),
+            move |line| stdout_lines_clone.lock().unwrap().push(line),
+            move |line| stderr_lines_clone.lock().unwrap().push(line),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(*stdout_lines.lock().unwrap(), vec!["line1", "line2"]);
+        assert_eq!(*stderr_lines.lock().unwrap(), vec!["err1", "err2"]);
     }
 }
