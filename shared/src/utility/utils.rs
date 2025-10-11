@@ -54,10 +54,10 @@ mod tests {
         let content = "package1\npackage2\n# This is a comment\n\npackage3\n";
         fs::write(test_file, content).await.unwrap();
 
-        match read_requirements_file(test_file).await {
-            Ok(packages) => assert_eq!(packages, vec!["package1", "package2", "package3"]),
-            Err(e) => panic!("Failed to read requirements file: {}", e),
-        }
+        let packages = read_requirements_file(test_file)
+            .await
+            .expect("Failed to read requirements file");
+        assert_eq!(packages, vec!["package1", "package2", "package3"]);
 
         fs::remove_file(test_file).await.unwrap();
     }
