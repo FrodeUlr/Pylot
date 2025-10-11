@@ -75,16 +75,18 @@ where
 {
     let stdout_task = tokio::spawn(async move {
         let mut lines = stdout_reader.lines();
-        while let Ok(Some(line)) = lines.next_line().await {
+        while let Some(line) = lines.next_line().await? {
             handle_stdout(line);
         }
+        Ok::<(), Box<std::io::Error>>(())
     });
 
     let stderr_task = tokio::spawn(async move {
         let mut lines = stderr_reader.lines();
-        while let Ok(Some(line)) = lines.next_line().await {
+        while let Some(line) = lines.next_line().await? {
             handle_stderr(line);
         }
+        Ok::<(), Box<std::io::Error>>(())
     });
 
     let (stdout_res, stderr_res) = tokio::join!(stdout_task, stderr_task);
@@ -94,6 +96,13 @@ where
     }
     if let Err(e) = stderr_res {
         return Err(format!("Error reading stderr: {}", e).into());
+    }
+
+    if let Some(e) = stdout_res.ok().and_then(|r| r.err()) {
+        return Err(format!("Error in stdout task: {}", e).into());
+    }
+    if let Some(e) = stderr_res.ok().and_then(|r| r.err()) {
+        return Err(format!("Error in stderr task: {}", e).into());
     }
 
     Ok(())
@@ -132,6 +141,31 @@ pub fn get_parent_shell() -> String {
 mod tests {
 
     use super::*;
+
+    use std::io::Cursor;
+    use std::pin::Pin;
+    use std::sync::{Arc, Mutex};
+    use std::task::{Context, Poll};
+    use tokio::io::{self, AsyncBufRead, AsyncRead, ReadBuf};
+
+    struct ErrorReader;
+
+    impl AsyncRead for ErrorReader {
+        fn poll_read(
+            self: Pin<&mut Self>,
+            _cx: &mut Context<'_>,
+            _buf: &mut ReadBuf<'_>,
+        ) -> Poll<io::Result<()>> {
+            Poll::Ready(Err(io::Error::other("simulated error".to_string())))
+        }
+    }
+
+    impl AsyncBufRead for ErrorReader {
+        fn poll_fill_buf(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<io::Result<&[u8]>> {
+            Poll::Ready(Err(io::Error::other("simulated error".to_string())))
+        }
+        fn consume(self: Pin<&mut Self>, _amt: usize) {}
+    }
 
     #[test]
     fn test_get_parent_shell() {
@@ -194,9 +228,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_command_with_handlers() {
-        use std::io::Cursor;
-        use std::sync::{Arc, Mutex};
-        use tokio::io::BufReader;
         let stdout_data = Cursor::new("line1\nline2\n");
         let stderr_data = Cursor::new("err1\nerr2\n");
 
@@ -217,5 +248,47 @@ mod tests {
 
         assert_eq!(*stdout_lines.lock().unwrap(), vec!["line1", "line2"]);
         assert_eq!(*stderr_lines.lock().unwrap(), vec!["err1", "err2"]);
+    }
+
+    #[tokio::test]
+    async fn test_run_command_with_handlers_stdout_err() {
+        let stderr_data = Cursor::new("err1\nerr2\n");
+
+        let stdout_lines = Arc::new(Mutex::new(Vec::new()));
+        let stderr_lines = Arc::new(Mutex::new(Vec::new()));
+
+        let stdout_lines_clone = Arc::clone(&stdout_lines);
+        let stderr_lines_clone = Arc::clone(&stderr_lines);
+
+        let result = run_command_with_handlers(
+            ErrorReader,
+            BufReader::new(stderr_data),
+            move |line| stdout_lines_clone.lock().unwrap().push(line),
+            move |line| stderr_lines_clone.lock().unwrap().push(line),
+        )
+        .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_run_command_with_handlers_stderr_err() {
+        let stdout_data = Cursor::new("out\nout\n");
+
+        let stdout_lines = Arc::new(Mutex::new(Vec::new()));
+        let stderr_lines = Arc::new(Mutex::new(Vec::new()));
+
+        let stdout_lines_clone = Arc::clone(&stdout_lines);
+        let stderr_lines_clone = Arc::clone(&stderr_lines);
+
+        let result = run_command_with_handlers(
+            BufReader::new(stdout_data),
+            ErrorReader,
+            move |line| stdout_lines_clone.lock().unwrap().push(line),
+            move |line| stderr_lines_clone.lock().unwrap().push(line),
+        )
+        .await;
+
+        assert!(result.is_err());
     }
 }
