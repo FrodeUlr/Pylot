@@ -88,8 +88,7 @@ pub async fn run_command(child: &mut Child) -> Result<(), Box<dyn std::error::Er
         eprintln!("{}", format!("Error reading stderr: {}", e).red());
     };
     if let Err(e) = child_res {
-        eprintln!("{}", format!("Error waiting for child: {}", e).red());
-        exit_with_error("Failed to run command");
+        return Err(format!("Error waiting for child: {}", e).into());
     }
     let status = child_res.unwrap();
     if !status.success() {
@@ -109,11 +108,6 @@ pub fn get_parent_shell() -> String {
         return shell.to_string();
     }
     std::env::var("SHELL").unwrap()
-}
-
-pub fn exit_with_error(msg: &str) -> ! {
-    eprintln!("{}", msg.red());
-    std::process::exit(1);
 }
 
 #[cfg(test)]
