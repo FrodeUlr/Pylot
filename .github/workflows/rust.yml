@@ -57,7 +57,7 @@ jobs:
       - name: Build
         run: make package
       - name: Install cargo-llvm-cov
-        run: cargo install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
       - name: Run tests and coverage
         run: cargo llvm-cov --workspace --lcov --output-path lcov.info -- --nocapture
       - name: Upload coverage artifact
