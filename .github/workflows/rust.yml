@@ -54,8 +54,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build
-        run: make package
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Run tests and coverage
@@ -70,7 +68,8 @@ jobs:
         with:
           files: ./lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
-
+      - name: Build
+        run: make package
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
