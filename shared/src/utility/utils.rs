@@ -64,19 +64,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_requirements_file_nonexistent() {
-        #[cfg(unix)]
-        {
-            let test_file = "nonexistent_requirements.txt";
-            let result = std::panic::catch_unwind(|| {
-                let _ = tokio::runtime::Handle::current()
-                    .block_on(async { read_requirements_file(test_file).await });
-            });
-            assert!(result.is_err());
-        }
-        #[cfg(not(unix))]
-        {
-            assert!(true);
-        }
+        let test_file = "nonexistent_requirements.txt";
+        let result = std::panic::catch_unwind(|| {
+            let _ = tokio::runtime::Handle::current()
+                .block_on(async { read_requirements_file(test_file).await });
+        });
+        assert!(result.is_err());
     }
 
     #[test]
