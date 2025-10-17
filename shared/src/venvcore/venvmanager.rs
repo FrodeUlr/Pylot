@@ -27,6 +27,15 @@ impl VenvManager {
         venvs
     }
 
+    pub fn list_sync(&self) -> Vec<Venv> {
+        let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
+        let venvs: Vec<Venv> = match fs::read_dir(&path) {
+            Ok(entries) => self.collect_venvs(entries),
+            Err(_) => Vec::new(),
+        };
+        venvs
+    }
+
     pub async fn check_if_exists(&self, name: String) -> bool {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venv_path = format!("{}/{}", path, name);
