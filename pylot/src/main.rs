@@ -10,6 +10,7 @@ use shared::settings;
 #[tokio::main]
 async fn main() {
     settings::Settings::init().await;
+    let _ = color_eyre::install();
     let args = Cli::parse();
 
     match args.commands {
@@ -43,6 +44,10 @@ async fn main() {
         Some(Commands::Install { update }) => install(io::stdin(), update).await,
 
         Some(Commands::Uninstall) => uninstall(io::stdin()).await,
+
+        Some(Commands::Tui) => {
+            _ = tui::run::run();
+        }
 
         None => {
             println!("No command provided");

@@ -110,6 +110,11 @@ pub enum Commands {
         #[arg(index = 1, help = "Name of the virtual environment")]
         name_pos: Option<String>,
     },
+    #[command(
+        about = "Launch TUI for managing python virtual environments",
+        long_about = "This command launches a TUI for managing python virtual environments"
+    )]
+    Tui,
 }
 
 #[cfg(test)]
