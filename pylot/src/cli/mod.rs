@@ -1,3 +1,2 @@
-pub mod clicmd;
-pub mod run;
+pub mod cmds;
 mod styles;

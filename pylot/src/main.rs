@@ -1,10 +1,10 @@
 mod cli;
 
+use pylot::{activate, check, create, delete, install, list, uninstall};
 use std::io;
 
-use crate::cli::run;
 use clap::Parser;
-use cli::clicmd::{Cli, Commands};
+use cli::cmds::{Cli, Commands};
 use shared::settings;
 
 #[tokio::main]
@@ -13,9 +13,9 @@ async fn main() {
     let args = Cli::parse();
 
     match args.commands {
-        Some(Commands::Activate { name_pos, name }) => run::activate(name_pos, name).await,
+        Some(Commands::Activate { name_pos, name }) => activate(name_pos, name).await,
 
-        Some(Commands::Check) => run::check().await,
+        Some(Commands::Check) => check().await,
 
         Some(Commands::Create {
             name_pos,
@@ -25,7 +25,7 @@ async fn main() {
             requirements,
             default,
         }) => {
-            run::create(
+            create(
                 name_pos,
                 name,
                 python_version,
@@ -36,13 +36,13 @@ async fn main() {
             .await
         }
 
-        Some(Commands::Delete { name_pos, name }) => run::delete(io::stdin(), name_pos, name).await,
+        Some(Commands::Delete { name_pos, name }) => delete(io::stdin(), name_pos, name).await,
 
-        Some(Commands::List) => run::list().await,
+        Some(Commands::List) => list().await,
 
-        Some(Commands::Install { update }) => run::install(io::stdin(), update).await,
+        Some(Commands::Install { update }) => install(io::stdin(), update).await,
 
-        Some(Commands::Uninstall) => run::uninstall(io::stdin()).await,
+        Some(Commands::Uninstall) => uninstall(io::stdin()).await,
 
         None => {
             println!("No command provided");
@@ -54,7 +54,7 @@ async fn main() {
 mod tests {
     use clap::Parser;
 
-    use crate::cli::clicmd::{Cli, Commands};
+    use crate::cli::cmds::{Cli, Commands};
     use shared::constants::ERROR_VENV_NOT_EXISTS;
 
     #[test]

@@ -2,29 +2,19 @@ use colored::Colorize;
 use std::io::{stdout, BufRead, Write};
 use tokio::fs;
 
-use crate::processes::exit_with_error;
-
-pub async fn read_requirements_file(requirements: &str) -> Vec<String> {
+pub async fn read_requirements_file(
+    requirements: &str,
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     if !fs::try_exists(requirements).await.unwrap_or(false) {
-        eprint!(
-            "{} {} {}",
-            "Error: Requiremnets file".red(),
-            requirements.red(),
-            "does not exist".red()
-        );
-        return vec![];
+        return Err("Requirements file does not exist".into());
     }
-    let content = tokio::fs::read_to_string(requirements).await;
-    match content {
-        Ok(c) => c
-            .lines()
-            .map(|line| line.trim().to_string())
-            .filter(|line| !line.is_empty() && !line.starts_with('#'))
-            .collect(),
-        Err(e) => {
-            exit_with_error(&format!("Error reading requirements file: {}", e));
-        }
-    }
+    let content = tokio::fs::read_to_string(requirements).await?;
+    let lines = content
+        .lines()
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .collect();
+    Ok(lines)
 }
 
 pub fn confirm<R: std::io::Read>(input: R) -> bool {
@@ -64,7 +54,9 @@ mod tests {
         let content = "package1\npackage2\n# This is a comment\n\npackage3\n";
         fs::write(test_file, content).await.unwrap();
 
-        let packages = read_requirements_file(test_file).await;
+        let packages = read_requirements_file(test_file)
+            .await
+            .expect("Failed to read requirements file");
         assert_eq!(packages, vec!["package1", "package2", "package3"]);
 
         fs::remove_file(test_file).await.unwrap();
@@ -72,19 +64,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_requirements_file_nonexistent() {
-        #[cfg(unix)]
-        {
-            let test_file = "nonexistent_requirements.txt";
-            let result = std::panic::catch_unwind(|| {
-                let _ = tokio::runtime::Handle::current()
-                    .block_on(async { read_requirements_file(test_file).await });
-            });
-            assert!(result.is_err());
-        }
-        #[cfg(not(unix))]
-        {
-            assert!(true);
-        }
+        let test_file = "nonexistent_requirements.txt";
+        let result = std::panic::catch_unwind(|| {
+            let _ = tokio::runtime::Handle::current()
+                .block_on(async { read_requirements_file(test_file).await });
+        });
+        assert!(result.is_err());
     }
 
     #[test]

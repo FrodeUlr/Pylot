@@ -58,7 +58,16 @@ pub async fn create(
         );
         return;
     }
-    update_packages_from_requirements(requirements, &mut packages).await;
+    match update_packages_from_requirements(requirements, &mut packages).await {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!(
+                "{}",
+                format!("Error reading requirements file: {}", e).red()
+            );
+            return;
+        }
+    }
     let venv = venv::Venv::new(name, "".to_string(), python_version, packages, default);
     if let Err(e) = venv.create().await {
         eprintln!("{}", format!("{}: {}", ERROR_CREATING_VENV, e).red());
@@ -66,15 +75,23 @@ pub async fn create(
     }
 }
 
-async fn update_packages_from_requirements(requirements: String, packages: &mut Vec<String>) {
+async fn update_packages_from_requirements(
+    requirements: String,
+    packages: &mut Vec<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
     if !requirements.is_empty() {
-        let read_pkgs = utils::read_requirements_file(&requirements).await;
-        for req in read_pkgs {
-            if !packages.contains(&req) {
-                packages.push(req);
+        match utils::read_requirements_file(&requirements).await {
+            Ok(read_pkgs) => {
+                for req in read_pkgs {
+                    if !packages.contains(&req) {
+                        packages.push(req);
+                    }
+                }
             }
+            Err(e) => Err(e)?,
         }
     }
+    Ok(())
 }
 
 pub async fn delete<R: std::io::Read>(input: R, name_pos: Option<String>, name: Option<String>) {
@@ -193,7 +210,12 @@ mod tests {
         let requirements = "test_requirements.txt".to_string();
         let mut packages = vec!["numpy".to_string()];
         let _ = write(&requirements, "pandas\nscipy\n").await;
-        update_packages_from_requirements(requirements.clone(), &mut packages).await;
+        match update_packages_from_requirements(requirements.clone(), &mut packages).await {
+            Ok(_) => {}
+            Err(e) => {
+                panic!("Error reading requirements file: {}", e);
+            }
+        }
         assert!(packages.contains(&"numpy".to_string()));
         assert!(packages.contains(&"pandas".to_string()));
         assert!(packages.contains(&"scipy".to_string()));
