@@ -41,6 +41,14 @@ pub fn render_footer(frame: &mut ratatui::Frame, area: Rect) {
                 .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" Exit  "),
+        Span::styled(
+            " S ",
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(" Update Status "),
     ]))
     .alignment(Alignment::Center)
     .block(

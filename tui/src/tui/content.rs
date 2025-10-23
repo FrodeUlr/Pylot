@@ -1,3 +1,5 @@
+use std::sync::{LazyLock, Mutex};
+
 use super::app::App;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -5,6 +7,19 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Padding, Paragraph},
 };
+
+static STATUS_MESSAGE: LazyLock<Mutex<String>> =
+    LazyLock::new(|| Mutex::new(String::from("Running")));
+
+pub fn set_status_message(status: &str) {
+    let mut msg = STATUS_MESSAGE.lock().unwrap();
+    *msg = status.to_string();
+}
+
+fn get_status_message() -> String {
+    let msg = STATUS_MESSAGE.lock().unwrap();
+    msg.clone()
+}
 
 pub fn render_content(frame: &mut ratatui::Frame, area: Rect, app: &App) {
     let chunks = Layout::default()
@@ -49,7 +64,7 @@ pub fn render_content(frame: &mut ratatui::Frame, area: Rect, app: &App) {
         Line::from(""),
         Line::from(vec![
             Span::raw("Status: "),
-            Span::styled("● Running", Style::default().fg(Color::Green)),
+            Span::styled(get_status_message(), Style::default().fg(Color::Green)),
         ]),
     ];
 

@@ -43,5 +43,20 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> Result<(
                 }
             }
         }
+
+        if event::poll(Duration::from_millis(5))? {
+            if let Event::Key(key) = event::read()? {
+                if key.code == KeyCode::Char('s') {
+                    super::cmds::update_status("Stopped");
+                }
+            }
+        }
+        if event::poll(Duration::from_millis(5))? {
+            if let Event::Key(key) = event::read()? {
+                if key.code == KeyCode::Char('r') {
+                    super::cmds::update_status("Running");
+                }
+            }
+        }
     }
 }
