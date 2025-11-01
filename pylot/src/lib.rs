@@ -103,13 +103,23 @@ pub async fn delete<R: std::io::Read>(input: R, name_pos: Option<String>, name: 
     }
 }
 
-pub async fn install<R: std::io::Read>(input: R, update: bool) {
-    if uv::check().await && !update {
+pub async fn install<R: std::io::Read>(input: R) {
+    if uv::check().await {
         println!("{}", "Astral UV is already installed.".yellow());
         return;
     }
     if let Err(e) = uv::install(input).await {
         eprintln!("{}", format!("Error installing Astral UV: {}", e).red());
+    }
+}
+
+pub async fn update() {
+    if uv::check().await {
+        uv::update().await.unwrap_or_else(|e| {
+            eprintln!("{}", format!("Error updating Astral UV: {}", e).red());
+        });
+    } else {
+        eprintln!("{}", "Astral UV is not installed.".red());
     }
 }
 
@@ -225,7 +235,7 @@ mod tests {
     #[tokio::test]
     async fn test_install_uv_no() {
         let cursor = std::io::Cursor::new("n\n");
-        install(cursor, false).await;
+        install(cursor).await;
     }
 
     #[tokio::test]
@@ -239,8 +249,8 @@ mod tests {
         #[cfg(unix)]
         {
             let cursor = std::io::Cursor::new("y\n");
-            install(cursor.clone(), true).await;
-            install(cursor.clone(), true).await;
+            install(cursor.clone()).await;
+            install(cursor.clone()).await;
             assert!(uv::check().await);
         }
         #[cfg(not(unix))]
@@ -255,7 +265,7 @@ mod tests {
         #[cfg(unix)]
         {
             let cursor = std::io::Cursor::new("y\n");
-            install(cursor.clone(), true).await;
+            install(cursor.clone()).await;
             assert!(uv::check().await);
             uninstall(cursor).await;
             assert!(!uv::check().await);

@@ -20,35 +20,47 @@ pub struct Cli {
     pub commands: Option<Commands>,
 }
 
-#[derive(Debug, Subcommand)]
-pub enum Commands {
+#[derive(Subcommand, Debug)]
+pub enum UvCommands {
     #[command(
-        name = "install-uv",
+        name = "install",
         about = "Install Astral UV",
         long_about = "This command installs Astral UV"
     )]
-    Install {
-        #[arg(
-            short = 'u',
-            long,
-            help = "Check for updates and install if available",
-            default_value = "false"
-        )]
-        update: bool,
-    },
+    Install,
+
+    #[command(
+        name = "update",
+        about = "Update Astral UV",
+        long_about = "This command updates Astral UV"
+    )]
+    Update,
+
+    #[command(
+        name = "uninstall",
+        about = "Uninstall Astral UV",
+        long_about = "This command uninstalls Astral UV"
+    )]
+    Uninstall,
 
     #[command(
         about = "Check Astral UV",
         long_about = "This command checks if Astral UV is installed"
     )]
     Check,
+}
 
+#[derive(Debug, Subcommand)]
+pub enum Commands {
     #[command(
-        name = "uninstall-uv",
-        about = "Uninstall Astral UV",
-        long_about = "This command uninstalls Astral UV"
+        name = "uv",
+        about = "Commands for managing UV",
+        long_about = "This command group contains commands for managing Astral UV"
     )]
-    Uninstall,
+    Uv {
+        #[command(subcommand)]
+        command: UvCommands,
+    },
 
     #[command(
         about = "Create a new python virtual environment",

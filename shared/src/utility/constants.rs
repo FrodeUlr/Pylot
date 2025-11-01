@@ -14,6 +14,10 @@ pub const UV_UNIX_INSTALL_ARGS: &[&str] =
     &["-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"];
 pub const UV_UNIX_UNINSTALL_ARGS: &[&str] = &["-c", "rm ~/.local/bin/uv ~/.local/bin/uvx"];
 
+// Shared constants
+pub const UPDATE_COMMAND: &str = "uv";
+pub const UPDATE_ARGS: &[&str] = &["self", "update"];
+
 // Error messages
 pub const ERROR_CREATING_VENV: &str = "Error creating virtual environment";
 pub const ERROR_VENV_NOT_EXISTS: &str = "Virtual environment does not exist";

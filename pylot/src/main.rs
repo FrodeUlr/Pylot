@@ -1,11 +1,13 @@
 mod cli;
 
-use pylot::{activate, check, create, delete, install, list, uninstall};
+use pylot::{activate, check, create, delete, install, list, uninstall, update};
 use std::io;
 
 use clap::Parser;
 use cli::cmds::{Cli, Commands};
 use shared::settings;
+
+use crate::cli::cmds::UvCommands;
 
 #[tokio::main]
 async fn main() {
@@ -14,8 +16,6 @@ async fn main() {
 
     match args.commands {
         Some(Commands::Activate { name_pos, name }) => activate(name_pos, name).await,
-
-        Some(Commands::Check) => check().await,
 
         Some(Commands::Create {
             name_pos,
@@ -40,9 +40,12 @@ async fn main() {
 
         Some(Commands::List) => list().await,
 
-        Some(Commands::Install { update }) => install(io::stdin(), update).await,
-
-        Some(Commands::Uninstall) => uninstall(io::stdin()).await,
+        Some(Commands::Uv { command }) => match command {
+            UvCommands::Install => install(io::stdin()).await,
+            UvCommands::Update => update().await,
+            UvCommands::Uninstall => uninstall(io::stdin()).await,
+            UvCommands::Check => check().await,
+        },
 
         None => {
             println!("No command provided");
