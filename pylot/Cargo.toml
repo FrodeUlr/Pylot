@@ -9,6 +9,7 @@ shared = { workspace = true }
 clap = { workspace = true }
 colored = { workspace = true }
 tokio = { workspace = true }
+clap_complete = { workspace = true }
 
 [dev-dependencies]
 assert_cli = "0.6"

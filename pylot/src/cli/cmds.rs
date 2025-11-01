@@ -50,19 +50,10 @@ pub enum UvCommands {
     Check,
 }
 
-#[derive(Debug, Subcommand)]
-pub enum Commands {
+#[derive(Subcommand, Debug)]
+pub enum VenvCommands {
     #[command(
-        name = "uv",
-        about = "Commands for managing UV",
-        long_about = "This command group contains commands for managing Astral UV"
-    )]
-    Uv {
-        #[command(subcommand)]
-        command: UvCommands,
-    },
-
-    #[command(
+        visible_alias = "c",
         about = "Create a new python virtual environment",
         long_about = "This command creates a new python virtual environment"
     )]
@@ -98,6 +89,7 @@ pub enum Commands {
         default: bool,
     },
     #[command(
+        visible_aliases = ["d", "del"],
         about = "Delete a python virtual environment",
         long_about = "This command deletes a python virtual environment"
     )]
@@ -108,11 +100,13 @@ pub enum Commands {
         name_pos: Option<String>,
     },
     #[command(
+        visible_aliases = ["l", "ls"],
         about = "List all python virtual environments",
         long_about = "This command lists all python virtual environments"
     )]
     List,
     #[command(
+        visible_alias = "a",
         about = "Activate a python virtual environment",
         long_about = "This command activates a python virtual environment in its own shell"
     )]
@@ -122,6 +116,40 @@ pub enum Commands {
         #[arg(index = 1, help = "Name of the virtual environment")]
         name_pos: Option<String>,
     },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Commands {
+    #[command(
+        name = "uv",
+        visible_alias = "u",
+        about = "Commands for managing UV",
+        long_about = "This command group contains commands for managing Astral UV"
+    )]
+    Uv {
+        #[command(subcommand)]
+        command: UvCommands,
+    },
+    #[command(
+        name = "venv",
+        visible_alias = "v",
+        about = "Commands for managing virtual environments",
+        long_about = "This command group contains commands for managing Python virtual environments"
+    )]
+    Venv {
+        #[command(subcommand)]
+        command: VenvCommands,
+    },
+    #[command(
+        name = "complete",
+        about = "Generate shell completion scripts",
+        long_about = "Generates shell completion scripts for supported shells (bash, zsh, fish, etc).\n\n\
+            To enable completion, run:\n\
+            pylot complete <shell> > ~/.pylot-completion.<shell>\n\
+            Then add 'source ~/.pylot-completion.<shell>' to your shell config file (e.g., .bashrc, .zshrc, or .config/fish/config.fish).\n\
+            Reload your shell to activate completions."
+    )]
+    Complete { shell: Option<String> },
 }
 
 #[cfg(test)]
