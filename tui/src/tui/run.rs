@@ -1,62 +1,52 @@
-use super::app::{render, App};
-use color_eyre::Result;
-use crossterm::{
-    event::{self, Event, KeyCode},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
-use ratatui::{backend::CrosstermBackend, Terminal};
-use std::{io, time::Duration};
+use crossterm::terminal::disable_raw_mode;
+use ratatui::crossterm::event::{DisableMouseCapture, EnableMouseCapture};
+use ratatui::crossterm::execute;
+use ratatui::crossterm::terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
+use ratatui::prelude::CrosstermBackend;
+use std::error::Error;
+use std::io;
 
-pub fn run() -> Result<()> {
+pub fn run() -> Result<(), Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let mut terminal = ratatui::Terminal::new(backend)?;
 
-    let res = run_app(&mut terminal);
+    let mut app = super::app::App::new();
 
-    // Restore terminal
+    let res = run_app(&mut terminal, &mut app);
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
     terminal.show_cursor()?;
 
-    if let Err(err) = res {
-        eprintln!("Error: {err:?}");
+    if let Ok(do_print) = res {
+        if do_print {
+            app.print_environments();
+        }
+    } else if let Err(err) = res {
+        println!("{err:?}");
     }
 
     Ok(())
 }
 
-fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>) -> Result<()> {
-    let mut app = App::new();
-
+fn run_app<B: ratatui::backend::Backend>(
+    terminal: &mut ratatui::Terminal<B>,
+    app: &mut super::app::App,
+) -> io::Result<bool> {
     loop {
-        app.update();
-        terminal.draw(|frame| render(frame, &app))?;
+        terminal.draw(|frame| super::ui::ui(frame, app))?;
 
-        if event::poll(Duration::from_millis(50))? {
-            if let Event::Key(key) = event::read()? {
-                if key.code == KeyCode::Char('q') || key.code == KeyCode::Esc {
-                    return Ok(());
-                }
-            }
-        }
+        // Handle input and update app state here
 
-        if event::poll(Duration::from_millis(5))? {
-            if let Event::Key(key) = event::read()? {
-                if key.code == KeyCode::Char('s') {
-                    super::cmds::update_status("Stopped");
-                }
-            }
-        }
-        if event::poll(Duration::from_millis(5))? {
-            if let Event::Key(key) = event::read()? {
-                if key.code == KeyCode::Char('r') {
-                    super::cmds::update_status("Running");
-                }
-            }
-        }
+        // Example exit condition
     }
+
+    Ok(true)
 }

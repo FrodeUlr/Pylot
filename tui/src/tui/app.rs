@@ -1,42 +1,71 @@
-use super::content::render_content;
-use super::header_footer::{render_footer, render_header};
-use ratatui::layout::{Constraint, Direction, Layout};
-use std::time::Instant;
+use std::collections::HashMap;
+
+pub enum CurrentScreen {
+    Main,
+    Environment,
+    Exiting,
+}
+
+pub enum CurrentEnvironment {
+    Key,
+    Value,
+}
 
 pub struct App {
-    pub start_time: Instant,
-    pub pulse: f64,
+    pub key_input: String,
+    pub value_input: String,
+    pub pairs: HashMap<String, String>,
+    pub current_screen: CurrentScreen,
+    pub current_environment: Option<CurrentEnvironment>,
 }
+
+//pub trait IApp {
+//    fn new() -> Self;
+//
+//    fn save_key_value(&mut self);
+//
+//    fn toggle_environment(&mut self);
+//
+//    fn print_environments(&self);
+//}
 
 impl App {
     pub fn new() -> Self {
         Self {
-            start_time: Instant::now(),
-            pulse: 0.0,
+            key_input: String::new(),
+            value_input: String::new(),
+            pairs: HashMap::new(),
+            current_screen: CurrentScreen::Main,
+            current_environment: None,
         }
     }
 
-    pub fn update(&mut self) {
-        let elapsed = self.start_time.elapsed().as_secs_f64();
-        self.pulse = (elapsed * 2.0).sin() * 0.5 + 0.5;
+    pub fn save_key_value(&mut self) {
+        self.pairs
+            .insert(self.key_input.clone(), self.value_input.clone());
+        self.key_input = String::new();
+        self.value_input = String::new();
+        self.current_environment = None;
     }
-}
 
-pub fn render<'a>(frame: &mut ratatui::Frame<'a>, app: &App) {
-    let area = frame.area();
+    pub fn toggle_environment(&mut self) {
+        if let Some(environment) = &self.current_environment {
+            match environment {
+                CurrentEnvironment::Key => {
+                    self.current_environment = Some(CurrentEnvironment::Value)
+                }
+                CurrentEnvironment::Value => {
+                    self.current_environment = Some(CurrentEnvironment::Key)
+                }
+            };
+        } else {
+            self.current_environment = Some(CurrentEnvironment::Key);
+        };
+    }
 
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3),
-            Constraint::Min(0),
-            Constraint::Length(3),
-        ])
-        .split(area);
-
-    render_header(frame, chunks[0]);
-
-    render_content(frame, chunks[1], app);
-
-    render_footer(frame, chunks[2]);
+    pub fn print_environments(&self) {
+        for (key, value) in &self.pairs {
+            println!("{}={}", key, value);
+        }
+    }
 }
