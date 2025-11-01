@@ -256,7 +256,7 @@ mod tests {
         #[cfg(not(unix))]
         {
             let cursor = std::io::Cursor::new("y\n");
-            install(cursor, true).await;
+            install(cursor).await;
         }
     }
 
