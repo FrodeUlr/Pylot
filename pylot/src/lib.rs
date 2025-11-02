@@ -197,12 +197,8 @@ mod tests {
             return;
         }
         let cursor = std::io::Cursor::new("y\n");
-        match uninstall(cursor.clone()).await {
-            Ok(_) => {}
-            Err(e) => {
-                panic!("Error uninstalling Astral UV: {}", e);
-            }
-        }
+        let result_un = uninstall(cursor).await;
+        assert!(result_un.is_ok());
         create(
             Some("test_env".to_string()),
             None,
@@ -219,12 +215,8 @@ mod tests {
         let requirements = "test_requirements.txt".to_string();
         let mut packages = vec!["numpy".to_string()];
         let _ = write(&requirements, "pandas\nscipy\n").await;
-        match update_packages_from_requirements(requirements.clone(), &mut packages).await {
-            Ok(_) => {}
-            Err(e) => {
-                panic!("Error reading requirements file: {}", e);
-            }
-        }
+        let result = update_packages_from_requirements(requirements.clone(), &mut packages).await;
+        assert!(result.is_ok());
         assert!(packages.contains(&"numpy".to_string()));
         assert!(packages.contains(&"pandas".to_string()));
         assert!(packages.contains(&"scipy".to_string()));
@@ -234,23 +226,15 @@ mod tests {
     #[tokio::test]
     async fn test_install_uv_no() {
         let cursor = std::io::Cursor::new("n\n");
-        match install(cursor.clone()).await {
-            Ok(_) => {}
-            Err(e) => {
-                panic!("Error installing Astral UV: {}", e);
-            }
-        }
+        let result_in = install(cursor.clone()).await;
+        assert!(result_in.is_ok());
     }
 
     #[tokio::test]
     async fn test_uninstall_uv_no() {
         let cursor = std::io::Cursor::new("n\n");
-        match uninstall(cursor).await {
-            Ok(_) => {}
-            Err(e) => {
-                panic!("Error uninstalling Astral UV: {}", e);
-            }
-        }
+        let result_un = uninstall(cursor).await;
+        assert!(result_un.is_ok());
     }
 
     #[tokio::test]
@@ -258,22 +242,14 @@ mod tests {
         #[cfg(unix)]
         {
             let cursor = std::io::Cursor::new("y\n");
-            match install(cursor.clone()).await {
-                Ok(_) => {}
-                Err(e) => {
-                    panic!("Error installing Astral UV: {}", e);
-                }
-            }
+            let result_in = install(cursor.clone()).await;
+            assert!(result_in.is_ok());
         }
         #[cfg(not(unix))]
         {
             let cursor = std::io::Cursor::new("y\n");
-            match install(cursor.clone()).await {
-                Ok(_) => {}
-                Err(e) => {
-                    panic!("Error installing Astral UV: {}", e);
-                }
-            }
+            let result_in = install(cursor.clone()).await;
+            assert!(result_in.is_ok());
         }
     }
 
@@ -282,28 +258,16 @@ mod tests {
         #[cfg(unix)]
         {
             let cursor = std::io::Cursor::new("y\n");
-            match install(cursor.clone()).await {
-                Ok(_) => {}
-                Err(e) => {
-                    panic!("Error installing Astral UV: {}", e);
-                }
-            }
-            match uninstall(cursor).await {
-                Ok(_) => {}
-                Err(e) => {
-                    panic!("Error uninstalling Astral UV: {}", e);
-                }
-            }
+            let result_in = install(cursor.clone()).await;
+            assert!(result_in.is_ok());
+            let result_un = uninstall(cursor).await;
+            assert!(result_un.is_ok());
         }
         #[cfg(not(unix))]
         {
             let cursor = std::io::Cursor::new("y\n");
-            match uninstall(cursor).await {
-                Ok(_) => {}
-                Err(e) => {
-                    panic!("Error uninstalling Astral UV: {}", e);
-                }
-            }
+            let result_un = uninstall(cursor).await;
+            assert!(result_un.is_ok());
         }
     }
 }
