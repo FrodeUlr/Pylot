@@ -9,7 +9,6 @@ shared = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
 clap_complete = { workspace = true }
-env_logger = { workspace = true }
 log = { workspace = true }
 
 [dev-dependencies]

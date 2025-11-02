@@ -1,21 +1,19 @@
 mod cli;
 
 use clap_complete::{generate, Shell};
-use env_logger::Builder;
-use log::Level;
 use pylot::{activate, check, create, delete, install, list, uninstall, update};
 use std::{io, str::FromStr};
 
 use clap::{CommandFactory, Parser};
 use cli::cmds::{Cli, Commands};
-use shared::settings;
+use shared::{logger, settings};
 
 use crate::cli::cmds::{UvCommands, VenvCommands};
 
 #[tokio::main]
 async fn main() {
     settings::Settings::init().await;
-    initialize_logger();
+    logger::initialize_logger(log::LevelFilter::Trace);
     let args = Cli::parse();
 
     match args.commands {
@@ -62,23 +60,6 @@ async fn main() {
             println!("No command provided");
         }
     }
-}
-
-fn initialize_logger() {
-    Builder::new()
-        .filter_level(log::LevelFilter::Trace)
-        .format(|buf, record| {
-            use std::io::Write;
-            let level_color = match record.level() {
-                Level::Error => "\x1b[31m", // Red
-                Level::Warn => "\x1b[33m",  // Yellow
-                Level::Info => "\x1b[32m",  // Green
-                Level::Debug => "\x1b[36m", // Cyan
-                Level::Trace => "\x1b[35m", // Magenta
-            };
-            writeln!(buf, "{:5}{}", level_color, record.args())
-        })
-        .init();
 }
 
 #[cfg(test)]
