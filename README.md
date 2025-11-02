@@ -2,20 +2,23 @@
 
 <!--toc:start-->
 
-- [A manager for python virtual environments made using UV](#a-manager-for-python-virtual-environments-made-using-uv)
-- [**Example usage:**](#example-usage)
-  - [Install Astral UV](#install-astral-uv)
-  - [Update Astral UV if it is already installed](#update-astral-uv-if-it-is-already-installed)
-  - [Check if Astral UV is installed](#check-if-astral-uv-is-installed)
-  - [Create a new virtual environment with specific Python version 3.10 and packages maturin, numpy, pandas](#create-a-new-virtual-environment-with-specific-python-version-310-and-packages-maturin-numpy-pandas)
-  - [Create a new virtual environment with specific Python version 3.10, default packages and maturin](#create-a-new-virtual-environment-with-specific-python-version-310-default-packages-and-maturin)
-  - [Activate a virtual environment by name](#activate-a-virtual-environment-by-name)
-  - [Activate a Virtual Environment by Index](#activate-a-virtual-environment-by-index)
-  - [Delete a virtual environment by name](#delete-a-virtual-environment-by-name)
-  - [Delete a virtual environment using index number](#delete-a-virtual-environment-using-index-number)
-  - [List all available virtual environments](#list-all-available-virtual-environments)
-  - [Uninstall Astral UV](#uninstall-astral-uv)
-  <!--toc:end-->
+- [Pylot](#pylot)
+  - [A manager for python virtual environments made using UV](#a-manager-for-python-virtual-environments-made-using-uv)
+  - [Create completions for your shell](#create-completions-for-your-shell)
+  - [**Example usage:**](#example-usage)
+    - [Install Astral UV](#install-astral-uv)
+    - [Update Astral UV if it is already installed](#update-astral-uv-if-it-is-already-installed)
+    - [Check if Astral UV is installed](#check-if-astral-uv-is-installed)
+    - [Create a new virtual environment with specific Python version 3.10 and packages maturin, numpy, pandas](#create-a-new-virtual-environment-with-specific-python-version-310-and-packages-maturin-numpy-pandas)
+    - [Create a new virtual environment with specific Python version 3.10, default packages and maturin](#create-a-new-virtual-environment-with-specific-python-version-310-default-packages-and-maturin)
+    - [Activate a virtual environment by name](#activate-a-virtual-environment-by-name)
+    - [Activate a Virtual Environment by Index](#activate-a-virtual-environment-by-index)
+    - [Delete a virtual environment by name](#delete-a-virtual-environment-by-name)
+    - [Delete a virtual environment using index number](#delete-a-virtual-environment-using-index-number)
+    - [List all available virtual environments](#list-all-available-virtual-environments)
+    - [Uninstall Astral UV](#uninstall-astral-uv)
+    - [Shortcuts/Aliases](#shortcutsaliases)
+    <!--toc:end-->
 
 ## A manager for python virtual environments made using UV
 
