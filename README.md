@@ -30,7 +30,7 @@ You can specify location of virtual environments and the default python packages
 
 ## Create completions for your shell
 
-Pylot can generate shell completions for various shells, currently supporting `bash`, `zsh`, `fish`, `powershell` and `elvish`.  
+`Pylot` can generate shell completions for various shells, currently supporting `bash`, `zsh`, `fish`, `powershell` and `elvish`.  
 An example of how to generate and install completions for different shells is shown below:
 
 ```bash
