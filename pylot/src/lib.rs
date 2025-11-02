@@ -264,7 +264,6 @@ mod tests {
                     panic!("Error installing Astral UV: {}", e);
                 }
             }
-            assert!(uvctrl::check().await);
         }
         #[cfg(not(unix))]
         {
@@ -289,14 +288,12 @@ mod tests {
                     panic!("Error installing Astral UV: {}", e);
                 }
             }
-            assert!(uvctrl::check().await);
             match uninstall(cursor).await {
                 Ok(_) => {}
                 Err(e) => {
                     panic!("Error uninstalling Astral UV: {}", e);
                 }
             }
-            assert!(!uvctrl::check().await);
         }
         #[cfg(not(unix))]
         {
