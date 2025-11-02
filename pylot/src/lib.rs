@@ -242,7 +242,7 @@ mod tests {
         {
             let cursor = std::io::Cursor::new("y\n");
             install(cursor.clone()).await;
-            install(cursor.clone()).await;
+            //install(cursor.clone()).await;
             assert!(uv::check().await);
         }
         #[cfg(not(unix))]

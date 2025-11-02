@@ -117,7 +117,7 @@ mod tests {
             .current_dir(env!("CARGO_MANIFEST_DIR"))
             .succeeds()
             .and()
-            .stdout()
+            .stderr()
             .contains("No virtual environments found")
             .unwrap();
     }
@@ -133,7 +133,7 @@ mod tests {
             .current_dir(env!("CARGO_MANIFEST_DIR"))
             .succeeds()
             .and()
-            .stdout()
+            .stderr()
             .contains("No virtual environments found")
             .unwrap();
     }
