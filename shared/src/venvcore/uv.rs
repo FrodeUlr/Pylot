@@ -1,4 +1,5 @@
 use crate::{
+    constants::{UPDATE_ARGS, UPDATE_COMMAND},
     core::processes,
     utility::constants::{
         BASH_CMD, UV_UNIX_INSTALL_ARGS, UV_UNIX_UNINSTALL_ARGS, UV_WINGET_INSTALL_ARGS,
@@ -6,11 +7,10 @@ use crate::{
     },
     utils::confirm,
 };
-use colored::Colorize;
 
 pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
-    println!("{}", "Installing Astral UV...".yellow());
-    println!("{}", "This will run the following command:".yellow());
+    log::info!("{}", "Installing Astral UV...");
+    log::info!("{}", "This will run the following command:");
 
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
         (WINGET_CMD, UV_WINGET_INSTALL_ARGS)
@@ -18,10 +18,10 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
         (BASH_CMD, UV_UNIX_INSTALL_ARGS)
     };
 
-    println!("{}", format!("  {} {}", cmd, args.join(" ")).red());
+    log::error!("\t{} {}", cmd, args.join(" "));
 
     if !confirm(input) {
-        println!("{}", "Exiting...".yellow());
+        log::info!("{}", "Exiting...");
         return Ok(());
     }
 
@@ -32,9 +32,19 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
     Ok(())
 }
 
+pub async fn update() -> Result<(), String> {
+    log::info!("{}", "Updating Astral UV...");
+
+    let mut child = processes::create_child_cmd(UPDATE_COMMAND, UPDATE_ARGS, "");
+    processes::run_command(&mut child)
+        .await
+        .map_err(|_| "Update failed".to_string())?;
+    Ok(())
+}
+
 pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
-    println!("{}", "Uninstalling Astral UV...".yellow());
-    println!("{}", "This will run the following command:".yellow());
+    log::info!("{}", "Uninstalling Astral UV...");
+    log::info!("{}", "This will run the following command:");
 
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
         (WINGET_CMD, UV_WINGET_UNINSTALL_ARGS)
@@ -42,10 +52,10 @@ pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
         (BASH_CMD, UV_UNIX_UNINSTALL_ARGS)
     };
 
-    println!("{}", format!("  {} {}", cmd, args.join(" ")).red());
+    log::error!("\t{} {}", cmd, args.join(" "));
 
     if !confirm(input) {
-        println!("{}", "Exiting...".yellow());
+        log::info!("{}", "Exiting...");
         return Ok(());
     }
 

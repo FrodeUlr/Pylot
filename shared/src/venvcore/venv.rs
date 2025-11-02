@@ -65,16 +65,16 @@ impl Venv {
         let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
         let venv_path = format!("{}/{}", path, self.name);
         if !std::path::Path::new(&venv_path).exists() {
-            eprintln!("{}", ERROR_VENV_NOT_EXISTS.red());
+            log::error!("{}", ERROR_VENV_NOT_EXISTS);
             return;
         }
         let mut choice = !confirm;
         if confirm {
-            println!(
+            log::info!(
                 "{} {} {} {}",
-                "Deleting virtual environment:".yellow(),
+                "Deleting virtual environment:",
                 self.name.red(),
-                "at".yellow(),
+                "at".green(),
                 venv_path.replace("\\", "/").red()
             );
             choice = utils::confirm(input);
@@ -85,22 +85,18 @@ impl Venv {
         match fs::remove_dir_all(venv_path) {
             Ok(_) => {
                 if confirm {
-                    println!("{} {}", self.name.red(), "has been deleted".green())
+                    log::info!("'{}' {}", self.name, "has been deleted")
                 }
             }
-            Err(e) => println!("{} {}", e.to_string().red(), self.name),
+            Err(e) => log::error!("{} {}", e, self.name),
         }
     }
 
     pub async fn activate(&self) {
-        println!(
-            "{} {}",
-            "Activating virtual environment:".cyan(),
-            self.name.green()
-        );
+        log::info!("Activating virtual environment: {}", self.name);
         let (shell, cmd, path) = self.get_shell_cmd();
         if !std::path::Path::new(&path).exists() {
-            eprintln!("{}", ERROR_VENV_NOT_EXISTS.red());
+            log::error!("{}", ERROR_VENV_NOT_EXISTS);
             return;
         }
         let _ = processes::activate_venv_shell(shell.as_str(), cmd);
@@ -133,7 +129,7 @@ impl Venv {
             "--python",
             self.python_version.as_str(),
         ];
-        println!("Creating virtual environment: {}", self.name.cyan());
+        log::info!("Creating virtual environment: {}", self.name);
         Some((pwd, args))
     }
 
@@ -166,11 +162,7 @@ impl Venv {
             args.insert(0, "source".to_string());
         }
         args.push(pkgs.join(" "));
-        println!(
-            "{} {}",
-            "Installing package(s):".cyan(),
-            pkgs.join(", ").cyan()
-        );
+        log::info!("{} {}", "Installing package(s):", pkgs.join(", "));
         let agr_str = args
             .iter()
             .map(String::as_str)

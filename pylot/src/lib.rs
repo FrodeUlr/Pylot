@@ -1,6 +1,5 @@
 use std::io;
 
-use colored::Colorize;
 use shared::venvmanager;
 use shared::{constants::ERROR_CREATING_VENV, utils, uv, venv};
 
@@ -14,15 +13,12 @@ pub async fn activate(name_pos: Option<String>, name: Option<String>) {
 }
 
 pub async fn check() {
-    println!(
-        "{}",
-        "Checking if Astral UV is installed and configured...".cyan()
-    );
+    log::info!("Checking if Astral UV is installed and configured...");
     if uv::check().await {
-        println!("{}", "Astral UV is installed".green());
+        log::info!("Astral UV is installed");
         return;
     }
-    println!("{}", "Astral UV was not found".red());
+    log::warn!("Astral UV was not found");
 }
 
 pub async fn create(
@@ -36,42 +32,38 @@ pub async fn create(
     let name = match name.or(name_pos) {
         Some(n) => n,
         None => {
-            eprintln!("{}", "Error: Missing name for the environment.".red());
+            log::error!("{}", "Missing 'name' for the environment.");
             return;
         }
     };
     if !uv::check().await {
-        eprintln!(
-            "{}",
-            "Astral UV is not installed. Please run 'install-uv to install it.".red()
+        log::error!(
+            "Astral UV is not installed. Please run '{} uv install' to install it.",
+            env!("CARGO_PKG_NAME")
         );
         return;
     }
     if venvmanager::VENVMANAGER.check_if_exists(name.clone()).await {
-        eprintln!(
-            "{}",
-            format!(
-                "Error: A virtual environment with the name '{}' already exists.",
-                name
-            )
-            .red()
+        log::error!(
+            "A virtual environment with the name '{}' already exists.",
+            name
         );
         return;
     }
     match update_packages_from_requirements(requirements, &mut packages).await {
         Ok(_) => {}
         Err(e) => {
-            eprintln!(
-                "{}",
-                format!("Error reading requirements file: {}", e).red()
-            );
+            log::error!("Error reading requirements file: {}", e);
             return;
         }
     }
     let venv = venv::Venv::new(name, "".to_string(), python_version, packages, default);
-    if let Err(e) = venv.create().await {
-        eprintln!("{}", format!("{}: {}", ERROR_CREATING_VENV, e).red());
-        venv.delete(io::stdin(), false).await;
+    match venv.create().await {
+        Ok(_) => (),
+        Err(e) => {
+            log::error!("{}: {}", ERROR_CREATING_VENV, e);
+            venv.delete(io::stdin(), false).await;
+        }
     }
 }
 
@@ -103,23 +95,33 @@ pub async fn delete<R: std::io::Read>(input: R, name_pos: Option<String>, name: 
     }
 }
 
-pub async fn install<R: std::io::Read>(input: R, update: bool) {
-    if uv::check().await && !update {
-        println!("{}", "Astral UV is already installed.".yellow());
+pub async fn install<R: std::io::Read>(input: R) {
+    if uv::check().await {
+        log::info!("Astral UV is already installed.");
         return;
     }
     if let Err(e) = uv::install(input).await {
-        eprintln!("{}", format!("Error installing Astral UV: {}", e).red());
+        log::error!("{}", e);
+    }
+}
+
+pub async fn update() {
+    if uv::check().await {
+        uv::update().await.unwrap_or_else(|e| {
+            log::error!("{}", e);
+        });
+    } else {
+        log::error!("Astral UV is not installed.");
     }
 }
 
 pub async fn uninstall<R: std::io::Read>(input: R) {
     if !uv::check().await {
-        eprintln!("{}", "Astral UV is not installed.".yellow());
+        log::error!("{}", "Astral UV is not installed");
         return;
     }
     if let Err(e) = uv::uninstall(input).await {
-        eprintln!("{}", format!("Error uninstalling Astral UV: {}", e).red());
+        log::error!("{}", e);
     }
 }
 
@@ -130,7 +132,7 @@ pub async fn list() {
 
 async fn print_venvs(mut venvs: Vec<venv::Venv>) {
     if venvs.is_empty() {
-        println!("{}", "No virtual environments found".yellow());
+        log::info!("{}", "No virtual environments found");
     } else {
         venvmanager::VENVMANAGER.print_venv_table(&mut venvs).await;
     }
@@ -225,7 +227,7 @@ mod tests {
     #[tokio::test]
     async fn test_install_uv_no() {
         let cursor = std::io::Cursor::new("n\n");
-        install(cursor, false).await;
+        install(cursor).await;
     }
 
     #[tokio::test]
@@ -239,14 +241,13 @@ mod tests {
         #[cfg(unix)]
         {
             let cursor = std::io::Cursor::new("y\n");
-            install(cursor.clone(), true).await;
-            install(cursor.clone(), true).await;
+            install(cursor.clone()).await;
             assert!(uv::check().await);
         }
         #[cfg(not(unix))]
         {
             let cursor = std::io::Cursor::new("y\n");
-            install(cursor, true).await;
+            install(cursor).await;
         }
     }
 
@@ -255,7 +256,7 @@ mod tests {
         #[cfg(unix)]
         {
             let cursor = std::io::Cursor::new("y\n");
-            install(cursor.clone(), true).await;
+            install(cursor.clone()).await;
             assert!(uv::check().await);
             uninstall(cursor).await;
             assert!(!uv::check().await);

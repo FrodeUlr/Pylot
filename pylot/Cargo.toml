@@ -5,12 +5,11 @@ edition = "2021"
 authors = ["Fulrix"]
 
 [dependencies]
-shared = { path = "../shared" }
-tui = { path = "../tui" }
-clap = { version = "4.5", features = ["derive"] }
-colored = "3.0"
-tokio = { version = "1.47", features = ["full"] }
-color-eyre = "0.6"
+shared = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+clap_complete = { workspace = true }
+log = { workspace = true }
 
 [dev-dependencies]
 assert_cli = "0.6"
