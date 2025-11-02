@@ -3,7 +3,6 @@ use crate::{
     constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC},
     settings,
 };
-use colored::Colorize;
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
 use once_cell::sync::Lazy;
 use std::io::{self, BufRead, Write};
@@ -44,15 +43,15 @@ impl VenvManager {
             None => {
                 let mut venvs = self.list().await;
                 if venvs.is_empty() {
-                    println!("{}", "No virtual environments found".yellow());
+                    log::warn!("{}", "No virtual environments found");
                     return None;
                 }
                 self.print_venv_table(&mut venvs).await;
-                println!(
-                    "{} {}{}",
-                    "Please select a virtual environment to".cyan(),
-                    method.yellow(),
-                    " (c to cancel):".cyan()
+                log::info!(
+                    "{}{}{}",
+                    "Please select a virtual environment to ",
+                    method,
+                    " (c to cancel):"
                 );
                 match self.get_index(io::stdin(), venvs.len()) {
                     Ok(index) => venv::Venv::new(
@@ -63,7 +62,7 @@ impl VenvManager {
                         false,
                     ),
                     Err(e) => {
-                        println!("{}", e.yellow());
+                        log::error!("{}", e);
                         return None;
                     }
                 }
@@ -83,11 +82,11 @@ impl VenvManager {
         }
         let idx = trimmed
             .parse::<usize>()
-            .map_err(|_| "Error: please provide a valid number!".to_string())?;
+            .map_err(|_| "Please provide a valid number!".to_string())?;
         if (1..=size).contains(&idx) {
             Ok(idx)
         } else {
-            Err("Error: index out of range!".to_string())
+            Err("Index out of range!".to_string())
         }
     }
 

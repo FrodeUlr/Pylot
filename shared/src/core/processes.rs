@@ -1,5 +1,4 @@
 use crate::utility::constants::{POWERSHELL_CMD, PWSH_CMD};
-use colored::Colorize;
 use std::process::{Command as StdCommand, Stdio};
 use tokio::{
     io::{AsyncBufRead, AsyncBufReadExt, BufReader},
@@ -118,8 +117,8 @@ pub async fn run_command(child: &mut Child) -> Result<(), Box<dyn std::error::Er
     run_command_with_handlers(
         stdout_reader,
         stderr_reader,
-        |line| println!("{}", line.green()),
-        |line| eprintln!("{}", line.yellow()),
+        |line| log::info!("{}", line),
+        |line| log::warn!("{}", line),
     )
     .await?;
     Ok(())
