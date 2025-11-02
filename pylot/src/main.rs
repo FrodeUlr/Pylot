@@ -57,7 +57,7 @@ async fn main() {
         },
 
         None => {
-            println!("No command provided");
+            log::error!("No command provided");
         }
     }
 }

@@ -7,10 +7,7 @@ use styles::custom_styles;
     version,
     long_about = None,
     propagate_version = true,
-    arg_required_else_help = true
-)]
-#[command(
-    name = env!("CARGO_PKG_NAME"),
+    arg_required_else_help = true,
     author = env!("CARGO_PKG_AUTHORS"),
     about = "A simple CLI to manage Python virtual enviroonments using Astral UV",
     styles = custom_styles()
@@ -23,21 +20,21 @@ pub struct Cli {
 #[derive(Subcommand, Debug)]
 pub enum UvCommands {
     #[command(
-        name = "install",
+        visible_alias = "i",
         about = "Install Astral UV",
         long_about = "This command installs Astral UV"
     )]
     Install,
 
     #[command(
-        name = "update",
+        visible_alias = "up",
         about = "Update Astral UV",
         long_about = "This command updates Astral UV"
     )]
     Update,
 
     #[command(
-        name = "uninstall",
+        visible_alias = "u",
         about = "Uninstall Astral UV",
         long_about = "This command uninstalls Astral UV"
     )]
@@ -62,17 +59,17 @@ pub enum VenvCommands {
         name: Option<String>,
         #[arg(
             short = 'v',
-            alias = "pv",
+            visible_alias = "pv",
             long,
-            help = "Python version to use(alias --pv)",
+            help = "Python version to use",
             default_value = "3.10"
         )]
         python_version: String,
         #[arg(
             short = 'p',
-            alias = "pkg",
+            visible_alias = "pkg",
             long,
-            help = "Packages to install(alias --pkg)",
+            help = "Packages to install",
             num_args = 1..
         )]
         packages: Vec<String>,
@@ -121,7 +118,6 @@ pub enum VenvCommands {
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     #[command(
-        name = "uv",
         visible_alias = "u",
         about = "Commands for managing UV",
         long_about = "This command group contains commands for managing Astral UV"
@@ -131,7 +127,6 @@ pub enum Commands {
         command: UvCommands,
     },
     #[command(
-        name = "venv",
         visible_alias = "v",
         about = "Commands for managing virtual environments",
         long_about = "This command group contains commands for managing Python virtual environments"
@@ -141,7 +136,7 @@ pub enum Commands {
         command: VenvCommands,
     },
     #[command(
-        name = "complete",
+        visible_alias = "c",
         about = "Generate shell completion scripts",
         long_about = "Generates shell completion scripts for supported shells (bash, zsh, fish, etc).\n\n\
             To enable completion, run:\n\

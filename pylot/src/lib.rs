@@ -32,14 +32,14 @@ pub async fn create(
     let name = match name.or(name_pos) {
         Some(n) => n,
         None => {
-            log::error!("{}", "Missing name for the environment.");
+            log::error!("{}", "Missing 'name' for the environment.");
             return;
         }
     };
     if !uv::check().await {
         log::error!(
-            "{}",
-            "Astral UV is not installed. Please run 'install-uv to install it."
+            "Astral UV is not installed. Please run '{} uv install' to install it.",
+            env!("CARGO_PKG_NAME")
         );
         return;
     }
@@ -242,7 +242,6 @@ mod tests {
         {
             let cursor = std::io::Cursor::new("y\n");
             install(cursor.clone()).await;
-            //install(cursor.clone()).await;
             assert!(uv::check().await);
         }
         #[cfg(not(unix))]
