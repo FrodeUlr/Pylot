@@ -28,6 +28,30 @@ To deactivate the active environment, type `exit` in the terminal.
 
 You can specify location of virtual environments and the default python packages by updating the `settings.toml` file.
 
+## Create completions for your shell
+
+Pylot can generate shell completions for various shells, currently supporting `bash`, `zsh`, `fish`, `powershell` and `elvish`.  
+An example of how to generate and install completions for different shells is shown below:
+
+```bash
+# bash
+# Add the generated file to your bash completions directory
+pylot completion bash > /etc/bash_completion.d/pylot.bash
+# zsh
+# Add the generated file to $FPATH or source it in your .zshrc
+pylot completion zsh > ~/.zsh/completions/pylot.zsh
+# fish
+# Add the generated file to your fish completions directory or source it in your config.fish
+pylot completion fish > ~/.config/fish/completions/pylot_completion.fish
+# powershell
+# Add this to your powershell profile
+pylot completion powershell | Out-String | Invoke-Expression
+# elvish
+# Add the generated file to your elvish completions directory or source it in your rc.elvish
+pylot completion elvish > ~/.elvish/completions/pylot.elvish
+
+```
+
 ## **Example usage:**
 
 ### Install Astral UV

@@ -17,6 +17,41 @@ pub struct Cli {
     pub commands: Option<Commands>,
 }
 
+#[derive(Debug, Subcommand)]
+pub enum Commands {
+    #[command(
+        visible_alias = "u",
+        about = "Commands for managing UV",
+        long_about = "This command group contains commands for managing Astral UV"
+    )]
+    Uv {
+        #[command(subcommand)]
+        command: UvCommands,
+    },
+    #[command(
+        visible_alias = "v",
+        about = "Commands for managing virtual environments",
+        long_about = "This command group contains commands for managing Python virtual environments"
+    )]
+    Venv {
+        #[command(subcommand)]
+        command: VenvCommands,
+    },
+    #[command(
+        visible_alias = "c",
+        about = "Generate shell completion script",
+        long_about = "Generates shell completion script for supported shells (bash, zsh, fish, powershell and elvish).\n\n\
+            To enable completion, run:\n\
+            pylot complete <shell> > ~/.pylot-completion.<shell>\n\
+            Then add 'source ~/.pylot-completion.<shell>' to your shell config file (e.g., .bashrc, .zshrc, or .config/fish/config.fish).\n\
+            Reload your shell to activate completions."
+    )]
+    Complete {
+        #[arg(help = "Shell type", value_parser = ["bash", "zsh", "fish", "powershell", "elvish"], default_value = "bash")]
+        shell: Option<String>,
+    },
+}
+
 #[derive(Subcommand, Debug)]
 pub enum UvCommands {
     #[command(
@@ -113,38 +148,6 @@ pub enum VenvCommands {
         #[arg(index = 1, help = "Name of the virtual environment")]
         name_pos: Option<String>,
     },
-}
-
-#[derive(Debug, Subcommand)]
-pub enum Commands {
-    #[command(
-        visible_alias = "u",
-        about = "Commands for managing UV",
-        long_about = "This command group contains commands for managing Astral UV"
-    )]
-    Uv {
-        #[command(subcommand)]
-        command: UvCommands,
-    },
-    #[command(
-        visible_alias = "v",
-        about = "Commands for managing virtual environments",
-        long_about = "This command group contains commands for managing Python virtual environments"
-    )]
-    Venv {
-        #[command(subcommand)]
-        command: VenvCommands,
-    },
-    #[command(
-        visible_alias = "c",
-        about = "Generate shell completion scripts",
-        long_about = "Generates shell completion scripts for supported shells (bash, zsh, fish, etc).\n\n\
-            To enable completion, run:\n\
-            pylot complete <shell> > ~/.pylot-completion.<shell>\n\
-            Then add 'source ~/.pylot-completion.<shell>' to your shell config file (e.g., .bashrc, .zshrc, or .config/fish/config.fish).\n\
-            Reload your shell to activate completions."
-    )]
-    Complete { shell: Option<String> },
 }
 
 #[cfg(test)]
