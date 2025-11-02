@@ -39,19 +39,19 @@ An example of how to generate and install completions for different shells is sh
 ```bash
 # bash
 # Add the generated file to your bash completions directory
-pylot completion bash > /etc/bash_completion.d/pylot.bash
+pylot complete bash > /etc/bash_completion.d/pylot.bash
 # zsh
 # Add the generated file to $FPATH or source it in your .zshrc
-pylot completion zsh > ~/.zsh/completions/pylot.zsh
+pylot complete zsh > ~/.zsh/completions/pylot.zsh
 # fish
 # Add the generated file to your fish completions directory or source it in your config.fish
-pylot completion fish > ~/.config/fish/completions/pylot_completion.fish
+pylot complete fish > ~/.config/fish/completions/pylot_completion.fish
 # powershell
 # Add this to your powershell profile
-pylot completion powershell | Out-String | Invoke-Expression
+pylot complete powershell | Out-String | Invoke-Expression
 # elvish
 # Add the generated file to your elvish completions directory or source it in your rc.elvish
-pylot completion elvish > ~/.elvish/completions/pylot.elvish
+pylot complete elvish > ~/.elvish/completions/pylot.elvish
 
 ```
 
