@@ -1,5 +1,4 @@
 use crate::{
-    constants::{UPDATE_ARGS, UPDATE_COMMAND},
     core::processes,
     utility::constants::{
         BASH_CMD, UV_UNIX_INSTALL_ARGS, UV_UNIX_UNINSTALL_ARGS, UV_WINGET_INSTALL_ARGS,
@@ -34,11 +33,23 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
 
 pub async fn update() -> Result<(), String> {
     log::info!("{}", "Updating Astral UV...");
+    #[cfg(unix)]
+    {
+        use crate::constants::{UPDATE_ARGS, UPDATE_COMMAND};
+        let mut child = processes::create_child_cmd(UPDATE_COMMAND, UPDATE_ARGS, "");
+        processes::run_command(&mut child)
+            .await
+            .map_err(|_| "Update failed".to_string())?;
+    }
+    #[cfg(not(unix))]
+    {
+        use crate::constants::UV_WINGET_UPGRADE_ARGS;
 
-    let mut child = processes::create_child_cmd(UPDATE_COMMAND, UPDATE_ARGS, "");
-    processes::run_command(&mut child)
-        .await
-        .map_err(|_| "Update failed".to_string())?;
+        let mut child = processes::create_child_cmd(WINGET_CMD, UV_WINGET_UPGRADE_ARGS, "");
+        processes::run_command(&mut child)
+            .await
+            .map_err(|_| "Update failed".to_string())?;
+    }
     Ok(())
 }
 

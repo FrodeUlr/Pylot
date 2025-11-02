@@ -4,6 +4,7 @@ pub const POWERSHELL_CMD: &str = "powershell";
 pub const WIN_PYTHON_EXEC: &str = "Scripts/python.exe";
 pub const WINGET_CMD: &str = "winget";
 pub const UV_WINGET_INSTALL_ARGS: &[&str] = &["install", "astral-sh.uv"];
+pub const UV_WINGET_UPGRADE_ARGS: &[&str] = &["upgrade", "astral-sh.uv"];
 pub const UV_WINGET_UNINSTALL_ARGS: &[&str] = &["uninstall", "astral-sh.uv"];
 
 // Unix-specific constants
