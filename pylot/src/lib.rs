@@ -1,7 +1,7 @@
 use std::io;
 
 use shared::venvmanager;
-use shared::{constants::ERROR_CREATING_VENV, utils, uv, venv};
+use shared::{constants::ERROR_CREATING_VENV, utils, uvctrl, venv};
 
 pub async fn activate(name_pos: Option<String>, name: Option<String>) {
     let venv = venvmanager::VENVMANAGER
@@ -14,7 +14,7 @@ pub async fn activate(name_pos: Option<String>, name: Option<String>) {
 
 pub async fn check() {
     log::info!("Checking if Astral UV is installed and configured...");
-    if uv::check().await {
+    if uvctrl::check().await {
         log::info!("Astral UV is installed");
         return;
     }
@@ -36,7 +36,7 @@ pub async fn create(
             return;
         }
     };
-    if !uv::check().await {
+    if !uvctrl::check().await {
         log::error!(
             "Astral UV is not installed. Please run '{} uv install' to install it.",
             env!("CARGO_PKG_NAME")
@@ -95,19 +95,20 @@ pub async fn delete<R: std::io::Read>(input: R, name_pos: Option<String>, name: 
     }
 }
 
-pub async fn install<R: std::io::Read>(input: R) {
-    if uv::check().await {
+pub async fn install<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::error::Error>> {
+    if uvctrl::check().await {
         log::info!("Astral UV is already installed.");
-        return;
+        return Ok(());
     }
-    if let Err(e) = uv::install(input).await {
-        log::error!("{}", e);
+    match uvctrl::install(input).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e.into()),
     }
 }
 
 pub async fn update() {
-    if uv::check().await {
-        uv::update().await.unwrap_or_else(|e| {
+    if uvctrl::check().await {
+        uvctrl::update().await.unwrap_or_else(|e| {
             log::error!("{}", e);
         });
     } else {
@@ -115,13 +116,14 @@ pub async fn update() {
     }
 }
 
-pub async fn uninstall<R: std::io::Read>(input: R) {
-    if !uv::check().await {
+pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::error::Error>> {
+    if !uvctrl::check().await {
         log::error!("{}", "Astral UV is not installed");
-        return;
+        return Ok(());
     }
-    if let Err(e) = uv::uninstall(input).await {
-        log::error!("{}", e);
+    match uvctrl::uninstall(input).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e.into()),
     }
 }
 
@@ -189,12 +191,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_missing_uv() {
-        let cursor = std::io::Cursor::new("y\n");
-        uninstall(cursor.clone()).await;
         //only run on github agents
         if std::env::var("GITHUB_ACTIONS").is_err() {
             println!("Skipping test in non-GitHub Actions environment");
             return;
+        }
+        let cursor = std::io::Cursor::new("y\n");
+        match uninstall(cursor.clone()).await {
+            Ok(_) => {}
+            Err(e) => {
+                panic!("Error uninstalling Astral UV: {}", e);
+            }
         }
         create(
             Some("test_env".to_string()),
@@ -227,13 +234,23 @@ mod tests {
     #[tokio::test]
     async fn test_install_uv_no() {
         let cursor = std::io::Cursor::new("n\n");
-        install(cursor).await;
+        match install(cursor.clone()).await {
+            Ok(_) => {}
+            Err(e) => {
+                panic!("Error installing Astral UV: {}", e);
+            }
+        }
     }
 
     #[tokio::test]
     async fn test_uninstall_uv_no() {
         let cursor = std::io::Cursor::new("n\n");
-        uninstall(cursor).await;
+        match uninstall(cursor).await {
+            Ok(_) => {}
+            Err(e) => {
+                panic!("Error uninstalling Astral UV: {}", e);
+            }
+        }
     }
 
     #[tokio::test]
@@ -241,13 +258,23 @@ mod tests {
         #[cfg(unix)]
         {
             let cursor = std::io::Cursor::new("y\n");
-            install(cursor.clone()).await;
-            assert!(uv::check().await);
+            match install(cursor.clone()).await {
+                Ok(_) => {}
+                Err(e) => {
+                    panic!("Error installing Astral UV: {}", e);
+                }
+            }
+            assert!(uvctrl::check().await);
         }
         #[cfg(not(unix))]
         {
             let cursor = std::io::Cursor::new("y\n");
-            install(cursor).await;
+            match install(cursor.clone()).await {
+                Ok(_) => {}
+                Err(e) => {
+                    panic!("Error installing Astral UV: {}", e);
+                }
+            }
         }
     }
 
@@ -256,15 +283,30 @@ mod tests {
         #[cfg(unix)]
         {
             let cursor = std::io::Cursor::new("y\n");
-            install(cursor.clone()).await;
-            assert!(uv::check().await);
-            uninstall(cursor).await;
-            assert!(!uv::check().await);
+            match install(cursor.clone()).await {
+                Ok(_) => {}
+                Err(e) => {
+                    panic!("Error installing Astral UV: {}", e);
+                }
+            }
+            assert!(uvctrl::check().await);
+            match uninstall(cursor).await {
+                Ok(_) => {}
+                Err(e) => {
+                    panic!("Error uninstalling Astral UV: {}", e);
+                }
+            }
+            assert!(!uvctrl::check().await);
         }
         #[cfg(not(unix))]
         {
             let cursor = std::io::Cursor::new("y\n");
-            uninstall(cursor).await;
+            match uninstall(cursor).await {
+                Ok(_) => {}
+                Err(e) => {
+                    panic!("Error uninstalling Astral UV: {}", e);
+                }
+            }
         }
     }
 }
