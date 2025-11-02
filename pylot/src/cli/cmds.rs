@@ -38,6 +38,11 @@ pub enum Commands {
         command: VenvCommands,
     },
     #[command(
+        about = "Launch TUI for managing python virtual environments",
+        long_about = "This command launches a TUI for managing python virtual environments"
+    )]
+    Tui,
+    #[command(
         visible_alias = "c",
         about = "Generate shell completion script",
         long_about = "Generates shell completion script for supported shells (bash, zsh, fish, powershell and elvish).\n\n\
@@ -148,11 +153,6 @@ pub enum VenvCommands {
         #[arg(index = 1, help = "Name of the virtual environment")]
         name_pos: Option<String>,
     },
-    #[command(
-        about = "Launch TUI for managing python virtual environments",
-        long_about = "This command launches a TUI for managing python virtual environments"
-    )]
-    Tui,
 }
 
 #[cfg(test)]

@@ -6,10 +6,12 @@ authors = ["Fulrix"]
 
 [dependencies]
 shared = { workspace = true }
+tui = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
 clap_complete = { workspace = true }
 log = { workspace = true }
+color-eyre = { workspace = true }
 
 [dev-dependencies]
 assert_cli = "0.6"
