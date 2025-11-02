@@ -101,7 +101,7 @@ mod tests {
             .current_dir(env!("CARGO_MANIFEST_DIR"))
             .succeeds()
             .and()
-            .stdout()
+            .stderr()
             .contains("Checking if Astral UV is installed and configured...")
             .unwrap();
     }
