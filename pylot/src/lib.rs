@@ -28,12 +28,11 @@ pub async fn create(
     mut packages: Vec<String>,
     requirements: String,
     default: bool,
-) {
+) -> Result<(), Box<dyn std::error::Error>> {
     let name = match name.or(name_pos) {
         Some(n) => n,
         None => {
-            log::error!("{}", "Missing 'name' for the environment.");
-            return;
+            return Err("Missing 'name' for the environment.".into());
         }
     };
     if !uvctrl::check().await {
@@ -41,28 +40,28 @@ pub async fn create(
             "Astral UV is not installed. Please run '{} uv install' to install it.",
             env!("CARGO_PKG_NAME")
         );
-        return;
+        return Err("Astral UV not installed".into());
     }
     if venvmanager::VENVMANAGER.check_if_exists(name.clone()).await {
         log::error!(
             "A virtual environment with the name '{}' already exists.",
             name
         );
-        return;
+        return Err("Venv already exists".into());
     }
     match update_packages_from_requirements(requirements, &mut packages).await {
         Ok(_) => {}
         Err(e) => {
             log::error!("Error reading requirements file: {}", e);
-            return;
+            return Err(format!("Error reading requirements file: {}", e).into());
         }
     }
     let venv = venv::Venv::new(name, "".to_string(), python_version, packages, default);
     match venv.create().await {
-        Ok(_) => (),
+        Ok(_) => Ok(()),
         Err(e) => {
-            log::error!("{}: {}", ERROR_CREATING_VENV, e);
             venv.delete(io::stdin(), false).await;
+            Err(format!("{}: {}", ERROR_CREATING_VENV, e).into())
         }
     }
 }
@@ -186,7 +185,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_missing_name() {
-        create(None, None, "3.8".to_string(), vec![], "".to_string(), false).await;
+        let result = create(None, None, "3.8".to_string(), vec![], "".to_string(), false).await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]
@@ -199,7 +199,7 @@ mod tests {
         let cursor = std::io::Cursor::new("y\n");
         let result_un = uninstall(cursor).await;
         assert!(result_un.is_ok());
-        create(
+        let result = create(
             Some("test_env".to_string()),
             None,
             "3.8".to_string(),
@@ -207,7 +207,8 @@ mod tests {
             "".to_string(),
             false,
         )
-        .await
+        .await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]

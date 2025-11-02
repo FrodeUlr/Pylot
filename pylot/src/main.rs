@@ -48,7 +48,7 @@ async fn main() {
                 requirements,
                 default,
             } => {
-                create(
+                match create(
                     name_pos,
                     name,
                     python_version,
@@ -57,6 +57,12 @@ async fn main() {
                     default,
                 )
                 .await
+                {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("{}", e);
+                    }
+                }
             }
             VenvCommands::Delete { name_pos, name } => delete(io::stdin(), name_pos, name).await,
             VenvCommands::List => list().await,
