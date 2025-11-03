@@ -62,19 +62,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_read_requirements_file() {
-        println!("Current dir: {:?}", std::env::current_dir());
         let test_file = "test_requirements.txt";
         let content = "package1\npackage2\n# This is a comment\n\npackage3\n";
         fs::write(test_file, content).await.unwrap();
 
-        println!("Current dir: {:?}", std::env::current_dir());
         let packages = read_requirements_file(test_file)
             .await
             .expect("Failed to read requirements file");
-        println!("Current dir: {:?}", std::env::current_dir());
         assert_eq!(packages, vec!["package1", "package2", "package3"]);
 
-        println!("Current dir: {:?}", std::env::current_dir());
         fs::remove_file(test_file).await.unwrap();
     }
 
