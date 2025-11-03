@@ -36,17 +36,15 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
 pub async fn update() -> Result<(), String> {
     log::info!("{}", "Updating Astral UV...");
     if cfg!(target_os = "windows") {
-        if which::which(WINGET_CMD).is_err() {
-            return Err(
-                "Winget is not installed. Please install Winget to update Astral UV.".to_string(),
-            );
-        }
-
+        utils::which_check(&[WINGET_CMD])
+            .map_err(|e| format!("Winget is required for update: {}", e))?;
         let mut child = processes::create_child_cmd(WINGET_CMD, UV_WINGET_UPGRADE_ARGS, "");
         processes::run_command(&mut child)
             .await
             .map_err(|_| "Update failed".to_string())?;
     } else {
+        utils::which_check(&[UV_COMMAND])
+            .map_err(|e| format!("UV command is required for update: {}", e))?;
         let mut child = processes::create_child_cmd(UV_COMMAND, UPDATE_ARGS, "");
         processes::run_command(&mut child)
             .await
@@ -120,5 +118,28 @@ mod tests {
         uninstall(cursor)
             .await
             .expect("Failed to uninstall Astral UV");
+    }
+
+    #[tokio::test]
+    async fn test_update_uv() {
+        let result = update().await;
+        match result {
+            Ok(_) => println!("Astral UV updated successfully."),
+            Err(e) => println!("Failed to update Astral UV: {}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_install_uv_yes_update() {
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            install(cursor).await.expect("Failed to install Astral UV");
+            let result = update().await;
+            match result {
+                Ok(_) => println!("Astral UV updated successfully."),
+                Err(e) => println!("Failed to update Astral UV: {}", e),
+            }
+        }
     }
 }
