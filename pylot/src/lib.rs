@@ -144,7 +144,7 @@ mod tests {
     use std::io;
 
     use super::*;
-    use tokio::fs::write;
+    use tokio::fs::{self, write};
 
     #[tokio::test]
     async fn test_check() {
@@ -221,7 +221,7 @@ mod tests {
         assert!(packages.contains(&"numpy".to_string()));
         assert!(packages.contains(&"pandas".to_string()));
         assert!(packages.contains(&"scipy".to_string()));
-        std::fs::remove_file(requirements).unwrap();
+        fs::remove_file(requirements).await.unwrap();
     }
 
     #[tokio::test]

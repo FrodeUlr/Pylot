@@ -67,7 +67,7 @@ format:
 
 test:
 	@$(call echo_line,--- Running tests ---,YELLOW)
-	@cargo test -- --no-capture
+	@cargo test -- --test-threads=1 --no-capture
 
 coverage:
 	@$(call echo_line,--- Running coverage for $(PROJECT_NAME) ---,YELLOW)
