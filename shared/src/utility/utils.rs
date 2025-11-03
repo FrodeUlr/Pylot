@@ -28,6 +28,19 @@ pub fn confirm<R: std::io::Read>(input: R) -> bool {
     }
 }
 
+pub fn which_check(cmd: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
+    let missing_cmds: Vec<&str> = cmd
+        .iter()
+        .filter(|&&c| which::which(c).is_err())
+        .cloned()
+        .collect();
+    if missing_cmds.is_empty() {
+        Ok(())
+    } else {
+        Err(format!("Missing required commands: {:?}", missing_cmds).into())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

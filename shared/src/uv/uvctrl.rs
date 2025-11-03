@@ -1,24 +1,26 @@
 use crate::{
+    constants::{UPDATE_ARGS, UV_COMMAND, UV_WINGET_UPGRADE_ARGS},
     core::processes,
     utility::constants::{
-        BASH_CMD, UV_UNIX_INSTALL_ARGS, UV_UNIX_UNINSTALL_ARGS, UV_WINGET_INSTALL_ARGS,
+        SH_CMD, UV_UNIX_INSTALL_ARGS, UV_UNIX_UNINSTALL_ARGS, UV_WINGET_INSTALL_ARGS,
         UV_WINGET_UNINSTALL_ARGS, WINGET_CMD,
     },
-    utils::confirm,
+    utils::{self, confirm},
 };
 
 pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
     log::info!("{}", "Installing Astral UV...");
-    log::info!("{}", "This will run the following command:");
 
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
+        utils::which_check(&[WINGET_CMD])
+            .map_err(|e| format!("Winget is required for installation: {}", e))?;
         (WINGET_CMD, UV_WINGET_INSTALL_ARGS)
     } else {
-        (BASH_CMD, UV_UNIX_INSTALL_ARGS)
+        utils::which_check(&[SH_CMD, "curl", "sh"]).map_err(|e| format!("{}", e))?;
+        (SH_CMD, UV_UNIX_INSTALL_ARGS)
     };
-
+    log::info!("{}", "This will run the following command:");
     log::error!("\t{} {}", cmd, args.join(" "));
-
     if !confirm(input) {
         log::info!("{}", "Exiting...");
         return Ok(());
@@ -33,19 +35,19 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
 
 pub async fn update() -> Result<(), String> {
     log::info!("{}", "Updating Astral UV...");
-    #[cfg(unix)]
-    {
-        use crate::constants::{UPDATE_ARGS, UPDATE_COMMAND};
-        let mut child = processes::create_child_cmd(UPDATE_COMMAND, UPDATE_ARGS, "");
+    if cfg!(target_os = "windows") {
+        if which::which(WINGET_CMD).is_err() {
+            return Err(
+                "Winget is not installed. Please install Winget to update Astral UV.".to_string(),
+            );
+        }
+
+        let mut child = processes::create_child_cmd(WINGET_CMD, UV_WINGET_UPGRADE_ARGS, "");
         processes::run_command(&mut child)
             .await
             .map_err(|_| "Update failed".to_string())?;
-    }
-    #[cfg(not(unix))]
-    {
-        use crate::constants::UV_WINGET_UPGRADE_ARGS;
-
-        let mut child = processes::create_child_cmd(WINGET_CMD, UV_WINGET_UPGRADE_ARGS, "");
+    } else {
+        let mut child = processes::create_child_cmd(UV_COMMAND, UPDATE_ARGS, "");
         processes::run_command(&mut child)
             .await
             .map_err(|_| "Update failed".to_string())?;
@@ -60,7 +62,7 @@ pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
         (WINGET_CMD, UV_WINGET_UNINSTALL_ARGS)
     } else {
-        (BASH_CMD, UV_UNIX_UNINSTALL_ARGS)
+        (SH_CMD, UV_UNIX_UNINSTALL_ARGS)
     };
 
     log::error!("\t{} {}", cmd, args.join(" "));
