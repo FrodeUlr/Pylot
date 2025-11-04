@@ -9,7 +9,7 @@ use crate::{
 };
 
 pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
-    log::info!("{}", "Installing Astral UV...");
+    log::info!("Installing Astral UV...");
 
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
         utils::which_check(&[WINGET_CMD])
@@ -19,10 +19,10 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
         utils::which_check(&[SH_CMD, "curl", "sh"]).map_err(|e| format!("{}", e))?;
         (SH_CMD, UV_UNIX_INSTALL_ARGS)
     };
-    log::info!("{}", "This will run the following command:");
+    log::info!("This will run the following command:");
     log::error!("\t{} {}", cmd, args.join(" "));
     if !confirm(input) {
-        log::info!("{}", "Exiting...");
+        log::info!("Exiting...");
         return Ok(());
     }
 
@@ -34,7 +34,7 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
 }
 
 pub async fn update() -> Result<(), String> {
-    log::info!("{}", "Updating Astral UV...");
+    log::info!("Updating Astral UV...");
     if cfg!(target_os = "windows") {
         utils::which_check(&[WINGET_CMD])
             .map_err(|e| format!("Winget is required for update: {}", e))?;
@@ -54,8 +54,8 @@ pub async fn update() -> Result<(), String> {
 }
 
 pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
-    log::info!("{}", "Uninstalling Astral UV...");
-    log::info!("{}", "This will run the following command:");
+    log::info!("Uninstalling Astral UV...");
+    log::info!("This will run the following command:");
 
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
         (WINGET_CMD, UV_WINGET_UNINSTALL_ARGS)
@@ -66,7 +66,7 @@ pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
     log::error!("\t{} {}", cmd, args.join(" "));
 
     if !confirm(input) {
-        log::info!("{}", "Exiting...");
+        log::info!("Exiting...");
         return Ok(());
     }
 

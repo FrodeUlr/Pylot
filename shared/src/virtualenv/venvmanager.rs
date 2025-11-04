@@ -43,7 +43,7 @@ impl VenvManager {
             None => {
                 let mut venvs = self.list().await;
                 if venvs.is_empty() {
-                    log::warn!("{}", "No virtual environments found");
+                    log::warn!("No virtual environments found");
                     return None;
                 }
                 self.print_venv_table(&mut venvs).await;

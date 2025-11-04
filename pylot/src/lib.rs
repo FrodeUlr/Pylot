@@ -117,7 +117,7 @@ pub async fn update() {
 
 pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::error::Error>> {
     if !uvctrl::check().await {
-        log::error!("{}", "Astral UV is not installed");
+        log::error!("Astral UV is not installed");
         return Ok(());
     }
     match uvctrl::uninstall(input).await {
@@ -133,7 +133,7 @@ pub async fn list() {
 
 async fn print_venvs(mut venvs: Vec<venv::Venv>) {
     if venvs.is_empty() {
-        log::info!("{}", "No virtual environments found");
+        log::info!("No virtual environments found");
     } else {
         venvmanager::VENVMANAGER.print_venv_table(&mut venvs).await;
     }
@@ -267,6 +267,30 @@ mod tests {
         #[cfg(not(unix))]
         {
             let cursor = std::io::Cursor::new("y\n");
+            let result_un = uninstall(cursor).await;
+            assert!(result_un.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_venv() {
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_in = install(cursor.clone()).await;
+            assert!(result_in.is_ok());
+            let result = create(
+                Some("test_env".to_string()),
+                None,
+                "3.8".to_string(),
+                vec!["numpy".to_string()],
+                "".to_string(),
+                false,
+            )
+            .await;
+            assert!(result.is_ok());
+            let result_del = delete(cursor.clone(), Some("test_env".to_string()), None).await;
+            assert_eq!(result_del, ());
             let result_un = uninstall(cursor).await;
             assert!(result_un.is_ok());
         }
