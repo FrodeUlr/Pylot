@@ -132,6 +132,7 @@ impl Venv {
             &self.settings.venvs_path
         };
         let path = shellexpand::tilde(venvs_path).to_string();
+        std::fs::create_dir_all(&path).unwrap();
         std::env::set_current_dir(&path).unwrap();
         let args = [
             "venv",
