@@ -276,9 +276,16 @@ mod tests {
     async fn test_create_venv() {
         #[cfg(unix)]
         {
+            use shellexpand::tilde;
+
             let cursor = std::io::Cursor::new("y\n");
             let result_in = install(cursor.clone()).await;
             assert!(result_in.is_ok());
+            let uv_path = tilde("~/.local/bin/uv");
+            std::env::set_var(
+                "PATH",
+                format!("{}:{}", uv_path, std::env::var("PATH").unwrap()),
+            );
             let result = create(
                 Some("test_env".to_string()),
                 None,
@@ -288,7 +295,7 @@ mod tests {
                 false,
             )
             .await;
-            // assert!(result.is_ok());
+            assert!(result.is_ok());
             delete(cursor.clone(), Some("test_env".to_string()), None).await;
             let result_un = uninstall(cursor).await;
             assert!(result_un.is_ok());
