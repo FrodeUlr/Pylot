@@ -139,6 +139,8 @@ pub fn get_parent_shell() -> String {
 #[cfg(test)]
 mod tests {
 
+    use crate::constants::SH_CMD;
+
     use super::*;
 
     use std::io::Cursor;
@@ -217,7 +219,7 @@ mod tests {
             let child = create_child_cmd(cmd, args, run);
             assert!(child.id() > Some(0));
         } else {
-            let cmd = "sh";
+            let cmd = SH_CMD;
             let run = "-c";
             let args = &["echo Hello"];
             let child = create_child_cmd(cmd, args, run);

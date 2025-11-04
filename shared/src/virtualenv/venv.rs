@@ -1,5 +1,8 @@
 use crate::{
-    constants::{BASH_CMD, ERROR_CREATING_VENV, ERROR_VENV_NOT_EXISTS, POWERSHELL_CMD, PWSH_CMD},
+    constants::{
+        DEFAULT_VENV_HOME, ERROR_CREATING_VENV, ERROR_VENV_NOT_EXISTS, POWERSHELL_CMD, PWSH_CMD,
+        SH_CMD,
+    },
     processes, settings, utils,
 };
 use colored::Colorize;
@@ -93,12 +96,17 @@ impl Venv {
     }
 
     pub async fn activate(&self) {
-        log::info!("Activating virtual environment: {}", self.name);
         let (shell, cmd, path) = self.get_shell_cmd();
         if !std::path::Path::new(&path).exists() {
             log::error!("{}", ERROR_VENV_NOT_EXISTS);
             return;
         }
+        log::info!("\nActivating virtual environment: {}", self.name);
+        log::warn!(
+            "{} {}",
+            "Note: To exit the virtual environment, type",
+            "'exit'".green()
+        );
         let _ = processes::activate_venv_shell(shell.as_str(), cmd);
     }
 
@@ -121,7 +129,13 @@ impl Venv {
 
     fn get_pwd_args(&self) -> Option<(std::path::PathBuf, [&str; 4])> {
         let pwd = std::env::current_dir().unwrap();
-        let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
+        let venvs_path = if self.settings.venvs_path.is_empty() {
+            DEFAULT_VENV_HOME
+        } else {
+            &self.settings.venvs_path
+        };
+        let path = shellexpand::tilde(venvs_path).to_string();
+        std::fs::create_dir_all(&path).unwrap();
         std::env::set_current_dir(&path).unwrap();
         let args = [
             "venv",
@@ -148,7 +162,7 @@ impl Venv {
             (pwsh_cmd, venv_cmd, "-Command")
         } else {
             let venv_cmd = format!("{}/{}/bin/activate", venv_path, self.name);
-            (BASH_CMD, venv_cmd, "-c")
+            (SH_CMD, venv_cmd, "-c")
         };
 
         let mut args: Vec<String> = vec![
@@ -159,7 +173,7 @@ impl Venv {
             "install".to_string(),
         ];
         if !cfg!(target_os = "windows") {
-            args.insert(0, "source".to_string());
+            args.insert(0, ".".to_string());
         }
         args.push(pkgs.join(" "));
         log::info!("{} {}", "Installing package(s):", pkgs.join(", "));
@@ -180,7 +194,7 @@ impl Venv {
             (vec![venv_cmd], venv_path)
         } else {
             let venv_path = format!("{}/{}/bin/activate", path, self.name);
-            let venv_cmd = format!("source {} && {} -i", venv_path, shell.as_str());
+            let venv_cmd = format!(". {} && {} -i", venv_path, shell.as_str());
             (vec!["-c".to_string(), venv_cmd], venv_path)
         };
         (shell, cmd, path)
@@ -237,7 +251,7 @@ mod tests {
             assert!(agr_str.contains("activate.ps1"));
             assert!(agr_str.contains("uv pip install requests flask"));
         } else {
-            assert_eq!(cmd, BASH_CMD);
+            assert_eq!(cmd, SH_CMD);
             assert_eq!(run, "-c");
             assert!(agr_str.contains("activate"));
             assert!(agr_str.contains("uv pip install requests flask"));

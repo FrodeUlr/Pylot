@@ -28,6 +28,19 @@ pub fn confirm<R: std::io::Read>(input: R) -> bool {
     }
 }
 
+pub fn which_check(cmd: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
+    let missing_cmds: Vec<&str> = cmd
+        .iter()
+        .filter(|&&c| which::which(c).is_err())
+        .cloned()
+        .collect();
+    if missing_cmds.is_empty() {
+        Ok(())
+    } else {
+        Err(format!("Missing required commands: {:?}", missing_cmds).into())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -68,6 +81,12 @@ mod tests {
             let _ = tokio::runtime::Handle::current()
                 .block_on(async { read_requirements_file(test_file).await });
         });
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_read_requirement_file_notexists() {
+        let result = read_requirements_file("non_existent_file.txt").await;
         assert!(result.is_err());
     }
 

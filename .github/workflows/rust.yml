@@ -21,17 +21,23 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Install nextest
         uses: taiki-e/install-action@nextest
+      - name: Add ~/.local/bin to PATH
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Test with latest nextest release
         uses: actions-rs/cargo@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           command: nextest
-          args: run --workspace --no-fail-fast --profile ci
+          args: run --jobs 1 --workspace --no-fail-fast --profile ci
       - name: Upload test results to Codecov
         uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Run coverage
-        run: cargo llvm-cov --workspace --lcov --output-path lcov.info -- --nocapture
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo llvm-cov --jobs 1 --workspace --lcov --output-path lcov.info -- --nocapture
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
@@ -57,6 +63,8 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Run tests and coverage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cargo llvm-cov --workspace --lcov --output-path lcov.info -- --nocapture
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4

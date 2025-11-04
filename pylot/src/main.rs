@@ -26,9 +26,15 @@ async fn main() {
             generate(shell, &mut cmd, "pylot", &mut io::stdout());
         }
         Some(Commands::Uv { command }) => match command {
-            UvCommands::Install => install(io::stdin()).await,
+            UvCommands::Install => match install(io::stdin()).await {
+                Ok(_) => {}
+                Err(e) => log::error!("{}", e),
+            },
             UvCommands::Update => update().await,
-            UvCommands::Uninstall => uninstall(io::stdin()).await,
+            UvCommands::Uninstall => match uninstall(io::stdin()).await {
+                Ok(_) => {}
+                Err(e) => log::error!("{}", e),
+            },
             UvCommands::Check => check().await,
         },
 
@@ -42,7 +48,7 @@ async fn main() {
                 requirements,
                 default,
             } => {
-                create(
+                match create(
                     name_pos,
                     name,
                     python_version,
@@ -51,6 +57,12 @@ async fn main() {
                     default,
                 )
                 .await
+                {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("{}", e);
+                    }
+                }
             }
             VenvCommands::Delete { name_pos, name } => delete(io::stdin(), name_pos, name).await,
             VenvCommands::List => list().await,
