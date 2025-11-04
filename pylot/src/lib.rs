@@ -286,6 +286,7 @@ mod tests {
                 "PATH",
                 format!("{}:{}", uv_path, std::env::var("PATH").unwrap()),
             );
+            delete(cursor.clone(), Some("test_env".to_string()), None).await;
             let result = create(
                 Some("test_env".to_string()),
                 None,
@@ -317,6 +318,7 @@ mod tests {
                 "PATH",
                 format!("{}:{}", uv_path, std::env::var("PATH").unwrap()),
             );
+            delete(cursor.clone(), Some("test_env_def".to_string()), None).await;
             let result = create(
                 Some("test_env_def".to_string()),
                 None,
