@@ -84,6 +84,12 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[tokio::test]
+    async fn test_read_requirement_file_notexists() {
+        let result = read_requirements_file("non_existent_file.txt").await;
+        assert!(result.is_err());
+    }
+
     #[test]
     fn test_confirm_yes() {
         let cursor = std::io::Cursor::new("y\n");
