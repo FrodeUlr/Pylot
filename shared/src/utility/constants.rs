@@ -18,6 +18,7 @@ pub const UV_UNIX_UNINSTALL_ARGS: &[&str] = &["-c", "rm ~/.local/bin/uv ~/.local
 // Shared constants
 pub const UV_COMMAND: &str = "uv";
 pub const UPDATE_ARGS: &[&str] = &["self", "update"];
+pub const DEFAULT_VENV_HOME: &str = "~/pylot/venvs/";
 
 // Error messages
 pub const ERROR_CREATING_VENV: &str = "Error creating virtual environment";

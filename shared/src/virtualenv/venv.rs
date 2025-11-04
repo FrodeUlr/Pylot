@@ -1,5 +1,8 @@
 use crate::{
-    constants::{ERROR_CREATING_VENV, ERROR_VENV_NOT_EXISTS, POWERSHELL_CMD, PWSH_CMD, SH_CMD},
+    constants::{
+        DEFAULT_VENV_HOME, ERROR_CREATING_VENV, ERROR_VENV_NOT_EXISTS, POWERSHELL_CMD, PWSH_CMD,
+        SH_CMD,
+    },
     processes, settings, utils,
 };
 use colored::Colorize;
@@ -127,7 +130,7 @@ impl Venv {
     fn get_pwd_args(&self) -> Option<(std::path::PathBuf, [&str; 4])> {
         let pwd = std::env::current_dir().unwrap();
         let venvs_path = if self.settings.venvs_path.is_empty() {
-            "~/pylot/venvs/"
+            DEFAULT_VENV_HOME
         } else {
             &self.settings.venvs_path
         };

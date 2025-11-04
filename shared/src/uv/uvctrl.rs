@@ -13,7 +13,7 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
 
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
         utils::which_check(&[WINGET_CMD])
-            .map_err(|e| format!("Winget is required for installation: {}", e))?;
+            .map_err(|e| format!("Winget is required for installation(https://learn.microsoft.com/en-us/windows/package-manager/winget/): {}", e))?;
         (WINGET_CMD, UV_WINGET_INSTALL_ARGS)
     } else {
         utils::which_check(&[SH_CMD, "curl", "sh"]).map_err(|e| format!("{}", e))?;
