@@ -27,7 +27,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: nextest
-          args: run --workspace --no-fail-fast --profile ci
+          args: run --jobs 1 --workspace --no-fail-fast --profile ci
       - name: Upload test results to Codecov
         uses: codecov/test-results-action@v1
         with:
