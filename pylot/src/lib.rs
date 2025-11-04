@@ -212,7 +212,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_packages_from_requirements_test() {
+    async fn test_update_packages_from_requirements() {
         let requirements = "test_requirements.txt".to_string();
         let mut packages = vec!["numpy".to_string()];
         let _ = write(&requirements, "pandas\nscipy\n").await;
