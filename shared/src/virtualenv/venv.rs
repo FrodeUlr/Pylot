@@ -126,7 +126,12 @@ impl Venv {
 
     fn get_pwd_args(&self) -> Option<(std::path::PathBuf, [&str; 4])> {
         let pwd = std::env::current_dir().unwrap();
-        let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
+        let venvs_path = if self.settings.venvs_path.is_empty() {
+            "~/pylot/venvs/"
+        } else {
+            &self.settings.venvs_path
+        };
+        let path = shellexpand::tilde(venvs_path).to_string();
         std::env::set_current_dir(&path).unwrap();
         let args = [
             "venv",
