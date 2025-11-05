@@ -2,8 +2,7 @@
 mod tests {
     use std::{fs, io};
 
-    use crate::{settings, venv::Venv, venvmanager::VENVMANAGER};
-
+    use shared::{settings, venv::Venv, venvmanager::VENVMANAGER};
     use tempfile::tempdir;
 
     #[tokio::test]

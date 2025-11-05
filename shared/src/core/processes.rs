@@ -57,7 +57,7 @@ pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<(), Box<dyn s
     }
 }
 
-pub(crate) async fn run_command_with_handlers<
+pub async fn run_command_with_handlers<
     RO: AsyncBufRead + Unpin + Send + 'static,
     RE: AsyncBufRead + Unpin + Send + 'static,
     F,

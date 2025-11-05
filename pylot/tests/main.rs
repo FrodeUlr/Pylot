@@ -2,7 +2,7 @@
 mod tests {
     use clap::Parser;
 
-    use crate::cli::cmds::{Cli, Commands, VenvCommands};
+    use pylot::cli::cmds::{Cli, Commands, VenvCommands};
     use shared::constants::ERROR_VENV_NOT_EXISTS;
 
     #[test]

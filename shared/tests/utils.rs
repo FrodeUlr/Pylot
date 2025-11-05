@@ -3,9 +3,8 @@ mod tests {
 
     use std::io::{self, Read};
 
+    use shared::utils::{confirm, read_requirements_file};
     use tokio::fs;
-
-    use crate::utils::{confirm, read_requirements_file};
 
     struct ErrorReader;
 

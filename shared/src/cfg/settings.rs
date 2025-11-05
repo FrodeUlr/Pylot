@@ -58,7 +58,7 @@ impl Settings {
         settings_lock.clone()
     }
 
-    pub(crate) fn validate_venv_path(&self) {
+    pub fn validate_venv_path(&self) {
         let mut path = self.venvs_path.clone();
         if path.starts_with("~") {
             path = shellexpand::tilde(&path).to_string();
@@ -69,7 +69,7 @@ impl Settings {
         }
     }
 
-    pub(crate) fn get_exe_dir<F>(current_exe_fn: F) -> PathBuf
+    pub fn get_exe_dir<F>(current_exe_fn: F) -> PathBuf
     where
         F: Fn() -> std::io::Result<PathBuf>,
     {

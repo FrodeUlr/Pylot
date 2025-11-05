@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::uvctrl::{check, install, uninstall, update};
+    use shared::uvctrl::{check, install, uninstall, update};
 
     #[tokio::test]
     async fn test_check() {

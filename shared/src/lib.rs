@@ -1,6 +1,5 @@
 mod cfg;
 mod core;
-mod tests;
 mod utility;
 mod uv;
 mod virtualenv;

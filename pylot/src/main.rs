@@ -1,5 +1,4 @@
-pub(crate) mod cli;
-mod tests;
+pub mod cli;
 
 use clap_complete::{generate, Shell};
 use pylot::{activate, check, create, delete, install, list, uninstall, update};

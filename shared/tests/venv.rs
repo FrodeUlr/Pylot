@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::{
+    use shared::{
         constants::{PWSH_CMD, SH_CMD},
         venv::Venv,
     };

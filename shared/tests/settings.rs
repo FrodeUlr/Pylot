@@ -5,7 +5,7 @@ mod tests {
         sync::Mutex,
     };
 
-    use crate::settings::Settings;
+    use shared::settings::Settings;
 
     #[test]
     fn test_default_venv_path() {

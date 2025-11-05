@@ -3,7 +3,7 @@ mod tests {
     use log::{debug, error, info, trace, warn, LevelFilter};
     use std::sync::Once;
 
-    use crate::logger::initialize_logger;
+    use shared::logger::initialize_logger;
 
     static INIT: Once = Once::new();
 

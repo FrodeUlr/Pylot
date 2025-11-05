@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
 
-    use crate::constants::SH_CMD;
-    use crate::processes::{
+    use shared::constants::SH_CMD;
+    use shared::processes::{
         create_child_cmd, get_parent_shell, run_command, run_command_with_handlers,
     };
     use tokio::io::BufReader;

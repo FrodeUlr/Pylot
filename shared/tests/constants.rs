@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::constants::{
+    use shared::constants::{
         POWERSHELL_CMD, PWSH_CMD, SH_CMD, UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, UV_COMMAND,
         WINGET_CMD, WIN_PYTHON_EXEC,
     };

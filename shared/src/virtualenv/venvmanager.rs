@@ -72,11 +72,7 @@ impl VenvManager {
         Some(venv)
     }
 
-    pub(crate) fn get_index<R: std::io::Read>(
-        &self,
-        input: R,
-        size: usize,
-    ) -> Result<usize, String> {
+    pub fn get_index<R: std::io::Read>(&self, input: R, size: usize) -> Result<usize, String> {
         let mut input_string = String::new();
         let mut stdin = std::io::BufReader::new(input);
         let _ = stdout().flush();
@@ -95,7 +91,7 @@ impl VenvManager {
         }
     }
 
-    pub(crate) fn collect_venvs(&self, entries: fs::ReadDir) -> Vec<Venv> {
+    pub fn collect_venvs(&self, entries: fs::ReadDir) -> Vec<Venv> {
         let venvs: Vec<Venv> = entries
             .filter_map(Result::ok)
             .filter_map(|entry| {
@@ -130,7 +126,7 @@ impl VenvManager {
             .await;
     }
 
-    pub(crate) async fn print_venv_table_to<W: Write>(&self, writer: &mut W, venvs: &mut [Venv]) {
+    pub async fn print_venv_table_to<W: Write>(&self, writer: &mut W, venvs: &mut [Venv]) {
         let mut table = Table::new();
         table
             .load_preset(UTF8_FULL)

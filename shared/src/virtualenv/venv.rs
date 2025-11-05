@@ -127,7 +127,7 @@ impl Venv {
         }
     }
 
-    pub(crate) fn get_pwd_args(&self) -> Option<(std::path::PathBuf, [&str; 4])> {
+    pub fn get_pwd_args(&self) -> Option<(std::path::PathBuf, [&str; 4])> {
         let pwd = std::env::current_dir().unwrap();
         let venvs_path = if self.settings.venvs_path.is_empty() {
             DEFAULT_VENV_HOME
@@ -147,7 +147,7 @@ impl Venv {
         Some((pwd, args))
     }
 
-    pub(crate) fn generate_command(
+    pub fn generate_command(
         &self,
         pkgs: Vec<String>,
         venv_path: String,

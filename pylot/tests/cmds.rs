@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::cli::cmds::Cli;
+    use pylot::cli::cmds::Cli;
 
     #[test]
     fn verify_cli() {
