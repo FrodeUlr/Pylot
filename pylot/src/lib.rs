@@ -196,11 +196,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_missing_uv() {
-        //only run on github agents
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
         let cursor = std::io::Cursor::new("y\n");
         let result_un = uninstall(cursor).await;
         assert!(result_un.is_ok());
@@ -305,7 +300,7 @@ mod tests {
                 "3.11".to_string(),
                 vec!["numpy".to_string()],
                 "".to_string(),
-                false,
+                true,
             )
             .await;
             assert!(result.is_ok());
@@ -313,17 +308,9 @@ mod tests {
             delete(cursor.clone(), cursor_one, None, None).await;
             let result_un = uninstall(cursor).await;
             assert!(result_un.is_ok());
-        }
-    }
 
-    #[tokio::test]
-    async fn test_create_venv_default_pkg() {
-        #[cfg(unix)]
-        {
-            use shellexpand::tilde;
-
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
+            let cursor2 = std::io::Cursor::new("y\n");
+            let result_in = install(cursor2.clone()).await;
             assert!(result_in.is_ok());
             let uv_path = tilde("~/.local/bin/uv");
             std::env::set_var(
@@ -331,7 +318,7 @@ mod tests {
                 format!("{}:{}", uv_path, std::env::var("PATH").unwrap()),
             );
             delete(
-                cursor.clone(),
+                cursor2.clone(),
                 io::stdin(),
                 Some("test_env_def".to_string()),
                 None,
@@ -341,7 +328,7 @@ mod tests {
                 Some("test_env_def".to_string()),
                 None,
                 "3.11".to_string(),
-                vec!["numpy".to_string()],
+                vec!["pandas".to_string()],
                 "".to_string(),
                 true,
             )
@@ -349,13 +336,13 @@ mod tests {
             assert!(result.is_ok());
             list().await;
             delete(
-                cursor.clone(),
+                cursor2.clone(),
                 io::stdin(),
                 Some("test_env_def".to_string()),
                 None,
             )
             .await;
-            let result_un = uninstall(cursor).await;
+            let result_un = uninstall(cursor2).await;
             assert!(result_un.is_ok());
         }
     }

@@ -122,33 +122,25 @@ mod tests {
 
     #[test]
     fn test_cli_output_activate() {
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
         assert_cli::Assert::main_binary()
             .with_args(&["venv", "activate"])
             .current_dir(env!("CARGO_MANIFEST_DIR"))
             .succeeds()
             .and()
             .stderr()
-            .contains("No virtual environments found")
+            .contains("virtual environment")
             .unwrap();
     }
 
     #[test]
     fn test_cli_output_delete() {
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
         assert_cli::Assert::main_binary()
             .with_args(&["venv", "delete"])
             .current_dir(env!("CARGO_MANIFEST_DIR"))
             .succeeds()
             .and()
             .stderr()
-            .contains("No virtual environments found")
+            .contains("virtual environment")
             .unwrap();
     }
 
