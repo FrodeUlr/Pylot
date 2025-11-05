@@ -5,7 +5,7 @@ use shared::{constants::ERROR_CREATING_VENV, utils, uvctrl, venv};
 
 pub async fn activate(name_pos: Option<String>, name: Option<String>) {
     let venv = venvmanager::VENVMANAGER
-        .find_venv(name_pos, name, "activate")
+        .find_venv(io::stdin(), name_pos, name, "activate")
         .await;
     if let Some(v) = venv {
         v.activate().await
@@ -85,9 +85,14 @@ async fn update_packages_from_requirements(
     Ok(())
 }
 
-pub async fn delete<R: std::io::Read>(input: R, name_pos: Option<String>, name: Option<String>) {
+pub async fn delete<R: std::io::Read, F: std::io::Read>(
+    input: R,
+    find_input: F,
+    name_pos: Option<String>,
+    name: Option<String>,
+) {
     let venv = venvmanager::VENVMANAGER
-        .find_venv(name_pos, name, "delete")
+        .find_venv(find_input, name_pos, name, "delete")
         .await;
     if let Some(v) = venv {
         v.delete(input, true).await
@@ -175,7 +180,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete() {
-        delete(io::stdin(), Some("test_env".to_string()), None).await;
+        delete(io::stdin(), io::stdin(), Some("test_env".to_string()), None).await;
     }
 
     #[tokio::test]
@@ -279,6 +284,7 @@ mod tests {
             use shellexpand::tilde;
 
             let cursor = std::io::Cursor::new("y\n");
+            let cursor_one = std::io::Cursor::new("1\n");
             let result_in = install(cursor.clone()).await;
             assert!(result_in.is_ok());
             let uv_path = tilde("~/.local/bin/uv");
@@ -286,7 +292,13 @@ mod tests {
                 "PATH",
                 format!("{}:{}", uv_path, std::env::var("PATH").unwrap()),
             );
-            delete(cursor.clone(), Some("test_env".to_string()), None).await;
+            delete(
+                cursor.clone(),
+                io::stdin(),
+                Some("test_env".to_string()),
+                None,
+            )
+            .await;
             let result = create(
                 Some("test_env".to_string()),
                 None,
@@ -298,7 +310,7 @@ mod tests {
             .await;
             assert!(result.is_ok());
             list().await;
-            delete(cursor.clone(), Some("test_env".to_string()), None).await;
+            delete(cursor.clone(), cursor_one, None, None).await;
             let result_un = uninstall(cursor).await;
             assert!(result_un.is_ok());
         }
@@ -318,7 +330,13 @@ mod tests {
                 "PATH",
                 format!("{}:{}", uv_path, std::env::var("PATH").unwrap()),
             );
-            delete(cursor.clone(), Some("test_env_def".to_string()), None).await;
+            delete(
+                cursor.clone(),
+                io::stdin(),
+                Some("test_env_def".to_string()),
+                None,
+            )
+            .await;
             let result = create(
                 Some("test_env_def".to_string()),
                 None,
@@ -330,7 +348,13 @@ mod tests {
             .await;
             assert!(result.is_ok());
             list().await;
-            delete(cursor.clone(), Some("test_env_def".to_string()), None).await;
+            delete(
+                cursor.clone(),
+                io::stdin(),
+                Some("test_env_def".to_string()),
+                None,
+            )
+            .await;
             let result_un = uninstall(cursor).await;
             assert!(result_un.is_ok());
         }

@@ -64,7 +64,9 @@ async fn main() {
                     }
                 }
             }
-            VenvCommands::Delete { name_pos, name } => delete(io::stdin(), name_pos, name).await,
+            VenvCommands::Delete { name_pos, name } => {
+                delete(io::stdin(), io::stdin(), name_pos, name).await
+            }
             VenvCommands::List => list().await,
         },
 
