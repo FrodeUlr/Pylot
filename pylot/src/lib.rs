@@ -1,3 +1,5 @@
+pub mod cli;
+
 use std::io;
 
 use shared::venvmanager;
@@ -5,7 +7,7 @@ use shared::{constants::ERROR_CREATING_VENV, utils, uvctrl, venv};
 
 pub async fn activate(name_pos: Option<String>, name: Option<String>) {
     let venv = venvmanager::VENVMANAGER
-        .find_venv(name_pos, name, "activate")
+        .find_venv(io::stdin(), name_pos, name, "activate")
         .await;
     if let Some(v) = venv {
         v.activate().await
@@ -66,7 +68,7 @@ pub async fn create(
     }
 }
 
-async fn update_packages_from_requirements(
+pub async fn update_packages_from_requirements(
     requirements: String,
     packages: &mut Vec<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -85,9 +87,14 @@ async fn update_packages_from_requirements(
     Ok(())
 }
 
-pub async fn delete<R: std::io::Read>(input: R, name_pos: Option<String>, name: Option<String>) {
+pub async fn delete<R: std::io::Read, F: std::io::Read>(
+    input: R,
+    find_input: F,
+    name_pos: Option<String>,
+    name: Option<String>,
+) {
     let venv = venvmanager::VENVMANAGER
-        .find_venv(name_pos, name, "delete")
+        .find_venv(find_input, name_pos, name, "delete")
         .await;
     if let Some(v) = venv {
         v.delete(input, true).await
@@ -131,208 +138,10 @@ pub async fn list() {
     print_venvs(venvs).await;
 }
 
-async fn print_venvs(mut venvs: Vec<venv::Venv>) {
+pub async fn print_venvs(mut venvs: Vec<venv::Venv>) {
     if venvs.is_empty() {
         log::info!("No virtual environments found");
     } else {
         venvmanager::VENVMANAGER.print_venv_table(&mut venvs).await;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::io;
-
-    use super::*;
-    use tokio::fs::{self, write};
-
-    #[tokio::test]
-    async fn test_check() {
-        check().await;
-    }
-
-    #[tokio::test]
-    async fn test_list() {
-        list().await;
-    }
-
-    #[tokio::test]
-    async fn test_print_venvs_empty() {
-        print_venvs(vec![]).await;
-    }
-
-    #[tokio::test]
-    async fn test_print_venvs_non_empty() {
-        let venv = venv::Venv::new(
-            "test_env".to_string(),
-            "/path/to/test_env".to_string(),
-            "3.8".to_string(),
-            vec!["numpy".to_string()],
-            false,
-        );
-        print_venvs(vec![venv]).await;
-    }
-
-    #[tokio::test]
-    async fn test_delete() {
-        delete(io::stdin(), Some("test_env".to_string()), None).await;
-    }
-
-    #[tokio::test]
-    async fn test_activate() {
-        activate(Some("test_env_not_here".to_string()), None).await;
-    }
-
-    #[tokio::test]
-    async fn test_create_missing_name() {
-        let result = create(None, None, "3.8".to_string(), vec![], "".to_string(), false).await;
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_create_missing_uv() {
-        //only run on github agents
-        if std::env::var("GITHUB_ACTIONS").is_err() {
-            println!("Skipping test in non-GitHub Actions environment");
-            return;
-        }
-        let cursor = std::io::Cursor::new("y\n");
-        let result_un = uninstall(cursor).await;
-        assert!(result_un.is_ok());
-        let result = create(
-            Some("test_env".to_string()),
-            None,
-            "3.8".to_string(),
-            vec![],
-            "".to_string(),
-            false,
-        )
-        .await;
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_update_packages_from_requirements() {
-        let requirements = "test_requirements.txt".to_string();
-        let mut packages = vec!["numpy".to_string()];
-        let _ = write(&requirements, "pandas\nscipy\n").await;
-        let result = update_packages_from_requirements(requirements.clone(), &mut packages).await;
-        assert!(result.is_ok());
-        assert!(packages.contains(&"numpy".to_string()));
-        assert!(packages.contains(&"pandas".to_string()));
-        assert!(packages.contains(&"scipy".to_string()));
-        fs::remove_file(requirements).await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_install_uv_no() {
-        let cursor = std::io::Cursor::new("n\n");
-        let result_in = install(cursor.clone()).await;
-        assert!(result_in.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_uninstall_uv_no() {
-        let cursor = std::io::Cursor::new("n\n");
-        let result_un = uninstall(cursor).await;
-        assert!(result_un.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_install_uv_yes() {
-        #[cfg(unix)]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            assert!(result_in.is_ok());
-        }
-        #[cfg(not(unix))]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            assert!(result_in.is_ok());
-        }
-    }
-
-    #[tokio::test]
-    async fn test_uninstall_uv_yes() {
-        #[cfg(unix)]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            assert!(result_in.is_ok());
-            let result_un = uninstall(cursor).await;
-            assert!(result_un.is_ok());
-        }
-        #[cfg(not(unix))]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_un = uninstall(cursor).await;
-            assert!(result_un.is_ok());
-        }
-    }
-
-    #[tokio::test]
-    async fn test_create_venv() {
-        #[cfg(unix)]
-        {
-            use shellexpand::tilde;
-
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            assert!(result_in.is_ok());
-            let uv_path = tilde("~/.local/bin/uv");
-            std::env::set_var(
-                "PATH",
-                format!("{}:{}", uv_path, std::env::var("PATH").unwrap()),
-            );
-            delete(cursor.clone(), Some("test_env".to_string()), None).await;
-            let result = create(
-                Some("test_env".to_string()),
-                None,
-                "3.11".to_string(),
-                vec!["numpy".to_string()],
-                "".to_string(),
-                false,
-            )
-            .await;
-            assert!(result.is_ok());
-            list().await;
-            delete(cursor.clone(), Some("test_env".to_string()), None).await;
-            let result_un = uninstall(cursor).await;
-            assert!(result_un.is_ok());
-        }
-    }
-
-    #[tokio::test]
-    async fn test_create_venv_default_pkg() {
-        #[cfg(unix)]
-        {
-            use shellexpand::tilde;
-
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            assert!(result_in.is_ok());
-            let uv_path = tilde("~/.local/bin/uv");
-            std::env::set_var(
-                "PATH",
-                format!("{}:{}", uv_path, std::env::var("PATH").unwrap()),
-            );
-            delete(cursor.clone(), Some("test_env_def".to_string()), None).await;
-            let result = create(
-                Some("test_env_def".to_string()),
-                None,
-                "3.11".to_string(),
-                vec!["numpy".to_string()],
-                "".to_string(),
-                true,
-            )
-            .await;
-            assert!(result.is_ok());
-            list().await;
-            delete(cursor.clone(), Some("test_env_def".to_string()), None).await;
-            let result_un = uninstall(cursor).await;
-            assert!(result_un.is_ok());
-        }
     }
 }

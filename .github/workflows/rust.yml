@@ -40,7 +40,7 @@ jobs:
       - name: Run coverage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo llvm-cov --jobs 1 --workspace --lcov --output-path lcov.info -- --nocapture
+        run: cargo llvm-cov --jobs 1 --workspace --lcov --ignore-filename-regex '/pylot/src/main\.rs$' --output-path lcov.info -- --nocapture
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
@@ -68,7 +68,7 @@ jobs:
       - name: Run tests and coverage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: cargo llvm-cov --workspace --lcov --output-path lcov.info -- --nocapture
+        run: cargo llvm-cov --jobs 1 --workspace --lcov --ignore-filename-regex '\\pylot\\src\\main\.rs$' --output-path lcov.info -- --nocapture
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
