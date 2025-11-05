@@ -172,14 +172,12 @@ mod tests {
     fn test_activate_command() {
         let args = Cli::try_parse_from(["program", "venv", "activate", "my-venv"]).unwrap();
 
-        match args.commands {
-            Some(Commands::Venv {
-                command: VenvCommands::Activate { name_pos, name },
-            }) => {
-                assert_eq!(name_pos, Some("my-venv".to_string()));
-                assert_eq!(name, None);
-            }
-            _ => panic!("Expected Activate command"),
+        if let Some(Commands::Venv {
+            command: VenvCommands::Activate { name_pos, name },
+        }) = args.commands
+        {
+            assert_eq!(name_pos, Some("my-venv".to_string()));
+            assert_eq!(name, None);
         }
     }
 
@@ -188,14 +186,12 @@ mod tests {
         let args =
             Cli::try_parse_from(["program", "venv", "activate", "--name", "my-venv"]).unwrap();
 
-        match args.commands {
-            Some(Commands::Venv {
-                command: VenvCommands::Activate { name_pos, name },
-            }) => {
-                assert_eq!(name_pos, None);
-                assert_eq!(name, Some("my-venv".to_string()));
-            }
-            _ => panic!("Expected Activate command"),
+        if let Some(Commands::Venv {
+            command: VenvCommands::Activate { name_pos, name },
+        }) = args.commands
+        {
+            assert_eq!(name, Some("my-venv".to_string()));
+            assert_eq!(name_pos, None);
         }
     }
 
@@ -215,23 +211,21 @@ mod tests {
         ])
         .unwrap();
 
-        match args.commands {
-            Some(Commands::Venv {
-                command:
-                    VenvCommands::Create {
-                        name_pos,
-                        python_version,
-                        packages,
-                        default,
-                        ..
-                    },
-            }) => {
-                assert_eq!(name_pos, Some("my-venv".to_string()));
-                assert_eq!(python_version, "3.11");
-                assert_eq!(packages, vec!["requests", "numpy"]);
-                assert!(default);
-            }
-            _ => panic!("Expected Create command"),
+        if let Some(Commands::Venv {
+            command:
+                VenvCommands::Create {
+                    name_pos,
+                    python_version,
+                    packages,
+                    default,
+                    ..
+                },
+        }) = args.commands
+        {
+            assert_eq!(name_pos, Some("my-venv".to_string()));
+            assert_eq!(python_version, "3.11");
+            assert_eq!(packages, vec!["requests", "numpy"]);
+            assert!(default);
         }
     }
 
@@ -258,33 +252,24 @@ mod tests {
     fn test_complete_bash() {
         let args = Cli::try_parse_from(["program", "complete", "bash"]).unwrap();
 
-        match args.commands {
-            Some(Commands::Complete { shell }) => {
-                assert_eq!(shell, Some("bash".to_string()));
-            }
-            _ => panic!("Expected Complete command"),
+        if let Some(Commands::Complete { shell }) = args.commands {
+            assert_eq!(shell, Some("bash".to_string()));
         }
     }
     #[test]
     fn test_complete_zsh() {
         let args = Cli::try_parse_from(["program", "complete", "zsh"]).unwrap();
 
-        match args.commands {
-            Some(Commands::Complete { shell }) => {
-                assert_eq!(shell, Some("zsh".to_string()));
-            }
-            _ => panic!("Expected Complete command"),
+        if let Some(Commands::Complete { shell }) = args.commands {
+            assert_eq!(shell, Some("zsh".to_string()));
         }
     }
     #[test]
     fn test_complete_powershell() {
         let args = Cli::try_parse_from(["program", "complete", "powershell"]).unwrap();
 
-        match args.commands {
-            Some(Commands::Complete { shell }) => {
-                assert_eq!(shell, Some("powershell".to_string()));
-            }
-            _ => panic!("Expected Complete command"),
+        if let Some(Commands::Complete { shell }) = args.commands {
+            assert_eq!(shell, Some("powershell".to_string()));
         }
     }
 }
