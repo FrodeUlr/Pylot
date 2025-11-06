@@ -1,17 +1,10 @@
+mod helpers;
+
 #[cfg(test)]
 mod tests {
-    use log::{debug, error, info, trace, warn, LevelFilter};
-    use std::sync::Once;
+    use log::{debug, error, info, trace, warn};
 
-    use shared::logger::initialize_logger;
-
-    static INIT: Once = Once::new();
-
-    fn setup_logger() {
-        INIT.call_once(|| {
-            initialize_logger(LevelFilter::Trace);
-        });
-    }
+    use crate::helpers::setup_logger;
 
     #[test]
     fn test_logger_output() {

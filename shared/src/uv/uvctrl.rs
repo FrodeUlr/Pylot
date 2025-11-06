@@ -19,17 +19,16 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
         utils::which_check(&[SH_CMD, "curl", "sh"]).map_err(|e| format!("{}", e))?;
         (SH_CMD, UV_UNIX_INSTALL_ARGS)
     };
-    log::info!("This will run the following command:");
-    log::error!("\t{} {}", cmd, args.join(" "));
-    if !confirm(input) {
-        log::info!("Exiting...");
-        return Ok(());
+
+    if let Some(value) = confirm_cmd(input, cmd, args) {
+        return value;
     }
 
     let mut child = processes::create_child_cmd(cmd, args, "");
     processes::run_command(&mut child)
         .await
         .map_err(|_| "Installation failed".to_string())?;
+    log::info!("Astral UV has been installed.");
     Ok(())
 }
 
@@ -55,26 +54,34 @@ pub async fn update() -> Result<(), String> {
 
 pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
     log::info!("Uninstalling Astral UV...");
-    log::info!("This will run the following command:");
-
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
+        utils::which_check(&[WINGET_CMD])
+            .map_err(|e| format!("Winget is required for installation(https://learn.microsoft.com/en-us/windows/package-manager/winget/): {}", e))?;
         (WINGET_CMD, UV_WINGET_UNINSTALL_ARGS)
     } else {
         (SH_CMD, UV_UNIX_UNINSTALL_ARGS)
     };
 
-    log::error!("\t{} {}", cmd, args.join(" "));
-
-    if !confirm(input) {
-        log::info!("Exiting...");
-        return Ok(());
+    if let Some(value) = confirm_cmd(input, cmd, args) {
+        return value;
     }
 
     let mut child = processes::create_child_cmd(cmd, args, "");
     processes::run_command(&mut child)
         .await
         .map_err(|_| "Uninstallation failed".to_string())?;
+    log::info!("Astral UV has been uninstalled.");
     Ok(())
+}
+
+fn confirm_cmd<R: std::io::Read>(input: R, cmd: &str, args: &[&str]) -> Option<Result<(), String>> {
+    log::info!("This will run the following command:\n");
+    log::error!("\t{} {}\n", cmd, args.join(" "));
+    if !confirm(input) {
+        log::warn!("Exiting...");
+        return Some(Ok(()));
+    }
+    None
 }
 
 pub async fn check() -> bool {

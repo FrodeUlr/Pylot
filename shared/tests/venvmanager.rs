@@ -1,3 +1,5 @@
+mod helpers;
+
 #[cfg(test)]
 mod tests {
     use std::{fs, io};
@@ -5,14 +7,18 @@ mod tests {
     use shared::{settings, venv::Venv, venvmanager::VENVMANAGER};
     use tempfile::tempdir;
 
+    use crate::helpers::setup_logger;
+
     #[tokio::test]
     async fn test_list_venvs() {
+        setup_logger();
         let venvs = VENVMANAGER.list().await;
         assert!(venvs.is_empty() || venvs.len() <= 5);
     }
 
     #[tokio::test]
     async fn test_check_if_exists() {
+        setup_logger();
         let exists = VENVMANAGER
             .check_if_exists("non_existent_venv".to_string())
             .await;
@@ -21,6 +27,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_venv_none() {
+        setup_logger();
         let venv = VENVMANAGER
             .find_venv(io::stdin(), None, None, "activate")
             .await;
@@ -29,6 +36,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_venv_none_cancel() {
+        setup_logger();
         let cursor = std::io::Cursor::new("c\n");
         let venv = VENVMANAGER.find_venv(cursor, None, None, "activate").await;
         assert!(venv.is_some() || venv.is_none());
@@ -36,6 +44,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_venv_by_name() {
+        setup_logger();
         let venv = VENVMANAGER
             .find_venv(io::stdin(), None, Some("test_venv".to_string()), "activate")
             .await;
@@ -45,6 +54,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_venv_by_name_pos() {
+        setup_logger();
         let venv = VENVMANAGER
             .find_venv(io::stdin(), Some("test_venv".to_string()), None, "activate")
             .await;
@@ -54,6 +64,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_collect_venvs_empty() {
+        setup_logger();
         let tmp_dir = tempdir().unwrap();
         let entries = fs::read_dir(tmp_dir.path()).unwrap();
         let venvs = VENVMANAGER.collect_venvs(entries);
@@ -62,6 +73,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_print_table() {
+        setup_logger();
         let mut venvs = vec![
             Venv {
                 name: "venv1".to_string(),
@@ -85,6 +97,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_print_venv_table() {
+        setup_logger();
         let mut venvs = vec![
             Venv {
                 name: "venv1".to_string(),
@@ -118,6 +131,7 @@ mod tests {
 
     #[test]
     fn test_get_index_valid() {
+        setup_logger();
         let cursor = std::io::Cursor::new("2\n");
         let index = VENVMANAGER.get_index(cursor, 5);
         assert!(index.is_ok());
@@ -125,6 +139,7 @@ mod tests {
 
     #[test]
     fn test_get_index_invalid() {
+        setup_logger();
         let cursor = std::io::Cursor::new("10\n");
         let index = VENVMANAGER.get_index(cursor, 5);
         assert!(index.is_err());
@@ -132,6 +147,7 @@ mod tests {
 
     #[test]
     fn test_get_index_cancel() {
+        setup_logger();
         let cursor = std::io::Cursor::new("c\n");
         let index = VENVMANAGER.get_index(cursor, 5);
         assert!(index.is_err());
@@ -139,6 +155,7 @@ mod tests {
 
     #[test]
     fn test_get_index_non_number() {
+        setup_logger();
         let cursor = std::io::Cursor::new("abc\n");
         let index = VENVMANAGER.get_index(cursor, 5);
         assert!(index.is_err());

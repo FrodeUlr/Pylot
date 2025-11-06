@@ -1,31 +1,38 @@
+mod helpers;
+
 #[cfg(test)]
 mod tests {
-    use std::io;
-
     use pylot::{
         activate, check, create, delete, install, list, print_venvs, uninstall,
         update_packages_from_requirements,
     };
     use shared::venv;
+    use std::io;
     use tokio::fs::{self, write};
+
+    use crate::helpers::setup_logger;
 
     #[tokio::test]
     async fn test_check() {
+        setup_logger();
         check().await;
     }
 
     #[tokio::test]
     async fn test_list() {
+        setup_logger();
         list().await;
     }
 
     #[tokio::test]
     async fn test_print_venvs_empty() {
+        setup_logger();
         print_venvs(vec![]).await;
     }
 
     #[tokio::test]
     async fn test_print_venvs_non_empty() {
+        setup_logger();
         let venv = venv::Venv::new(
             "test_env".to_string(),
             "/path/to/test_env".to_string(),
@@ -38,22 +45,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete() {
+        setup_logger();
         delete(io::stdin(), io::stdin(), Some("test_env".to_string()), None).await;
     }
 
     #[tokio::test]
     async fn test_activate() {
+        setup_logger();
         activate(Some("test_env_not_here".to_string()), None).await;
     }
 
     #[tokio::test]
     async fn test_create_missing_name() {
+        setup_logger();
         let result = create(None, None, "3.8".to_string(), vec![], "".to_string(), false).await;
         assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn test_create_missing_uv() {
+        setup_logger();
         let cursor = std::io::Cursor::new("y\n");
         let result_un = uninstall(cursor).await;
         assert!(result_un.is_ok());
@@ -71,6 +82,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_packages_from_requirements() {
+        setup_logger();
         let requirements = "test_requirements.txt".to_string();
         let mut packages = vec!["numpy".to_string()];
         let _ = write(&requirements, "pandas\nscipy\n").await;
@@ -84,6 +96,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_install_uv_no() {
+        setup_logger();
         let cursor = std::io::Cursor::new("n\n");
         let result_in = install(cursor.clone()).await;
         assert!(result_in.is_ok());
@@ -91,6 +104,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_uninstall_uv_no() {
+        setup_logger();
         let cursor = std::io::Cursor::new("n\n");
         let result_un = uninstall(cursor).await;
         assert!(result_un.is_ok());
@@ -98,6 +112,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_install_uv_yes() {
+        setup_logger();
         #[cfg(unix)]
         {
             let cursor = std::io::Cursor::new("y\n");
@@ -114,6 +129,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_uninstall_uv_yes() {
+        setup_logger();
         #[cfg(unix)]
         {
             let cursor = std::io::Cursor::new("y\n");
@@ -132,6 +148,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_venv() {
+        setup_logger();
         #[cfg(unix)]
         {
             use shellexpand::tilde;

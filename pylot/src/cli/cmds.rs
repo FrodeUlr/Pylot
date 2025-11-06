@@ -76,6 +76,7 @@ pub enum UvCommands {
     Uninstall,
 
     #[command(
+        visible_alias = "c",
         about = "Check Astral UV",
         long_about = "This command checks if Astral UV is installed"
     )]

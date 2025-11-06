@@ -1,3 +1,5 @@
+mod helpers;
+
 #[cfg(test)]
 mod tests {
 
@@ -8,32 +10,13 @@ mod tests {
     use tokio::io::BufReader;
 
     use std::io::Cursor;
-    use std::pin::Pin;
     use std::sync::{Arc, Mutex};
-    use std::task::{Context, Poll};
-    use tokio::io::{self, AsyncBufRead, AsyncRead, ReadBuf};
 
-    struct ErrorReader;
-
-    impl AsyncRead for ErrorReader {
-        fn poll_read(
-            self: Pin<&mut Self>,
-            _cx: &mut Context<'_>,
-            _buf: &mut ReadBuf<'_>,
-        ) -> Poll<io::Result<()>> {
-            Poll::Ready(Err(io::Error::other("simulated error".to_string())))
-        }
-    }
-
-    impl AsyncBufRead for ErrorReader {
-        fn poll_fill_buf(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<io::Result<&[u8]>> {
-            Poll::Ready(Err(io::Error::other("simulated error".to_string())))
-        }
-        fn consume(self: Pin<&mut Self>, _amt: usize) {}
-    }
+    use crate::helpers::{setup_logger, ErrorReader};
 
     #[test]
     fn test_get_parent_shell() {
+        setup_logger();
         let shell = get_parent_shell();
         if cfg!(target_os = "windows") {
             assert!(shell == "powershell" || shell == "pwsh");
@@ -44,6 +27,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_child_cmd() {
+        setup_logger();
         if cfg!(target_os = "windows") {
             let cmd = "cmd";
             let args = &["/C", "echo", "Hello"];
@@ -59,6 +43,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_command() {
+        setup_logger();
         if cfg!(target_os = "windows") {
             let cmd = "cmd";
             let args = &["/C", "echo", "Hello"];
@@ -76,6 +61,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_child_cmd_run() {
+        setup_logger();
         if cfg!(target_os = "windows") {
             let cmd = "cmd";
             let run = "/C";
@@ -93,6 +79,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_command_with_handlers() {
+        setup_logger();
         let stdout_data = Cursor::new("line1\nline2\n");
         let stderr_data = Cursor::new("err1\nerr2\n");
 
@@ -117,6 +104,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_command_with_handlers_stdout_err() {
+        setup_logger();
         let stderr_data = Cursor::new("err1\nerr2\n");
 
         let stdout_lines = Arc::new(Mutex::new(Vec::new()));
@@ -138,6 +126,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_command_with_handlers_stderr_err() {
+        setup_logger();
         let stdout_data = Cursor::new("out\nout\n");
 
         let stdout_lines = Arc::new(Mutex::new(Vec::new()));

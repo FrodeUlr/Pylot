@@ -1,3 +1,5 @@
+mod helpers;
+
 #[cfg(test)]
 mod tests {
     use shared::{
@@ -5,8 +7,11 @@ mod tests {
         venv::Venv,
     };
 
+    use crate::helpers::setup_logger;
+
     #[tokio::test]
     async fn test_venv() {
+        setup_logger();
         let venv = Venv::new(
             "test_venv".to_string(),
             "".to_string(),
@@ -20,6 +25,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_venv_clean() {
+        setup_logger();
         let venv = Venv::new(
             "test_venv_clean".to_string(),
             "".to_string(),
@@ -34,6 +40,7 @@ mod tests {
 
     #[test]
     fn test_generate_command() {
+        setup_logger();
         let venv = Venv::new(
             "test_venv_cmd".to_string(),
             "".to_string(),
@@ -60,6 +67,7 @@ mod tests {
 
     #[test]
     fn test_get_settings_pwd_args() {
+        setup_logger();
         let pwd_start = std::env::current_dir().unwrap();
         let venv = Venv::new(
             "test_venv_args".to_string(),

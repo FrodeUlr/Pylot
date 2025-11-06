@@ -1,3 +1,5 @@
+mod helpers;
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -7,14 +9,18 @@ mod tests {
 
     use shared::settings::Settings;
 
+    use crate::helpers::setup_logger;
+
     #[test]
     fn test_default_venv_path() {
+        setup_logger();
         let settings = Settings::default();
         assert_eq!(settings.venvs_path, "~/pylot/venvs");
     }
 
     #[test]
     fn test_validate_venv_path() {
+        setup_logger();
         let settings = Settings {
             venvs_path: "~/pylot/venvs".to_string(),
             default_pkgs: vec![],
@@ -26,6 +32,7 @@ mod tests {
 
     #[test]
     fn test_get_settings() {
+        setup_logger();
         let settings = Settings {
             venvs_path: "~/pylot/venvs".to_string(),
             default_pkgs: vec![],
@@ -37,6 +44,7 @@ mod tests {
 
     #[test]
     fn test_default_pkgs() {
+        setup_logger();
         let settings = Settings::default();
         let empty_vec: Vec<String> = Vec::new();
         assert_eq!(settings.default_pkgs, empty_vec);
@@ -44,6 +52,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_init() {
+        setup_logger();
         Settings::init().await;
         let settings = Settings::get_settings();
         assert_eq!(settings.venvs_path, "~/pylot/venvs");
@@ -51,6 +60,7 @@ mod tests {
 
     #[test]
     fn test_settings_deserialize() {
+        setup_logger();
         let toml_str = r#"
             venvs_path = "~/custom/venvs"
             default_pkgs = ["numpy", "pandas"]
@@ -63,6 +73,7 @@ mod tests {
 
     #[test]
     fn test_settings_deserialize_missing_fields() {
+        setup_logger();
         let toml_str = r#"
             default_pkgs = ["requests"]
         "#;
@@ -74,6 +85,7 @@ mod tests {
 
     #[test]
     fn test_settings_deserialize_invalid() {
+        setup_logger();
         let toml_str = r#"
             venvs_path = 123
             default_pkgs = "not_a_list"
@@ -85,6 +97,7 @@ mod tests {
 
     #[test]
     fn test_get_exe_dir() {
+        setup_logger();
         let fake_current_exe = || Ok(PathBuf::from("/usr/local/bin/pylot"));
         let exe_dir = Settings::get_exe_dir(fake_current_exe);
         assert_eq!(exe_dir, PathBuf::from("/usr/local/bin"));
@@ -92,6 +105,7 @@ mod tests {
 
     #[test]
     fn test_get_exe_dir_error() {
+        setup_logger();
         let fake_current_exe = || Err(std::io::Error::other("error"));
         let exe_dir = Settings::get_exe_dir(fake_current_exe);
         assert_eq!(exe_dir, PathBuf::from("."));
