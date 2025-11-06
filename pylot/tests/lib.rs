@@ -128,6 +128,24 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_install_update_uv_yes() {
+        setup_logger();
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_in = install(cursor.clone()).await;
+            pylot::update().await;
+            assert!(result_in.is_ok());
+        }
+        #[cfg(not(unix))]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_in = install(cursor.clone()).await;
+            assert!(result_in.is_ok());
+        }
+    }
+
+    #[tokio::test]
     async fn test_uninstall_uv_yes() {
         setup_logger();
         #[cfg(unix)]
@@ -137,6 +155,24 @@ mod tests {
             assert!(result_in.is_ok());
             let result_un = uninstall(cursor).await;
             assert!(result_un.is_ok());
+        }
+        #[cfg(not(unix))]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_un = uninstall(cursor).await;
+            assert!(result_un.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_uninstall_update_uv_yes() {
+        setup_logger();
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_un = uninstall(cursor).await;
+            assert!(result_un.is_ok());
+            pylot::update().await;
         }
         #[cfg(not(unix))]
         {
@@ -179,6 +215,36 @@ mod tests {
             )
             .await;
             assert!(result.is_ok());
+            let result_exists = create(
+                Some("test_env".to_string()),
+                None,
+                "3.11".to_string(),
+                vec!["numpy".to_string()],
+                "".to_string(),
+                true,
+            )
+            .await;
+            assert!(result_exists.is_err());
+            let result_reqerr = create(
+                Some("test_env2".to_string()),
+                None,
+                "3.11".to_string(),
+                vec!["numpy".to_string()],
+                "nofiletest".to_string(),
+                true,
+            )
+            .await;
+            assert!(result_reqerr.is_err());
+            let result_pyerr = create(
+                Some("test_env2".to_string()),
+                None,
+                "0.1".to_string(),
+                vec!["numpy".to_string()],
+                "".to_string(),
+                true,
+            )
+            .await;
+            assert!(result_pyerr.is_err());
             list().await;
             delete(cursor.clone(), cursor_one, None, None).await;
             let result_un = uninstall(cursor).await;
