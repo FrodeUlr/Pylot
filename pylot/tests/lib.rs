@@ -214,6 +214,7 @@ mod tests {
                 true,
             )
             .await;
+            log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             let result_exists = create(
                 Some("test_env".to_string()),
@@ -224,6 +225,7 @@ mod tests {
                 true,
             )
             .await;
+            log::error!("Result exists: {:?}", result_exists);
             assert!(result_exists.is_err());
             let result_reqerr = create(
                 Some("test_env2".to_string()),
@@ -234,6 +236,7 @@ mod tests {
                 true,
             )
             .await;
+            log::error!("Result reqerr: {:?}", result_reqerr);
             assert!(result_reqerr.is_err());
             let result_pyerr = create(
                 Some("test_env2".to_string()),
@@ -244,6 +247,7 @@ mod tests {
                 true,
             )
             .await;
+            log::error!("Result pyerr: {:?}", result_pyerr);
             assert!(result_pyerr.is_err());
             list().await;
             delete(cursor.clone(), cursor_one, None, None).await;
@@ -274,6 +278,7 @@ mod tests {
                 true,
             )
             .await;
+            log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             list().await;
             delete(
