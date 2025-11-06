@@ -75,17 +75,23 @@ where
     let stdout_task = tokio::spawn(async move {
         let mut lines = stdout_reader.lines();
         while let Some(line) = lines.next_line().await? {
+            if line.contains("error:") {
+                return Err(line.to_string().into());
+            }
             handle_stdout(line);
         }
-        Ok::<(), Box<std::io::Error>>(())
+        Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
     });
 
     let stderr_task = tokio::spawn(async move {
         let mut lines = stderr_reader.lines();
         while let Some(line) = lines.next_line().await? {
+            if line.contains("error:") {
+                return Err(line.to_string().into());
+            }
             handle_stderr(line);
         }
-        Ok::<(), Box<std::io::Error>>(())
+        Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
     });
 
     let (stdout_res, stderr_res) = tokio::join!(stdout_task, stderr_task);

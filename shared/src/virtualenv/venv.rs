@@ -1,8 +1,5 @@
 use crate::{
-    constants::{
-        DEFAULT_VENV_HOME, ERROR_CREATING_VENV, ERROR_VENV_NOT_EXISTS, POWERSHELL_CMD, PWSH_CMD,
-        SH_CMD,
-    },
+    constants::{DEFAULT_VENV_HOME, ERROR_VENV_NOT_EXISTS, POWERSHELL_CMD, PWSH_CMD, SH_CMD},
     processes, settings, utils,
 };
 use colored::Colorize;
@@ -39,9 +36,11 @@ impl Venv {
     pub async fn create(&self) -> Result<(), String> {
         if let Some((pwd, args)) = self.get_pwd_args() {
             let mut child = processes::create_child_cmd("uv", &args, "");
-            processes::run_command(&mut child)
-                .await
-                .map_err(|_| ERROR_CREATING_VENV.to_string())?;
+            let result = processes::run_command(&mut child).await;
+            if result.is_err() {
+                std::env::set_current_dir(pwd).unwrap();
+                return Err(format!("{}", result.err().unwrap()));
+            }
             let mut pkgs = self.packages.clone();
             if self.default {
                 let default_pkgs = self.settings.default_pkgs.clone();
