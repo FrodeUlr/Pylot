@@ -6,7 +6,7 @@ mod tests {
         activate, check, create, delete, install, list, print_venvs, uninstall,
         update_packages_from_requirements,
     };
-    use shared::venv;
+    use shared::uvvenv;
     use std::io;
     use tokio::fs::{self, write};
 
@@ -33,7 +33,7 @@ mod tests {
     #[tokio::test]
     async fn test_print_venvs_non_empty() {
         setup_logger();
-        let venv = venv::Venv::new(
+        let venv = uvvenv::UvVenv::new(
             "test_env".to_string(),
             "/path/to/test_env".to_string(),
             "3.8".to_string(),

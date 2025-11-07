@@ -4,7 +4,7 @@ mod helpers;
 mod tests {
     use std::{fs, io};
 
-    use shared::{settings, venv::Venv, venvmanager::VENVMANAGER};
+    use shared::{settings, uvvenv::UvVenv, venvmanager::VENVMANAGER};
     use tempfile::tempdir;
 
     use crate::helpers::setup_logger;
@@ -75,7 +75,7 @@ mod tests {
     async fn test_print_table() {
         setup_logger();
         let mut venvs = vec![
-            Venv {
+            UvVenv {
                 name: "venv1".to_string(),
                 python_version: "3.10".to_string(),
                 path: "/some/path".to_string(),
@@ -83,7 +83,7 @@ mod tests {
                 default: false,
                 settings: settings::Settings::get_settings(),
             },
-            Venv {
+            UvVenv {
                 name: "venv2".to_string(),
                 python_version: "3.11".to_string(),
                 path: "/other/path".to_string(),
@@ -99,7 +99,7 @@ mod tests {
     async fn test_print_venv_table() {
         setup_logger();
         let mut venvs = vec![
-            Venv {
+            UvVenv {
                 name: "venv1".to_string(),
                 python_version: "3.10".to_string(),
                 path: "/some/path".to_string(),
@@ -107,7 +107,7 @@ mod tests {
                 default: false,
                 settings: settings::Settings::get_settings(),
             },
-            Venv {
+            UvVenv {
                 name: "venv2".to_string(),
                 python_version: "3.11".to_string(),
                 path: "/other/path".to_string(),

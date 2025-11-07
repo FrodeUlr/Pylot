@@ -4,7 +4,7 @@ mod helpers;
 mod tests {
     use shared::{
         constants::{PWSH_CMD, SH_CMD},
-        venv::Venv,
+        uvvenv::UvVenv,
     };
 
     use crate::helpers::setup_logger;
@@ -12,7 +12,7 @@ mod tests {
     #[tokio::test]
     async fn test_venv() {
         setup_logger();
-        let venv = Venv::new(
+        let venv = UvVenv::new(
             "test_venv".to_string(),
             "".to_string(),
             "3.8".to_string(),
@@ -26,7 +26,7 @@ mod tests {
     #[tokio::test]
     async fn test_venv_clean() {
         setup_logger();
-        let venv = Venv::new(
+        let venv = UvVenv::new(
             "test_venv_clean".to_string(),
             "".to_string(),
             "3.9".to_string(),
@@ -38,20 +38,22 @@ mod tests {
         assert_eq![venv.packages, &["numpy", "pandas"]]
     }
 
-    #[test]
-    fn test_generate_command() {
+    #[tokio::test]
+    async fn test_generate_command() {
         setup_logger();
-        let venv = Venv::new(
+        let venv = UvVenv::new(
             "test_venv_cmd".to_string(),
             "".to_string(),
             "3.10".to_string(),
             vec!["requests".to_string()],
             true,
         );
-        let (cmd, run, agr_str) = venv.generate_command(
-            vec!["requests".to_string(), "flask".to_string()],
-            "/home/user/.virtualenvs".to_string(),
-        );
+        let (cmd, run, agr_str) = venv
+            .generate_command(
+                vec!["requests".to_string(), "flask".to_string()],
+                "/home/user/.virtualenvs".to_string(),
+            )
+            .await;
         if cfg!(target_os = "windows") {
             assert_eq!(cmd, PWSH_CMD);
             assert_eq!(run, "-Command");
@@ -69,7 +71,7 @@ mod tests {
     fn test_get_settings_pwd_args() {
         setup_logger();
         let pwd_start = std::env::current_dir().unwrap();
-        let venv = Venv::new(
+        let venv = UvVenv::new(
             "test_venv_args".to_string(),
             "".to_string(),
             "3.11".to_string(),

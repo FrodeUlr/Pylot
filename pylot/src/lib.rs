@@ -2,8 +2,11 @@ pub mod cli;
 
 use std::io;
 
-use shared::venvmanager;
-use shared::{constants::ERROR_CREATING_VENV, utils, uvctrl, venv};
+use shared::{
+    constants::ERROR_CREATING_VENV,
+    utils, uvctrl, uvvenv, venvmanager,
+    venvtraits::{Activate, Create, Delete},
+};
 
 pub async fn activate(name_pos: Option<String>, name: Option<String>) {
     let venv = venvmanager::VENVMANAGER
@@ -60,7 +63,7 @@ pub async fn create(
             return Err(format!("Error reading requirements file: {}", e).into());
         }
     }
-    let venv = venv::Venv::new(name, "".to_string(), python_version, packages, default);
+    let venv = uvvenv::UvVenv::new(name, "".to_string(), python_version, packages, default);
     match venv.create().await {
         Ok(_) => Ok(()),
         Err(e) => {
@@ -140,7 +143,7 @@ pub async fn list() {
     print_venvs(venvs).await;
 }
 
-pub async fn print_venvs(mut venvs: Vec<venv::Venv>) {
+pub async fn print_venvs(mut venvs: Vec<uvvenv::UvVenv>) {
     if venvs.is_empty() {
         log::info!("No virtual environments found");
     } else {

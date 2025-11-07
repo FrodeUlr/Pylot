@@ -1,12 +1,13 @@
 use crate::{
     constants::{DEFAULT_VENV_HOME, ERROR_VENV_NOT_EXISTS, POWERSHELL_CMD, PWSH_CMD, SH_CMD},
-    processes, settings, utils,
+    processes, settings, utils, uvctrl,
+    venvtraits::{Activate, Create, Delete},
 };
 use colored::Colorize;
 use std::fs;
 use tokio::fs as async_fs;
 
-pub struct Venv {
+pub struct UvVenv {
     pub name: String,
     pub path: String,
     pub python_version: String,
@@ -15,25 +16,8 @@ pub struct Venv {
     pub settings: settings::Settings,
 }
 
-impl Venv {
-    pub fn new(
-        name: String,
-        path: String,
-        python_version: String,
-        packages: Vec<String>,
-        default: bool,
-    ) -> Self {
-        Venv {
-            name,
-            path,
-            python_version,
-            packages,
-            default,
-            settings: settings::Settings::get_settings(),
-        }
-    }
-
-    pub async fn create(&self) -> Result<(), String> {
+impl Create for UvVenv {
+    async fn create(&self) -> Result<(), String> {
         if let Some((pwd, args)) = self.get_pwd_args() {
             let mut child = processes::create_child_cmd("uv", &args, "");
             let result = processes::run_command(&mut child).await;
@@ -49,7 +33,7 @@ impl Venv {
             if !pkgs.is_empty() {
                 let venv_path = shellexpand::tilde(&self.settings.venvs_path).to_string();
 
-                let (cmd, run, agr_str) = self.generate_command(pkgs, venv_path);
+                let (cmd, run, agr_str) = self.generate_command(pkgs, venv_path).await;
                 let mut child2 = processes::create_child_cmd(cmd, &[&agr_str], run);
 
                 processes::run_command(&mut child2)
@@ -62,8 +46,10 @@ impl Venv {
             Err("Error getting current directory".to_string())
         }
     }
+}
 
-    pub async fn delete<R: std::io::Read>(&self, input: R, confirm: bool) {
+impl Delete for UvVenv {
+    async fn delete<R: std::io::Read>(&self, input: R, confirm: bool) {
         let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
         let venv_path = format!("{}/{}", path, self.name);
         if !std::path::Path::new(&venv_path).exists() {
@@ -93,8 +79,10 @@ impl Venv {
             Err(e) => log::error!("{} {}", e, self.name),
         }
     }
+}
 
-    pub async fn activate(&self) {
+impl Activate for UvVenv {
+    async fn activate(&self) {
         let (shell, cmd, path) = self.get_shell_cmd();
         if !std::path::Path::new(&path).exists() {
             log::error!("{}", ERROR_VENV_NOT_EXISTS);
@@ -107,6 +95,25 @@ impl Venv {
             "'exit'".green()
         );
         let _ = processes::activate_venv_shell(shell.as_str(), cmd);
+    }
+}
+
+impl UvVenv {
+    pub fn new(
+        name: String,
+        path: String,
+        python_version: String,
+        packages: Vec<String>,
+        default: bool,
+    ) -> Self {
+        UvVenv {
+            name,
+            path,
+            python_version,
+            packages,
+            default,
+            settings: settings::Settings::get_settings(),
+        }
     }
 
     pub async fn set_python_version(&mut self) {
@@ -146,13 +153,13 @@ impl Venv {
         Some((pwd, args))
     }
 
-    pub fn generate_command(
+    pub async fn generate_command(
         &self,
         pkgs: Vec<String>,
         venv_path: String,
     ) -> (&str, &'static str, String) {
         let (cmd, vcmd, run) = if cfg!(target_os = "windows") {
-            let pwsh_cmd = if which::which(PWSH_CMD).is_ok() {
+            let pwsh_cmd = if uvctrl::check(PWSH_CMD).await.is_ok() {
                 PWSH_CMD
             } else {
                 POWERSHELL_CMD

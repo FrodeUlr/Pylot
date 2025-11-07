@@ -1,4 +1,4 @@
-use super::venv::{self, Venv};
+use super::uvvenv::{self, UvVenv};
 use crate::{
     constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC},
     settings,
@@ -17,9 +17,9 @@ impl VenvManager {
         VenvManager
     }
 
-    pub async fn list(&self) -> Vec<Venv> {
+    pub async fn list(&self) -> Vec<UvVenv> {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
-        let venvs: Vec<Venv> = match fs::read_dir(&path) {
+        let venvs: Vec<UvVenv> = match fs::read_dir(&path) {
             Ok(entries) => self.collect_venvs(entries),
             Err(_) => Vec::new(),
         };
@@ -38,9 +38,9 @@ impl VenvManager {
         name_pos: Option<String>,
         name: Option<String>,
         method: &str,
-    ) -> Option<Venv> {
+    ) -> Option<UvVenv> {
         let venv = match name.or(name_pos) {
-            Some(n) => venv::Venv::new(n, "".to_string(), "".to_string(), vec![], false),
+            Some(n) => uvvenv::UvVenv::new(n, "".to_string(), "".to_string(), vec![], false),
             None => {
                 let mut venvs = self.list().await;
                 if venvs.is_empty() {
@@ -55,7 +55,7 @@ impl VenvManager {
                     " (c to cancel):"
                 );
                 match self.get_index(input, venvs.len()) {
-                    Ok(index) => venv::Venv::new(
+                    Ok(index) => uvvenv::UvVenv::new(
                         venvs[index - 1].name.clone(),
                         "".to_string(),
                         "".to_string(),
@@ -91,8 +91,8 @@ impl VenvManager {
         }
     }
 
-    pub fn collect_venvs(&self, entries: fs::ReadDir) -> Vec<Venv> {
-        let venvs: Vec<Venv> = entries
+    pub fn collect_venvs(&self, entries: fs::ReadDir) -> Vec<UvVenv> {
+        let venvs: Vec<UvVenv> = entries
             .filter_map(Result::ok)
             .filter_map(|entry| {
                 if entry.file_type().ok()?.is_dir() {
@@ -103,7 +103,7 @@ impl VenvManager {
                         dir_path.join(UNIX_PYTHON3_EXEC),
                     ];
                     if python_paths.iter().any(|p| p.exists()) {
-                        Some(Venv::new(
+                        Some(UvVenv::new(
                             entry.file_name().to_str()?.to_string(),
                             dir_path.to_str()?.to_string(),
                             "".to_string(),
@@ -121,12 +121,12 @@ impl VenvManager {
         venvs
     }
 
-    pub async fn print_venv_table(&self, venvs: &mut [Venv]) {
+    pub async fn print_venv_table(&self, venvs: &mut [UvVenv]) {
         self.print_venv_table_to(&mut std::io::stdout(), venvs)
             .await;
     }
 
-    pub async fn print_venv_table_to<W: Write>(&self, writer: &mut W, venvs: &mut [Venv]) {
+    pub async fn print_venv_table_to<W: Write>(&self, writer: &mut W, venvs: &mut [UvVenv]) {
         let mut table = Table::new();
         table
             .load_preset(UTF8_FULL)
@@ -210,7 +210,7 @@ mod tests {
     #[tokio::test]
     async fn test_print_table() {
         let mut venvs = vec![
-            Venv {
+            UvVenv {
                 name: "venv1".to_string(),
                 python_version: "3.10".to_string(),
                 path: "/some/path".to_string(),
@@ -218,7 +218,7 @@ mod tests {
                 default: false,
                 settings: settings::Settings::get_settings(),
             },
-            Venv {
+            UvVenv {
                 name: "venv2".to_string(),
                 python_version: "3.11".to_string(),
                 path: "/other/path".to_string(),
@@ -233,7 +233,7 @@ mod tests {
     #[tokio::test]
     async fn test_print_venv_table() {
         let mut venvs = vec![
-            Venv {
+            UvVenv {
                 name: "venv1".to_string(),
                 python_version: "3.10".to_string(),
                 path: "/some/path".to_string(),
@@ -241,7 +241,7 @@ mod tests {
                 default: false,
                 settings: settings::Settings::get_settings(),
             },
-            Venv {
+            UvVenv {
                 name: "venv2".to_string(),
                 python_version: "3.11".to_string(),
                 path: "/other/path".to_string(),
