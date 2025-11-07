@@ -9,13 +9,11 @@ mod tests {
     #[tokio::test]
     async fn test_check() {
         setup_logger();
-        let is_installed = check().await;
-        if is_installed {
-            println!("Astral UV is installed.");
-            assert!(is_installed);
+        let is_installed = check("uv").await;
+        if is_installed.is_ok() {
+            assert!(is_installed.is_ok());
         } else {
-            println!("Astral UV is not installed.");
-            assert!(!is_installed);
+            assert!(is_installed.is_err());
         }
     }
 

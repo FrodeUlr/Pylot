@@ -35,7 +35,10 @@ async fn main() {
                 Ok(_) => {}
                 Err(e) => log::error!("{}", e),
             },
-            UvCommands::Check => check().await,
+            UvCommands::Check => match check().await {
+                Ok(_) => log::info!("Astral UV is installed"),
+                Err(e) => log::error!("{}", e),
+            },
         },
 
         Some(Commands::Venv { command }) => match command {

@@ -14,13 +14,12 @@ pub async fn activate(name_pos: Option<String>, name: Option<String>) {
     }
 }
 
-pub async fn check() {
+pub async fn check() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("Checking if Astral UV is installed and configured...");
-    if uvctrl::check().await {
-        log::info!("Astral UV is installed");
-        return;
+    match uvctrl::check("uv").await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
     }
-    log::warn!("Astral UV was not found");
 }
 
 pub async fn create(
@@ -37,13 +36,16 @@ pub async fn create(
             return Err("Missing 'name' for the environment.".into());
         }
     };
-    if !uvctrl::check().await {
-        log::error!(
-            "Astral UV is not installed. Please run '{} uv install' to install it.",
-            env!("CARGO_PKG_NAME")
-        );
-        return Err("Astral UV not installed".into());
-    }
+    match uvctrl::check("uv").await {
+        Ok(_) => {}
+        Err(_) => {
+            return Err(format!(
+                "Astral UV is not installed. Please run '{} uv install' to install it.",
+                env!("CARGO_PKG_NAME")
+            )
+            .into())
+        }
+    };
     if venvmanager::VENVMANAGER.check_if_exists(name.clone()).await {
         log::error!(
             "A virtual environment with the name '{}' already exists.",
@@ -102,7 +104,7 @@ pub async fn delete<R: std::io::Read, F: std::io::Read>(
 }
 
 pub async fn install<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::error::Error>> {
-    if uvctrl::check().await {
+    if (uvctrl::check("uv").await).is_ok() {
         log::info!("Astral UV is already installed.");
         return Ok(());
     }
@@ -113,18 +115,18 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::erro
 }
 
 pub async fn update() {
-    if uvctrl::check().await {
-        uvctrl::update().await.unwrap_or_else(|e| {
-            log::error!("{}", e);
-        });
-    } else {
-        log::error!("Astral UV is not installed.");
+    if (uvctrl::check("uv").await).is_err() {
+        log::info!("Astral UV is not installed.");
+        return;
     }
+    uvctrl::update().await.unwrap_or_else(|e| {
+        log::error!("{}", e);
+    });
 }
 
 pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::error::Error>> {
-    if !uvctrl::check().await {
-        log::error!("Astral UV is not installed");
+    if (uvctrl::check("uv").await).is_err() {
+        log::info!("Astral UV is not installed.");
         return Ok(());
     }
     match uvctrl::uninstall(input).await {

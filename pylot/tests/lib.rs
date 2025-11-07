@@ -15,7 +15,7 @@ mod tests {
     #[tokio::test]
     async fn test_check() {
         setup_logger();
-        check().await;
+        _ = check().await;
     }
 
     #[tokio::test]

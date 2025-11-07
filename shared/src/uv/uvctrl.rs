@@ -84,6 +84,12 @@ fn confirm_cmd<R: std::io::Read>(input: R, cmd: &str, args: &[&str]) -> Option<R
     None
 }
 
-pub async fn check() -> bool {
-    which::which("uv").is_ok()
+pub async fn check(name: &str) -> Result<String, Box<dyn std::error::Error>> {
+    match which::which(name)
+        .map(|_| ())
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+    {
+        Ok(_) => Ok(format!("{} is installed.", name)),
+        Err(e) => Err(format!("{} not found: {}", name, e).into()),
+    }
 }
