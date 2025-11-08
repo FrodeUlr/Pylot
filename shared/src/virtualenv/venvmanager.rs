@@ -72,7 +72,7 @@ impl VenvManager {
         Some(venv)
     }
 
-    pub fn get_index<R: std::io::Read>(&self, input: R, size: usize) -> Result<usize, String> {
+    fn get_index<R: std::io::Read>(&self, input: R, size: usize) -> Result<usize, String> {
         let mut input_string = String::new();
         let mut stdin = std::io::BufReader::new(input);
         let _ = stdout().flush();
@@ -91,7 +91,7 @@ impl VenvManager {
         }
     }
 
-    pub fn collect_venvs(&self, entries: fs::ReadDir) -> Vec<UvVenv> {
+    fn collect_venvs(&self, entries: fs::ReadDir) -> Vec<UvVenv> {
         let venvs: Vec<UvVenv> = entries
             .filter_map(Result::ok)
             .filter_map(|entry| {
@@ -126,7 +126,7 @@ impl VenvManager {
             .await;
     }
 
-    pub async fn print_venv_table_to<W: Write>(&self, writer: &mut W, venvs: &mut [UvVenv]) {
+    async fn print_venv_table_to<W: Write>(&self, writer: &mut W, venvs: &mut [UvVenv]) {
         let mut table = Table::new();
         table
             .load_preset(UTF8_FULL)
@@ -149,17 +149,21 @@ impl VenvManager {
 mod tests {
     use std::io;
 
+    use crate::logger;
+
     use super::*;
     use tempfile::tempdir;
 
     #[tokio::test]
     async fn test_list_venvs() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let venvs = VENVMANAGER.list().await;
         assert!(venvs.is_empty() || venvs.len() <= 5);
     }
 
     #[tokio::test]
     async fn test_check_if_exists() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let exists = VENVMANAGER
             .check_if_exists("non_existent_venv".to_string())
             .await;
@@ -168,6 +172,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_venv_none() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let venv = VENVMANAGER
             .find_venv(io::stdin(), None, None, "activate")
             .await;
@@ -176,6 +181,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_venv_none_cancel() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let cursor = std::io::Cursor::new("c\n");
         let venv = VENVMANAGER.find_venv(cursor, None, None, "activate").await;
         assert!(venv.is_some() || venv.is_none());
@@ -183,6 +189,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_venv_by_name() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let venv = VENVMANAGER
             .find_venv(io::stdin(), None, Some("test_venv".to_string()), "activate")
             .await;
@@ -192,6 +199,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_venv_by_name_pos() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let venv = VENVMANAGER
             .find_venv(io::stdin(), Some("test_venv".to_string()), None, "activate")
             .await;
@@ -201,6 +209,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_collect_venvs_empty() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let tmp_dir = tempdir().unwrap();
         let entries = fs::read_dir(tmp_dir.path()).unwrap();
         let venvs = VENVMANAGER.collect_venvs(entries);
@@ -209,6 +218,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_print_table() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let mut venvs = vec![
             UvVenv {
                 name: "venv1".to_string(),
@@ -232,6 +242,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_print_venv_table() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let mut venvs = vec![
             UvVenv {
                 name: "venv1".to_string(),
@@ -265,6 +276,7 @@ mod tests {
 
     #[test]
     fn test_get_index_valid() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let cursor = std::io::Cursor::new("2\n");
         let index = VENVMANAGER.get_index(cursor, 5);
         assert!(index.is_ok());
@@ -272,6 +284,7 @@ mod tests {
 
     #[test]
     fn test_get_index_invalid() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let cursor = std::io::Cursor::new("10\n");
         let index = VENVMANAGER.get_index(cursor, 5);
         assert!(index.is_err());
@@ -279,6 +292,7 @@ mod tests {
 
     #[test]
     fn test_get_index_cancel() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let cursor = std::io::Cursor::new("c\n");
         let index = VENVMANAGER.get_index(cursor, 5);
         assert!(index.is_err());
@@ -286,6 +300,7 @@ mod tests {
 
     #[test]
     fn test_get_index_non_number() {
+        logger::initialize_logger(log::LevelFilter::Trace);
         let cursor = std::io::Cursor::new("abc\n");
         let index = VENVMANAGER.get_index(cursor, 5);
         assert!(index.is_err());

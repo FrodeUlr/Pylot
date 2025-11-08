@@ -93,3 +93,72 @@ pub async fn check(name: &str) -> Result<String, Box<dyn std::error::Error>> {
         Err(e) => Err(format!("{} not found: {}", name, e).into()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::logger;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_check() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let is_installed = check("uv").await;
+        if is_installed.is_ok() {
+            assert!(is_installed.is_ok());
+        } else {
+            assert!(is_installed.is_err());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_install_uv_yes() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            install(cursor).await.expect("Failed to install Astral UV");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_install_uv_no() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let cursor = std::io::Cursor::new("n\n");
+        install(cursor).await.expect("Failed to install Astral UV");
+    }
+
+    #[tokio::test]
+    async fn test_uninstall_uv_no() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let cursor = std::io::Cursor::new("n\n");
+        uninstall(cursor)
+            .await
+            .expect("Failed to uninstall Astral UV");
+    }
+
+    #[tokio::test]
+    async fn test_update_uv() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let result = update().await;
+        match result {
+            Ok(_) => println!("Astral UV updated successfully."),
+            Err(e) => println!("Failed to update Astral UV: {}", e),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_install_uv_yes_update() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            install(cursor).await.expect("Failed to install Astral UV");
+            let result = update().await;
+            match result {
+                Ok(_) => println!("Astral UV updated successfully."),
+                Err(e) => println!("Failed to update Astral UV: {}", e),
+            }
+        }
+    }
+}
