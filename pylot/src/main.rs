@@ -42,7 +42,10 @@ async fn main() {
         },
 
         Some(Commands::Venv { command }) => match command {
-            VenvCommands::Activate { name_pos, name } => activate(name_pos, name).await,
+            VenvCommands::Activate { name_pos, name } => match name.or(name_pos) {
+                Some(venv_name) => activate(Some(venv_name)).await,
+                None => activate(None).await,
+            },
             VenvCommands::Create {
                 name_pos,
                 name,
@@ -51,25 +54,24 @@ async fn main() {
                 requirements,
                 default,
             } => {
-                match create(
-                    name_pos,
-                    name,
-                    python_version,
-                    packages,
-                    requirements,
-                    default,
-                )
-                .await
-                {
+                let name = match name.or(name_pos) {
+                    Some(n) => n,
+                    None => {
+                        log::error!("Virtual environment name is required for creation");
+                        return;
+                    }
+                };
+                match create(name, python_version, packages, requirements, default).await {
                     Ok(_) => {}
                     Err(e) => {
                         log::error!("{}", e);
                     }
                 }
             }
-            VenvCommands::Delete { name_pos, name } => {
-                delete(io::stdin(), io::stdin(), name_pos, name).await
-            }
+            VenvCommands::Delete { name_pos, name } => match name.or(name_pos) {
+                Some(venv_name) => delete(io::stdin(), io::stdin(), Some(venv_name)).await,
+                None => delete(io::stdin(), io::stdin(), None).await,
+            },
             VenvCommands::List => list().await,
         },
 

@@ -35,11 +35,10 @@ impl VenvManager {
     pub async fn find_venv<R: std::io::Read>(
         &self,
         input: R,
-        name_pos: Option<String>,
         name: Option<String>,
         method: &str,
     ) -> Option<UvVenv> {
-        let venv = match name.or(name_pos) {
+        let venv = match name {
             Some(n) => uvvenv::UvVenv::new(n, "".to_string(), "".to_string(), vec![], false),
             None => {
                 let mut venvs = self.list().await;
@@ -173,9 +172,7 @@ mod tests {
     #[tokio::test]
     async fn test_find_venv_none() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let venv = VENVMANAGER
-            .find_venv(io::stdin(), None, None, "activate")
-            .await;
+        let venv = VENVMANAGER.find_venv(io::stdin(), None, "activate").await;
         assert!(venv.is_some() || venv.is_none());
     }
 
@@ -183,7 +180,7 @@ mod tests {
     async fn test_find_venv_none_cancel() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let cursor = std::io::Cursor::new("c\n");
-        let venv = VENVMANAGER.find_venv(cursor, None, None, "activate").await;
+        let venv = VENVMANAGER.find_venv(cursor, None, "activate").await;
         assert!(venv.is_some() || venv.is_none());
     }
 
@@ -191,17 +188,7 @@ mod tests {
     async fn test_find_venv_by_name() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let venv = VENVMANAGER
-            .find_venv(io::stdin(), None, Some("test_venv".to_string()), "activate")
-            .await;
-        assert!(venv.is_some());
-        assert_eq!(venv.unwrap().name, "test_venv");
-    }
-
-    #[tokio::test]
-    async fn test_find_venv_by_name_pos() {
-        logger::initialize_logger(log::LevelFilter::Trace);
-        let venv = VENVMANAGER
-            .find_venv(io::stdin(), Some("test_venv".to_string()), None, "activate")
+            .find_venv(io::stdin(), Some("test_venv".to_string()), "activate")
             .await;
         assert!(venv.is_some());
         assert_eq!(venv.unwrap().name, "test_venv");

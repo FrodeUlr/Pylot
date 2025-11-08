@@ -8,15 +8,23 @@ use shared::{
     venvtraits::{Activate, Create, Delete},
 };
 
-pub async fn activate(name_pos: Option<String>, name: Option<String>) {
+/// Activate a virtual environment by named position or name
+///
+/// * Examples
+///
+/// activate(Some("test_env".to_string()), None).await;
+///
+/// activate(None, Some("test_env".to_string())).await;
+pub async fn activate(name: Option<String>) {
     let venv = venvmanager::VENVMANAGER
-        .find_venv(io::stdin(), name_pos, name, "activate")
+        .find_venv(io::stdin(), name, "activate")
         .await;
     if let Some(v) = venv {
         v.activate().await
     }
 }
 
+/// Check if Astral UV is installed and configured
 pub async fn check() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("Checking if Astral UV is installed and configured...");
     match uvctrl::check("uv").await {
@@ -25,20 +33,27 @@ pub async fn check() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
+/// Create a new virtual environment
+///
+/// * Examples
+///
+/// ```
+/// use pylot::create;
+/// // With named_pos:
+/// create("test_env".to_string(), "3.8".to_string(), vec!["numpy".to_string(), "pandas".to_string()], "".to_string(), false);
+/// // Install default packages defined in settings.toml:
+/// create("test_env".to_string(), "3.8".to_string(), vec![], "".to_string(), true);
+/// ```
 pub async fn create(
-    name_pos: Option<String>,
-    name: Option<String>,
+    name: String,
     python_version: String,
     mut packages: Vec<String>,
     requirements: String,
     default: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let name = match name.or(name_pos) {
-        Some(n) => n,
-        None => {
-            return Err("Missing 'name' for the environment.".into());
-        }
-    };
+    if name.is_empty() {
+        return Err("A valid name is required".into());
+    }
     match uvctrl::check("uv").await {
         Ok(_) => {}
         Err(_) => {
@@ -50,16 +65,15 @@ pub async fn create(
         }
     };
     if venvmanager::VENVMANAGER.check_if_exists(name.clone()).await {
-        log::error!(
-            "A virtual environment with the name '{}' already exists.",
+        return Err(format!(
+            "A virtual environment with the name {} already exists",
             name
-        );
-        return Err("Venv already exists".into());
+        )
+        .into());
     }
     match update_packages_from_requirements(requirements, &mut packages).await {
         Ok(_) => {}
         Err(e) => {
-            log::error!("Error reading requirements file: {}", e);
             return Err(format!("Error reading requirements file: {}", e).into());
         }
     }
@@ -95,11 +109,10 @@ pub async fn update_packages_from_requirements(
 pub async fn delete<R: std::io::Read, F: std::io::Read>(
     input: R,
     find_input: F,
-    name_pos: Option<String>,
     name: Option<String>,
 ) {
     let venv = venvmanager::VENVMANAGER
-        .find_venv(find_input, name_pos, name, "delete")
+        .find_venv(find_input, name, "delete")
         .await;
     if let Some(v) = venv {
         v.delete(input, true).await

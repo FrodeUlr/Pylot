@@ -42,19 +42,26 @@ mod tests {
     #[tokio::test]
     async fn test_delete() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        delete(io::stdin(), io::stdin(), Some("test_env".to_string()), None).await;
+        delete(io::stdin(), io::stdin(), Some("test_env".to_string())).await;
     }
 
     #[tokio::test]
     async fn test_activate() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        activate(Some("test_env_not_here".to_string()), None).await;
+        activate(Some("test_env_not_here".to_string())).await;
     }
 
     #[tokio::test]
     async fn test_create_missing_name() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let result = create(None, None, "3.8".to_string(), vec![], "".to_string(), false).await;
+        let result = create(
+            "".to_string(),
+            "3.8".to_string(),
+            vec![],
+            "".to_string(),
+            false,
+        )
+        .await;
         assert!(result.is_err());
     }
 
@@ -65,8 +72,7 @@ mod tests {
         let result_un = uninstall(cursor).await;
         assert!(result_un.is_ok());
         let result = create(
-            Some("test_env".to_string()),
-            None,
+            "test_env".to_string(),
             "3.8".to_string(),
             vec![],
             "".to_string(),
@@ -194,16 +200,9 @@ mod tests {
                 "PATH",
                 format!("{}:{}", uv_path, std::env::var("PATH").unwrap()),
             );
-            delete(
-                cursor.clone(),
-                io::stdin(),
-                Some("test_env".to_string()),
-                None,
-            )
-            .await;
+            delete(cursor.clone(), io::stdin(), Some("test_env".to_string())).await;
             let result = create(
-                Some("test_env".to_string()),
-                None,
+                "test_env".to_string(),
                 "3.11".to_string(),
                 vec!["numpy".to_string()],
                 "".to_string(),
@@ -213,8 +212,7 @@ mod tests {
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             let result_exists = create(
-                Some("test_env".to_string()),
-                None,
+                "test_env".to_string(),
                 "3.11".to_string(),
                 vec!["numpy".to_string()],
                 "".to_string(),
@@ -224,8 +222,7 @@ mod tests {
             log::error!("Result exists: {:?}", result_exists);
             assert!(result_exists.is_err());
             let result_reqerr = create(
-                Some("test_env2".to_string()),
-                None,
+                "test_env2".to_string(),
                 "3.11".to_string(),
                 vec!["numpy".to_string()],
                 "nofiletest".to_string(),
@@ -235,8 +232,7 @@ mod tests {
             log::error!("Result reqerr: {:?}", result_reqerr);
             assert!(result_reqerr.is_err());
             let result_pyerr = create(
-                Some("test_env2".to_string()),
-                None,
+                "test_env2".to_string(),
                 "0.1".to_string(),
                 vec!["numpy".to_string()],
                 "".to_string(),
@@ -246,7 +242,7 @@ mod tests {
             log::error!("Result pyerr: {:?}", result_pyerr);
             assert!(result_pyerr.is_err());
             list().await;
-            delete(cursor.clone(), cursor_one, None, None).await;
+            delete(cursor.clone(), cursor_one, None).await;
             let result_un = uninstall(cursor).await;
             assert!(result_un.is_ok());
 
@@ -262,12 +258,10 @@ mod tests {
                 cursor2.clone(),
                 io::stdin(),
                 Some("test_env_def".to_string()),
-                None,
             )
             .await;
             let result = create(
-                Some("test_env_def".to_string()),
-                None,
+                "test_env_def".to_string(),
                 "3.11".to_string(),
                 vec!["pandas".to_string()],
                 "".to_string(),
@@ -281,7 +275,6 @@ mod tests {
                 cursor2.clone(),
                 io::stdin(),
                 Some("test_env_def".to_string()),
-                None,
             )
             .await;
             let result_un = uninstall(cursor2).await;
