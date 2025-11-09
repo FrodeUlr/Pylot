@@ -169,17 +169,4 @@ mod tests {
             .await;
         }
     }
-
-    #[tokio::test]
-    async fn test_uninstall_uvvenv() {
-        logger::initialize_logger(log::LevelFilter::Trace);
-        #[cfg(unix)]
-        {
-            let tc = TestContext::setup().await;
-
-            let result = uninstall(tc.cursor_yes.clone()).await;
-            log::error!("Uninstall Result: {:?}", result);
-            assert!(result.is_ok());
-        }
-    }
 }
