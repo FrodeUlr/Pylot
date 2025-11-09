@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use pylot::{create, delete, install, list, print_venvs};
-    use shared::{logger, uvvenv};
+    use pylot::{create, delete, install, list};
+    use shared::logger;
     use shellexpand::tilde;
     use std::io;
 
@@ -27,19 +27,6 @@ mod tests {
                 cursor_no: std::io::Cursor::new("n\n"),
             }
         }
-    }
-
-    #[tokio::test]
-    async fn test_print_venvs_non_empty() {
-        logger::initialize_logger(log::LevelFilter::Trace);
-        let venv = uvvenv::UvVenv::new(
-            "test_env".to_string(),
-            "/path/to/test_env".to_string(),
-            "3.8".to_string(),
-            vec!["numpy".to_string()],
-            false,
-        );
-        print_venvs(vec![venv]).await;
     }
 
     #[tokio::test]

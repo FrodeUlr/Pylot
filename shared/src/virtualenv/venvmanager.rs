@@ -48,7 +48,8 @@ impl VenvManager {
                     log::warn!("No virtual environments found");
                     return None;
                 }
-                self.print_venv_table(&mut venvs).await;
+                self.print_venv_table_to(&mut std::io::stdout(), &mut venvs)
+                    .await;
                 log::info!(
                     "{}{}{}",
                     "Please select a virtual environment to ",
@@ -122,9 +123,14 @@ impl VenvManager {
         venvs
     }
 
-    pub async fn print_venv_table(&self, venvs: &mut [UvVenv]) {
-        self.print_venv_table_to(&mut std::io::stdout(), venvs)
-            .await;
+    pub async fn print_venv_table(&self) {
+        let mut venvs = self.list().await;
+        if venvs.is_empty() {
+            log::info!("No virtual environments found");
+        } else {
+            self.print_venv_table_to(&mut std::io::stdout(), &mut venvs)
+                .await;
+        }
     }
 
     async fn print_venv_table_to<W: Write>(&self, writer: &mut W, venvs: &mut [UvVenv]) {
@@ -224,7 +230,9 @@ mod tests {
                 settings: settings::Settings::get_settings(),
             },
         ];
-        VENVMANAGER.print_venv_table(&mut venvs).await;
+        VENVMANAGER
+            .print_venv_table_to(&mut std::io::stdout(), &mut venvs)
+            .await;
     }
 
     #[tokio::test]

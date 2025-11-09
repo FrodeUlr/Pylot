@@ -1,3 +1,7 @@
+//! A CLI to manage Python virtual environments using Astral UV
+//!
+//! [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/FrodeUlr/pylot/rust.yml?branch=main&style=for-the-badge&logo=github)](https://github.com/FrodeUlr/Pylot) [![Codecov](https://img.shields.io/codecov/c/github/FrodeUlr/Pylot?style=for-the-badge&logo=codecov&label=CODECOV)](https://codecov.io/github/FrodeUlr/pylot)
+//!
 pub mod cli;
 
 use std::io;
@@ -258,32 +262,7 @@ pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::er
 /// list();
 /// ```
 pub async fn list() {
-    let venvs = venvmanager::VENVMANAGER.list().await;
-    print_venvs(venvs).await;
-}
-
-/// Print virtual environments in a table format
-///
-/// # Arguments
-/// * `venvs` - A vector of UvVenv instances to print
-///
-/// # Returns
-/// * `()` - Nothing
-/// # Examples
-/// ```
-/// use pylot::print_venvs;
-/// use shared::venvmanager;
-/// # tokio_test::block_on(async {
-/// let venvs = venvmanager::VENVMANAGER.list().await;
-/// print_venvs(venvs);
-/// # })
-/// ```
-pub async fn print_venvs(mut venvs: Vec<uvvenv::UvVenv>) {
-    if venvs.is_empty() {
-        log::info!("No virtual environments found");
-    } else {
-        venvmanager::VENVMANAGER.print_venv_table(&mut venvs).await;
-    }
+    venvmanager::VENVMANAGER.print_venv_table().await;
 }
 
 #[cfg(test)]
@@ -303,12 +282,6 @@ mod tests {
     async fn test_list() {
         logger::initialize_logger(log::LevelFilter::Trace);
         list().await;
-    }
-
-    #[tokio::test]
-    async fn test_print_venvs_empty() {
-        logger::initialize_logger(log::LevelFilter::Trace);
-        print_venvs(vec![]).await;
     }
 
     #[tokio::test]
