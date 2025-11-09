@@ -22,7 +22,7 @@
 
 ## A manager for python virtual environments made using UV
 
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/FrodeUlr/pylot/rust.yml?branch=main&style=for-the-badge&logo=github)](https://github.com/FrodeUlr/Pylot) [![Codecov](https://img.shields.io/codecov/c/github/FrodeUlr/Pylot?style=for-the-badge&logo=codecov&label=CODECOV)](https://codecov.io/github/FrodeUlr/pylot)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/FrodeUlr/pylot/rust.yml?branch=main&style=for-the-badge&logo=github)](https://github.com/FrodeUlr/Pylot/actions/workflows/rust.yml) [![Codecov](https://img.shields.io/codecov/c/github/FrodeUlr/Pylot?style=for-the-badge&logo=codecov&label=CODECOV)](https://codecov.io/github/FrodeUlr/pylot)
 
 `Pylot` assists you in installing, updating and removing [Astral UV](https://docs.astral.sh/uv/).  
 You can use `Pylot` to create and remove virtual environments, which are created using `UV`.  
