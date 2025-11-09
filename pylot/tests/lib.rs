@@ -25,11 +25,6 @@ mod tests {
                 cursor_one: std::io::Cursor::new("1\n"),
             }
         }
-
-        async fn cleanup(&self) {
-            let cursor = std::io::Cursor::new("y\n");
-            uninstall(cursor).await.ok();
-        }
     }
 
     #[tokio::test]
@@ -74,7 +69,6 @@ mod tests {
             log::error!("Result exists: {:?}", result_exists);
             assert!(result_exists.is_err());
             delete(tc.cursor_yes.clone(), tc.cursor_one.clone(), None).await;
-            tc.cleanup().await;
         }
     }
 
@@ -96,7 +90,6 @@ mod tests {
             .await;
             log::error!("Result pyerr: {:?}", result_pyerr);
             assert!(result_pyerr.is_err());
-            tc.cleanup().await;
         }
     }
 
@@ -118,7 +111,6 @@ mod tests {
             .await;
             log::error!("Result reqerr: {:?}", result_reqerr);
             assert!(result_reqerr.is_err());
-            tc.cleanup().await;
         }
     }
 
@@ -147,7 +139,6 @@ mod tests {
                 Some("test_env_def".to_string()),
             )
             .await;
-            tc.cleanup().await;
         }
     }
 }
