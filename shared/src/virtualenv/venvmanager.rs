@@ -26,7 +26,7 @@ impl VenvManager {
         venvs
     }
 
-    pub async fn check_if_exists(&self, name: String) -> bool {
+    pub async fn check_if_exists(&self, name: &str) -> bool {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venv_path = format!("{}/{}", path, name);
         std::path::Path::new(&venv_path).exists()
@@ -35,11 +35,13 @@ impl VenvManager {
     pub async fn find_venv<R: std::io::Read>(
         &self,
         input: R,
-        name: Option<String>,
+        name: Option<&str>,
         method: &str,
     ) -> Option<UvVenv> {
         let venv = match name {
-            Some(n) => uvvenv::UvVenv::new(n, "".to_string(), "".to_string(), vec![], false),
+            Some(n) => {
+                uvvenv::UvVenv::new(n.to_string(), "".to_string(), "".to_string(), vec![], false)
+            }
             None => {
                 let mut venvs = self.list().await;
                 if venvs.is_empty() {
@@ -163,9 +165,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_if_exists() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let exists = VENVMANAGER
-            .check_if_exists("non_existent_venv".to_string())
-            .await;
+        let exists = VENVMANAGER.check_if_exists("non_existent_venv").await;
         assert!(!exists);
     }
 
@@ -188,7 +188,7 @@ mod tests {
     async fn test_find_venv_by_name() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let venv = VENVMANAGER
-            .find_venv(io::stdin(), Some("test_venv".to_string()), "activate")
+            .find_venv(io::stdin(), Some("test_venv"), "activate")
             .await;
         assert!(venv.is_some());
         assert_eq!(venv.unwrap().name, "test_venv");

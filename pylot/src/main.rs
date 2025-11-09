@@ -43,7 +43,7 @@ async fn main() {
 
         Some(Commands::Venv { command }) => match command {
             VenvCommands::Activate { name_pos, name } => match name.or(name_pos) {
-                Some(venv_name) => activate(Some(venv_name)).await,
+                Some(venv_name) => activate(Some(&venv_name)).await,
                 None => activate(None).await,
             },
             VenvCommands::Create {
@@ -61,7 +61,7 @@ async fn main() {
                         return;
                     }
                 };
-                match create(name, python_version, packages, requirements, default).await {
+                match create(&name, &python_version, packages, &requirements, default).await {
                     Ok(_) => {}
                     Err(e) => {
                         log::error!("{}", e);
@@ -69,7 +69,7 @@ async fn main() {
                 }
             }
             VenvCommands::Delete { name_pos, name } => match name.or(name_pos) {
-                Some(venv_name) => delete(io::stdin(), io::stdin(), Some(venv_name)).await,
+                Some(venv_name) => delete(io::stdin(), io::stdin(), Some(&venv_name)).await,
                 None => delete(io::stdin(), io::stdin(), None).await,
             },
             VenvCommands::List => list().await,

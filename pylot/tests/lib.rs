@@ -49,27 +49,14 @@ mod tests {
             let tc = TestContext::setup().await;
 
             list().await;
-            let result = create(
-                "test_env".to_string(),
-                "3.11".to_string(),
-                vec!["numpy".to_string()],
-                "".to_string(),
-                true,
-            )
-            .await;
+            let result = create("test_env", "3.11", vec!["numpy".to_string()], "", true).await;
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
-            let result_exists = create(
-                "test_env".to_string(),
-                "3.11".to_string(),
-                vec!["numpy".to_string()],
-                "".to_string(),
-                true,
-            )
-            .await;
+            let result_exists =
+                create("test_env", "3.11", vec!["numpy".to_string()], "", true).await;
             log::error!("Result exists: {:?}", result_exists);
             assert!(result_exists.is_err());
-            delete(tc.cursor_no.clone(), io::stdin(), None).await;
+            delete(tc.cursor_no.clone(), tc.cursor_one.clone(), None).await;
             delete(tc.cursor_yes.clone(), tc.cursor_one.clone(), None).await;
         }
     }
@@ -81,14 +68,7 @@ mod tests {
             TestContext::setup().await;
 
             list().await;
-            let result_pyerr = create(
-                "test_env".to_string(),
-                "0.1".to_string(),
-                vec!["numpy".to_string()],
-                "".to_string(),
-                true,
-            )
-            .await;
+            let result_pyerr = create("test_env", "0.1", vec!["numpy".to_string()], "", true).await;
             log::error!("Result pyerr: {:?}", result_pyerr);
             assert!(result_pyerr.is_err());
         }
@@ -102,10 +82,10 @@ mod tests {
 
             list().await;
             let result_reqerr = create(
-                "test_env".to_string(),
-                "3.11".to_string(),
+                "test_env",
+                "3.11",
                 vec!["numpy".to_string()],
-                "nofiletest".to_string(),
+                "nofiletest",
                 true,
             )
             .await;
@@ -122,22 +102,17 @@ mod tests {
 
             list().await;
             let result = create(
-                "test_env_req".to_string(),
-                "3.11".to_string(),
+                "test_env_req",
+                "3.11",
                 vec![],
-                "tests/requirements.txt".to_string(),
+                "tests/requirements.txt",
                 true,
             )
             .await;
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             list().await;
-            delete(
-                tc.cursor_yes.clone(),
-                io::stdin(),
-                Some("test_env_req".to_string()),
-            )
-            .await;
+            delete(tc.cursor_yes.clone(), io::stdin(), Some("test_env_req")).await;
         }
     }
 
@@ -148,23 +123,11 @@ mod tests {
             let tc = TestContext::setup().await;
 
             list().await;
-            let result = create(
-                "test_env_def".to_string(),
-                "3.11".to_string(),
-                vec!["pandas".to_string()],
-                "".to_string(),
-                true,
-            )
-            .await;
+            let result = create("test_env_def", "3.11", vec!["pandas".to_string()], "", true).await;
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             list().await;
-            delete(
-                tc.cursor_yes.clone(),
-                io::stdin(),
-                Some("test_env_def".to_string()),
-            )
-            .await;
+            delete(tc.cursor_yes.clone(), io::stdin(), Some("test_env_def")).await;
         }
     }
 }
