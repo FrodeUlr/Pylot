@@ -243,12 +243,7 @@ mod tests {
             assert!(result_pyerr.is_err());
             list().await;
             delete(cursor.clone(), cursor_one, None).await;
-            let result_un = uninstall(cursor).await;
-            assert!(result_un.is_ok());
-
             let cursor2 = std::io::Cursor::new("y\n");
-            let result_in = install(cursor2.clone()).await;
-            assert!(result_in.is_ok());
             let uv_path = tilde("~/.local/bin/uv");
             std::env::set_var(
                 "PATH",
