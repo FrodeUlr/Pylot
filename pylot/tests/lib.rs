@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use pylot::{create, delete, install, list, print_venvs, uninstall};
+    use pylot::{create, delete, install, list, print_venvs};
     use shared::{logger, uvvenv};
     use shellexpand::tilde;
     use std::io;
@@ -8,6 +8,7 @@ mod tests {
     struct TestContext {
         cursor_yes: std::io::Cursor<&'static str>,
         cursor_one: std::io::Cursor<&'static str>,
+        cursor_no: std::io::Cursor<&'static str>,
     }
 
     impl TestContext {
@@ -23,6 +24,7 @@ mod tests {
             TestContext {
                 cursor_yes: std::io::Cursor::new("y\n"),
                 cursor_one: std::io::Cursor::new("1\n"),
+                cursor_no: std::io::Cursor::new("n\n"),
             }
         }
     }
@@ -68,6 +70,7 @@ mod tests {
             .await;
             log::error!("Result exists: {:?}", result_exists);
             assert!(result_exists.is_err());
+            delete(tc.cursor_no.clone(), io::stdin(), None).await;
             delete(tc.cursor_yes.clone(), tc.cursor_one.clone(), None).await;
         }
     }
