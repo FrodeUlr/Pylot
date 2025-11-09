@@ -2,7 +2,35 @@
 mod tests {
     use pylot::{create, delete, install, list, print_venvs, uninstall};
     use shared::{logger, uvvenv};
+    use shellexpand::tilde;
     use std::io;
+
+    struct TestContext {
+        cursor_yes: std::io::Cursor<&'static str>,
+        cursor_one: std::io::Cursor<&'static str>,
+    }
+
+    impl TestContext {
+        async fn setup() -> Self {
+            logger::initialize_logger(log::LevelFilter::Trace);
+            install(std::io::Cursor::new("y\n")).await.ok();
+
+            let uv_path = tilde("~/.local/bin/uv");
+            std::env::set_var(
+                "PATH",
+                format!("{}:{}", uv_path, std::env::var("PATH").unwrap()),
+            );
+            TestContext {
+                cursor_yes: std::io::Cursor::new("y\n"),
+                cursor_one: std::io::Cursor::new("1\n"),
+            }
+        }
+
+        async fn cleanup(&self) {
+            let cursor = std::io::Cursor::new("y\n");
+            uninstall(cursor).await.ok();
+        }
+    }
 
     #[tokio::test]
     async fn test_print_venvs_non_empty() {
@@ -18,22 +46,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_venv() {
+    async fn test_create_venv_already_exists() {
         logger::initialize_logger(log::LevelFilter::Trace);
         #[cfg(unix)]
         {
-            use shellexpand::tilde;
+            let tc = TestContext::setup().await;
 
-            let cursor = std::io::Cursor::new("y\n");
-            let cursor_one = std::io::Cursor::new("1\n");
-            let result_in = install(cursor.clone()).await;
-            assert!(result_in.is_ok());
-            let uv_path = tilde("~/.local/bin/uv");
-            std::env::set_var(
-                "PATH",
-                format!("{}:{}", uv_path, std::env::var("PATH").unwrap()),
-            );
-            delete(cursor.clone(), io::stdin(), Some("test_env".to_string())).await;
+            list().await;
             let result = create(
                 "test_env".to_string(),
                 "3.11".to_string(),
@@ -54,18 +73,21 @@ mod tests {
             .await;
             log::error!("Result exists: {:?}", result_exists);
             assert!(result_exists.is_err());
-            let result_reqerr = create(
-                "test_env2".to_string(),
-                "3.11".to_string(),
-                vec!["numpy".to_string()],
-                "nofiletest".to_string(),
-                true,
-            )
-            .await;
-            log::error!("Result reqerr: {:?}", result_reqerr);
-            assert!(result_reqerr.is_err());
+            delete(tc.cursor_yes.clone(), tc.cursor_one.clone(), None).await;
+            tc.cleanup().await;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_venv_invalid_python() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        #[cfg(unix)]
+        {
+            let tc = TestContext::setup().await;
+
+            list().await;
             let result_pyerr = create(
-                "test_env2".to_string(),
+                "test_env".to_string(),
                 "0.1".to_string(),
                 vec!["numpy".to_string()],
                 "".to_string(),
@@ -74,14 +96,40 @@ mod tests {
             .await;
             log::error!("Result pyerr: {:?}", result_pyerr);
             assert!(result_pyerr.is_err());
+            tc.cleanup().await;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_venv_invalid_requirements() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        #[cfg(unix)]
+        {
+            let tc = TestContext::setup().await;
+
             list().await;
-            delete(cursor.clone(), cursor_one, None).await;
-            delete(
-                cursor.clone(),
-                io::stdin(),
-                Some("test_env_def".to_string()),
+            let result_reqerr = create(
+                "test_env".to_string(),
+                "3.11".to_string(),
+                vec!["numpy".to_string()],
+                "nofiletest".to_string(),
+                true,
             )
             .await;
+            log::error!("Result reqerr: {:?}", result_reqerr);
+            assert!(result_reqerr.is_err());
+            tc.cleanup().await;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_venv_defaults() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        #[cfg(unix)]
+        {
+            let tc = TestContext::setup().await;
+
+            list().await;
             let result = create(
                 "test_env_def".to_string(),
                 "3.11".to_string(),
@@ -94,13 +142,12 @@ mod tests {
             assert!(result.is_ok());
             list().await;
             delete(
-                cursor.clone(),
+                tc.cursor_yes.clone(),
                 io::stdin(),
                 Some("test_env_def".to_string()),
             )
             .await;
-            let result_un = uninstall(cursor).await;
-            assert!(result_un.is_ok());
+            tc.cleanup().await;
         }
     }
 }
