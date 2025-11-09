@@ -77,7 +77,7 @@ mod tests {
         logger::initialize_logger(log::LevelFilter::Trace);
         #[cfg(unix)]
         {
-            let tc = TestContext::setup().await;
+            TestContext::setup().await;
 
             list().await;
             let result_pyerr = create(
@@ -98,7 +98,7 @@ mod tests {
         logger::initialize_logger(log::LevelFilter::Trace);
         #[cfg(unix)]
         {
-            let tc = TestContext::setup().await;
+            TestContext::setup().await;
 
             list().await;
             let result_reqerr = create(
@@ -111,6 +111,34 @@ mod tests {
             .await;
             log::error!("Result reqerr: {:?}", result_reqerr);
             assert!(result_reqerr.is_err());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_venv_with_requirements() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        #[cfg(unix)]
+        {
+            let tc = TestContext::setup().await;
+
+            list().await;
+            let result = create(
+                "test_env_req".to_string(),
+                "3.11".to_string(),
+                vec![],
+                "tests/requirements.txt".to_string(),
+                true,
+            )
+            .await;
+            log::error!("Result: {:?}", result);
+            assert!(result.is_ok());
+            list().await;
+            delete(
+                tc.cursor_yes.clone(),
+                io::stdin(),
+                Some("test_env_req".to_string()),
+            )
+            .await;
         }
     }
 
@@ -139,6 +167,19 @@ mod tests {
                 Some("test_env_def".to_string()),
             )
             .await;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_uninstall_uvvenv() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        #[cfg(unix)]
+        {
+            let tc = TestContext::setup().await;
+
+            let result = uninstall(tc.cursor_yes.clone()).await;
+            log::error!("Uninstall Result: {:?}", result);
+            assert!(result.is_ok());
         }
     }
 }
