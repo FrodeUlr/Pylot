@@ -1,15 +1,13 @@
 use crate::{
-    constants::{
-        DEFAULT_VENV_HOME, ERROR_CREATING_VENV, ERROR_VENV_NOT_EXISTS, POWERSHELL_CMD, PWSH_CMD,
-        SH_CMD,
-    },
-    processes, settings, utils,
+    constants::{DEFAULT_VENV_HOME, ERROR_VENV_NOT_EXISTS, POWERSHELL_CMD, PWSH_CMD, SH_CMD},
+    processes, settings, utils, uvctrl,
+    venvtraits::{Activate, Create, Delete},
 };
 use colored::Colorize;
 use std::fs;
 use tokio::fs as async_fs;
 
-pub struct Venv {
+pub struct UvVenv {
     pub name: String,
     pub path: String,
     pub python_version: String,
@@ -18,30 +16,15 @@ pub struct Venv {
     pub settings: settings::Settings,
 }
 
-impl Venv {
-    pub fn new(
-        name: String,
-        path: String,
-        python_version: String,
-        packages: Vec<String>,
-        default: bool,
-    ) -> Self {
-        Venv {
-            name,
-            path,
-            python_version,
-            packages,
-            default,
-            settings: settings::Settings::get_settings(),
-        }
-    }
-
-    pub async fn create(&self) -> Result<(), String> {
+impl Create for UvVenv {
+    async fn create(&self) -> Result<(), String> {
         if let Some((pwd, args)) = self.get_pwd_args() {
             let mut child = processes::create_child_cmd("uv", &args, "");
-            processes::run_command(&mut child)
-                .await
-                .map_err(|_| ERROR_CREATING_VENV.to_string())?;
+            let result = processes::run_command(&mut child).await;
+            if result.is_err() {
+                std::env::set_current_dir(pwd).unwrap();
+                return Err(format!("{}", result.err().unwrap()));
+            }
             let mut pkgs = self.packages.clone();
             if self.default {
                 let default_pkgs = self.settings.default_pkgs.clone();
@@ -50,7 +33,7 @@ impl Venv {
             if !pkgs.is_empty() {
                 let venv_path = shellexpand::tilde(&self.settings.venvs_path).to_string();
 
-                let (cmd, run, agr_str) = self.generate_command(pkgs, venv_path);
+                let (cmd, run, agr_str) = self.generate_command(pkgs, venv_path).await;
                 let mut child2 = processes::create_child_cmd(cmd, &[&agr_str], run);
 
                 processes::run_command(&mut child2)
@@ -63,8 +46,10 @@ impl Venv {
             Err("Error getting current directory".to_string())
         }
     }
+}
 
-    pub async fn delete<R: std::io::Read>(&self, input: R, confirm: bool) {
+impl Delete for UvVenv {
+    async fn delete<R: std::io::Read>(&self, input: R, confirm: bool) {
         let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
         let venv_path = format!("{}/{}", path, self.name);
         if !std::path::Path::new(&venv_path).exists() {
@@ -94,8 +79,10 @@ impl Venv {
             Err(e) => log::error!("{} {}", e, self.name),
         }
     }
+}
 
-    pub async fn activate(&self) {
+impl Activate for UvVenv {
+    async fn activate(&self) {
         let (shell, cmd, path) = self.get_shell_cmd();
         if !std::path::Path::new(&path).exists() {
             log::error!("{}", ERROR_VENV_NOT_EXISTS);
@@ -109,8 +96,27 @@ impl Venv {
         );
         let _ = processes::activate_venv_shell(shell.as_str(), cmd);
     }
+}
 
-    pub async fn set_python_version(&mut self) {
+impl UvVenv {
+    pub fn new(
+        name: String,
+        path: String,
+        python_version: String,
+        packages: Vec<String>,
+        default: bool,
+    ) -> Self {
+        UvVenv {
+            name,
+            path,
+            python_version,
+            packages,
+            default,
+            settings: settings::Settings::get_settings(),
+        }
+    }
+
+    pub(crate) async fn set_python_version(&mut self) {
         let cfg_path = format!("{}/pyvenv.cfg", self.path);
         if !async_fs::try_exists(&cfg_path).await.unwrap_or(false) {
             return;
@@ -127,7 +133,7 @@ impl Venv {
         }
     }
 
-    pub fn get_pwd_args(&self) -> Option<(std::path::PathBuf, [&str; 4])> {
+    fn get_pwd_args(&self) -> Option<(std::path::PathBuf, [&str; 4])> {
         let pwd = std::env::current_dir().unwrap();
         let venvs_path = if self.settings.venvs_path.is_empty() {
             DEFAULT_VENV_HOME
@@ -147,13 +153,13 @@ impl Venv {
         Some((pwd, args))
     }
 
-    pub fn generate_command(
+    async fn generate_command(
         &self,
         pkgs: Vec<String>,
         venv_path: String,
     ) -> (&str, &'static str, String) {
         let (cmd, vcmd, run) = if cfg!(target_os = "windows") {
-            let pwsh_cmd = if which::which(PWSH_CMD).is_ok() {
+            let pwsh_cmd = if uvctrl::check(PWSH_CMD).await.is_ok() {
                 PWSH_CMD
             } else {
                 POWERSHELL_CMD
@@ -198,5 +204,92 @@ impl Venv {
             (vec!["-c".to_string(), venv_cmd], venv_path)
         };
         (shell, cmd, path)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::logger;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_generate_command() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let venv = UvVenv::new(
+            "test_venv_cmd".to_string(),
+            "".to_string(),
+            "3.10".to_string(),
+            vec!["requests".to_string()],
+            true,
+        );
+        let (cmd, run, agr_str) = venv
+            .generate_command(
+                vec!["requests".to_string(), "flask".to_string()],
+                "/home/user/.virtualenvs".to_string(),
+            )
+            .await;
+        if cfg!(target_os = "windows") {
+            assert_eq!(cmd, PWSH_CMD);
+            assert_eq!(run, "-Command");
+            assert!(agr_str.contains("activate.ps1"));
+            assert!(agr_str.contains("uv pip install requests flask"));
+        } else {
+            assert_eq!(cmd, SH_CMD);
+            assert_eq!(run, "-c");
+            assert!(agr_str.contains("activate"));
+            assert!(agr_str.contains("uv pip install requests flask"));
+        }
+    }
+
+    #[test]
+    fn test_get_settings_pwd_args() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let pwd_start = std::env::current_dir().unwrap();
+        let venv = UvVenv::new(
+            "test_venv_args".to_string(),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        if let Some((pwd, args)) = venv.get_pwd_args() {
+            assert_eq!(args[0], "venv");
+            assert_eq!(args[1], "test_venv_args");
+            assert_eq!(args[2], "--python");
+            assert_eq!(args[3], "3.11");
+            assert_eq!(pwd, pwd_start);
+        } else {
+            panic!("get_pwd_args returned None");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_venv() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let venv = UvVenv::new(
+            "test_venv".to_string(),
+            "".to_string(),
+            "3.8".to_string(),
+            vec![],
+            false,
+        );
+        assert_eq!(venv.name, "test_venv");
+        assert_eq!(venv.python_version, "3.8");
+    }
+
+    #[tokio::test]
+    async fn test_venv_clean() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let venv = UvVenv::new(
+            "test_venv_clean".to_string(),
+            "".to_string(),
+            "3.9".to_string(),
+            vec!["numpy".to_string(), "pandas".to_string()],
+            false,
+        );
+        assert_eq!(venv.name, "test_venv_clean");
+        assert_eq!(venv.python_version, "3.9");
+        assert_eq![venv.packages, &["numpy", "pandas"]]
     }
 }

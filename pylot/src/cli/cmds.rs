@@ -76,6 +76,7 @@ pub enum UvCommands {
     Uninstall,
 
     #[command(
+        visible_alias = "c",
         about = "Check Astral UV",
         long_about = "This command checks if Astral UV is installed"
     )]
@@ -148,4 +149,15 @@ pub enum VenvCommands {
         #[arg(index = 1, help = "Name of the virtual environment")]
         name_pos: Option<String>,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn verify_cli() {
+        use clap::CommandFactory;
+        Cli::command().debug_assert();
+    }
 }
