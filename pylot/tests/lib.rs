@@ -44,7 +44,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_venv_already_exists() {
-        logger::initialize_logger(log::LevelFilter::Trace);
         #[cfg(unix)]
         {
             let tc = TestContext::setup().await;
@@ -77,7 +76,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_venv_invalid_python() {
-        logger::initialize_logger(log::LevelFilter::Trace);
         #[cfg(unix)]
         {
             TestContext::setup().await;
@@ -98,7 +96,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_venv_invalid_requirements() {
-        logger::initialize_logger(log::LevelFilter::Trace);
         #[cfg(unix)]
         {
             TestContext::setup().await;
@@ -119,7 +116,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_venv_with_requirements() {
-        logger::initialize_logger(log::LevelFilter::Trace);
         #[cfg(unix)]
         {
             let tc = TestContext::setup().await;
@@ -147,7 +143,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_venv_defaults() {
-        logger::initialize_logger(log::LevelFilter::Trace);
         #[cfg(unix)]
         {
             let tc = TestContext::setup().await;
