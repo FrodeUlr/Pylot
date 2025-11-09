@@ -163,3 +163,174 @@ pub async fn print_venvs(mut venvs: Vec<uvvenv::UvVenv>) {
         venvmanager::VENVMANAGER.print_venv_table(&mut venvs).await;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use shared::logger;
+    use tokio::fs::{self, write};
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_check() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        _ = check().await;
+    }
+
+    #[tokio::test]
+    async fn test_list() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        list().await;
+    }
+
+    #[tokio::test]
+    async fn test_print_venvs_empty() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        print_venvs(vec![]).await;
+    }
+
+    #[tokio::test]
+    async fn test_delete() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        delete(io::stdin(), io::stdin(), Some("test_env".to_string())).await;
+    }
+
+    #[tokio::test]
+    async fn test_activate() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        activate(Some("test_env_not_here".to_string())).await;
+    }
+
+    #[tokio::test]
+    async fn test_create_missing_uv() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let cursor = std::io::Cursor::new("y\n");
+        let result_un = uninstall(cursor).await;
+        assert!(result_un.is_ok());
+        let result = create(
+            "test_env".to_string(),
+            "3.8".to_string(),
+            vec![],
+            "".to_string(),
+            false,
+        )
+        .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_update_packages_from_requirements() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let requirements = "test_requirements.txt".to_string();
+        let mut packages = vec!["numpy".to_string()];
+        let _ = write(&requirements, "pandas\nscipy\n").await;
+        let result = update_packages_from_requirements(requirements.clone(), &mut packages).await;
+        assert!(result.is_ok());
+        assert!(packages.contains(&"numpy".to_string()));
+        assert!(packages.contains(&"pandas".to_string()));
+        assert!(packages.contains(&"scipy".to_string()));
+        fs::remove_file(requirements).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_create_missing_name() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let result = create(
+            "".to_string(),
+            "3.8".to_string(),
+            vec![],
+            "".to_string(),
+            false,
+        )
+        .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_install_uv_no() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let cursor = std::io::Cursor::new("n\n");
+        let result_in = install(cursor.clone()).await;
+        assert!(result_in.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_uninstall_uv_no() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let cursor = std::io::Cursor::new("n\n");
+        let result_un = uninstall(cursor).await;
+        assert!(result_un.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_install_uv_yes() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_in = install(cursor.clone()).await;
+            assert!(result_in.is_ok());
+        }
+        #[cfg(not(unix))]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_in = install(cursor.clone()).await;
+            assert!(result_in.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_install_update_uv_yes() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_in = install(cursor.clone()).await;
+            update().await;
+            assert!(result_in.is_ok());
+        }
+        #[cfg(not(unix))]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_in = install(cursor.clone()).await;
+            assert!(result_in.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_uninstall_uv_yes() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_in = install(cursor.clone()).await;
+            assert!(result_in.is_ok());
+            let result_un = uninstall(cursor).await;
+            assert!(result_un.is_ok());
+        }
+        #[cfg(not(unix))]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_un = uninstall(cursor).await;
+            assert!(result_un.is_ok());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_uninstall_update_uv_yes() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        #[cfg(unix)]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_un = uninstall(cursor).await;
+            assert!(result_un.is_ok());
+            update().await;
+        }
+        #[cfg(not(unix))]
+        {
+            let cursor = std::io::Cursor::new("y\n");
+            let result_un = uninstall(cursor).await;
+            assert!(result_un.is_ok());
+        }
+    }
+}
