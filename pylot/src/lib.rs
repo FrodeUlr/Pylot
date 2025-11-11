@@ -78,7 +78,7 @@ pub async fn create(
     name: &str,
     python_version: &str,
     mut packages: Vec<String>,
-    requirements: &str,
+    requirements: Option<&str>,
     default: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if name.is_empty() {
@@ -101,10 +101,12 @@ pub async fn create(
         )
         .into());
     }
-    match update_packages_from_requirements(requirements, &mut packages).await {
-        Ok(_) => {}
-        Err(e) => {
-            return Err(format!("Error reading requirements file: {}", e).into());
+    if let Some(req) = requirements {
+        match update_packages_from_requirements(req, &mut packages).await {
+            Ok(_) => {}
+            Err(e) => {
+                return Err(format!("Error reading requirements file: {}", e).into());
+            }
         }
     }
     let venv = uvvenv::UvVenv::new(
@@ -302,7 +304,7 @@ mod tests {
         let cursor = std::io::Cursor::new("y\n");
         let result_un = uninstall(cursor).await;
         assert!(result_un.is_ok());
-        let result = create("test_env", "3.8", vec![], "", false).await;
+        let result = create("test_env", "3.8", vec![], None, false).await;
         assert!(result.is_err());
     }
 
@@ -323,7 +325,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_missing_name() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let result = create("", "3.8", vec![], "", false).await;
+        let result = create("", "3.8", vec![], None, false).await;
         assert!(result.is_err());
     }
 

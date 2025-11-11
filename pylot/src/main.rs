@@ -61,7 +61,15 @@ async fn main() {
                         return;
                     }
                 };
-                match create(&name, &python_version, packages, &requirements, default).await {
+                match create(
+                    &name,
+                    &python_version,
+                    packages,
+                    Some(&requirements),
+                    default,
+                )
+                .await
+                {
                     Ok(_) => {}
                     Err(e) => {
                         log::error!("{}", e);
