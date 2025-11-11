@@ -91,7 +91,8 @@ mod tests {
             let tc = TestContext::setup().await;
 
             let requirements = "test_requirements.txt";
-            let _ = write(&requirements, "pandas\nscipy\n").await;
+            let file_result = write(&requirements, "pandas\nscipy\n").await;
+            assert!(file_result.is_ok());
             list().await;
             let result = create("test_env_req", "3.11", vec![], requirements, true).await;
             log::error!("Result: {:?}", result);
