@@ -4,6 +4,7 @@ mod tests {
     use shared::logger;
     use shellexpand::tilde;
     use std::io;
+    use tokio::fs::write;
 
     struct TestContext {
         cursor_yes: std::io::Cursor<&'static str>,
@@ -85,21 +86,19 @@ mod tests {
     async fn test_create_venv_with_requirements() {
         #[cfg(unix)]
         {
+            use tokio::fs;
+
             let tc = TestContext::setup().await;
 
+            let requirements = "test_requirements.txt";
+            let _ = write(&requirements, "pandas\nscipy\n").await;
             list().await;
-            let result = create(
-                "test_env_req",
-                "3.11",
-                vec![],
-                "tests/requirements.txt",
-                true,
-            )
-            .await;
+            let result = create("test_env_req", "3.11", vec![], requirements, true).await;
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             list().await;
             delete(tc.cursor_yes.clone(), io::stdin(), Some("test_env_req")).await;
+            fs::remove_file(requirements).await.unwrap();
         }
     }
 
