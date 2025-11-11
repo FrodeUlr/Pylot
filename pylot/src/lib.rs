@@ -7,7 +7,7 @@ pub mod cli;
 use std::io;
 
 use shared::{
-    constants::ERROR_CREATING_VENV,
+    constants::{DEFAULT_PYTHON_VERSION, ERROR_CREATING_VENV},
     utils, uvctrl, uvvenv, venvmanager,
     venvtraits::{Activate, Create, Delete},
 };
@@ -76,7 +76,7 @@ pub async fn check() -> Result<(), Box<dyn std::error::Error>> {
 /// ```
 pub async fn create(
     name: &str,
-    python_version: &str,
+    python_version: Option<&str>,
     mut packages: Vec<String>,
     requirements: Option<&str>,
     default: bool,
@@ -112,7 +112,7 @@ pub async fn create(
     let venv = uvvenv::UvVenv::new(
         name.to_string(),
         "".to_string(),
-        python_version.to_string(),
+        python_version.unwrap_or(DEFAULT_PYTHON_VERSION).to_string(),
         packages,
         default,
     );
@@ -304,7 +304,7 @@ mod tests {
         let cursor = std::io::Cursor::new("y\n");
         let result_un = uninstall(cursor).await;
         assert!(result_un.is_ok());
-        let result = create("test_env", "3.8", vec![], None, false).await;
+        let result = create("test_env", Some("3.8"), vec![], None, false).await;
         assert!(result.is_err());
     }
 
@@ -325,7 +325,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_missing_name() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let result = create("", "3.8", vec![], None, false).await;
+        let result = create("", None, vec![], None, false).await;
         assert!(result.is_err());
     }
 

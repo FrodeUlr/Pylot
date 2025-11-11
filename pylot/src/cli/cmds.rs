@@ -1,5 +1,6 @@
 use super::styles;
 use clap::{Parser, Subcommand};
+use shared::constants::DEFAULT_PYTHON_VERSION;
 use styles::custom_styles;
 
 /// Command Line Interface for Pylot
@@ -156,7 +157,7 @@ pub enum VenvCommands {
             visible_alias = "pv",
             long,
             help = "Python version to use",
-            default_value = "3.10"
+            default_value = DEFAULT_PYTHON_VERSION
         )]
         python_version: String,
         #[arg(

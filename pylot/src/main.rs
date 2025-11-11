@@ -63,7 +63,7 @@ async fn main() {
                 };
                 match create(
                     &name,
-                    &python_version,
+                    Some(&python_version),
                     packages,
                     Some(&requirements),
                     default,
