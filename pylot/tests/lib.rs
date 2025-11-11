@@ -89,12 +89,12 @@ mod tests {
             use tokio::fs;
 
             let tc = TestContext::setup().await;
-
-            let requirements = "test_requirements.txt";
+            let pwd = std::env::current_dir().unwrap();
+            let requirements = format!("{}/test_requirements.txt", pwd.display());
             let file_result = write(&requirements, "pandas\nscipy\n").await;
             assert!(file_result.is_ok());
             list().await;
-            let result = create("test_env_req", "3.11", vec![], requirements, true).await;
+            let result = create("test_env_req", "3.11", vec![], &requirements, true).await;
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             list().await;
