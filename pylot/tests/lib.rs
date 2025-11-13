@@ -37,11 +37,24 @@ mod tests {
             let tc = TestContext::setup().await;
 
             list().await;
-            let result = create("test_env", None, vec!["numpy".to_string()], None, true).await;
+            let result = create(
+                "test_env",
+                None,
+                Some(vec!["numpy".to_string()]),
+                None,
+                true,
+            )
+            .await;
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
-            let result_exists =
-                create("test_env", None, vec!["numpy".to_string()], None, true).await;
+            let result_exists = create(
+                "test_env",
+                None,
+                Some(vec!["numpy".to_string()]),
+                None,
+                true,
+            )
+            .await;
             log::error!("Result exists: {:?}", result_exists);
             assert!(result_exists.is_err());
             delete(tc.cursor_no.clone(), tc.cursor_one.clone(), None).await;
@@ -59,7 +72,7 @@ mod tests {
             let result_pyerr = create(
                 "test_env",
                 Some("0.1"),
-                vec!["numpy".to_string()],
+                Some(vec!["numpy".to_string()]),
                 None,
                 true,
             )
@@ -79,7 +92,7 @@ mod tests {
             let result_reqerr = create(
                 "test_env",
                 None,
-                vec!["numpy".to_string()],
+                Some(vec!["numpy".to_string()]),
                 Some("nofiletest"),
                 true,
             )
@@ -101,7 +114,7 @@ mod tests {
             let file_result = write(&requirements, "pandas\nscipy\n").await;
             assert!(file_result.is_ok());
             list().await;
-            let result = create("test_env_req", None, vec![], Some(&requirements), true).await;
+            let result = create("test_env_req", None, None, Some(&requirements), true).await;
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             list().await;
@@ -117,7 +130,14 @@ mod tests {
             let tc = TestContext::setup().await;
 
             list().await;
-            let result = create("test_env_def", None, vec!["pandas".to_string()], None, true).await;
+            let result = create(
+                "test_env_def",
+                None,
+                Some(vec!["pandas".to_string()]),
+                None,
+                true,
+            )
+            .await;
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             list().await;

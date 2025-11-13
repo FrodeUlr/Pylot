@@ -5,19 +5,22 @@ use crate::{
 };
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
 use once_cell::sync::Lazy;
-use std::io::{BufRead, Write};
+use std::{
+    borrow::Cow,
+    io::{BufRead, Write},
+};
 use std::{fs, io::stdout};
 
 pub struct VenvManager;
 
 pub static VENVMANAGER: Lazy<VenvManager> = Lazy::new(VenvManager::new);
 
-impl VenvManager {
+impl<'a> VenvManager {
     fn new() -> Self {
         VenvManager
     }
 
-    pub async fn list(&self) -> Vec<UvVenv> {
+    pub async fn list(&'a self) -> Vec<UvVenv<'a>> {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venvs: Vec<UvVenv> = match fs::read_dir(&path) {
             Ok(entries) => self.collect_venvs(entries),
@@ -33,15 +36,19 @@ impl VenvManager {
     }
 
     pub async fn find_venv<R: std::io::Read>(
-        &self,
+        &'a self,
         input: R,
-        name: Option<&str>,
+        name: Option<&'a str>,
         method: &str,
-    ) -> Option<UvVenv> {
+    ) -> Option<UvVenv<'a>> {
         let venv = match name {
-            Some(n) => {
-                uvvenv::UvVenv::new(n.to_string(), "".to_string(), "".to_string(), vec![], false)
-            }
+            Some(n) => uvvenv::UvVenv::new(
+                Cow::Borrowed(n),
+                "".to_string(),
+                "".to_string(),
+                vec![],
+                false,
+            ),
             None => {
                 let mut venvs = self.list().await;
                 if venvs.is_empty() {
@@ -93,7 +100,7 @@ impl VenvManager {
         }
     }
 
-    fn collect_venvs(&self, entries: fs::ReadDir) -> Vec<UvVenv> {
+    fn collect_venvs(&'a self, entries: fs::ReadDir) -> Vec<UvVenv<'a>> {
         let venvs: Vec<UvVenv> = entries
             .filter_map(Result::ok)
             .filter_map(|entry| {
@@ -104,9 +111,10 @@ impl VenvManager {
                         dir_path.join(UNIX_PYTHON_EXEC),
                         dir_path.join(UNIX_PYTHON3_EXEC),
                     ];
+                    let folder_name = entry.file_name().to_str()?.to_string();
                     if python_paths.iter().any(|p| p.exists()) {
                         Some(UvVenv::new(
-                            entry.file_name().to_str()?.to_string(),
+                            Cow::Owned(folder_name),
                             dir_path.to_str()?.to_string(),
                             "".to_string(),
                             vec![],
@@ -133,7 +141,7 @@ impl VenvManager {
         }
     }
 
-    async fn print_venv_table_to<W: Write>(&self, writer: &mut W, venvs: &mut [UvVenv]) {
+    async fn print_venv_table_to<W: Write>(&self, writer: &mut W, venvs: &mut [UvVenv<'a>]) {
         let mut table = Table::new();
         table
             .load_preset(UTF8_FULL)
@@ -144,7 +152,7 @@ impl VenvManager {
             venv.set_python_version().await;
             table.add_row(vec![
                 (index + 1).to_string(),
-                venv.name.clone(),
+                venv.name.clone().to_string(),
                 venv.python_version.clone(),
             ]);
         }
@@ -214,7 +222,7 @@ mod tests {
         logger::initialize_logger(log::LevelFilter::Trace);
         let mut venvs = vec![
             UvVenv {
-                name: "venv1".to_string(),
+                name: Cow::Borrowed("venv1"),
                 python_version: "3.10".to_string(),
                 path: "/some/path".to_string(),
                 packages: Vec::new(),
@@ -222,7 +230,7 @@ mod tests {
                 settings: settings::Settings::get_settings(),
             },
             UvVenv {
-                name: "venv2".to_string(),
+                name: Cow::Borrowed("venv2"),
                 python_version: "3.11".to_string(),
                 path: "/other/path".to_string(),
                 packages: Vec::new(),
@@ -240,7 +248,7 @@ mod tests {
         logger::initialize_logger(log::LevelFilter::Trace);
         let mut venvs = vec![
             UvVenv {
-                name: "venv1".to_string(),
+                name: Cow::Borrowed("venv1"),
                 python_version: "3.10".to_string(),
                 path: "/some/path".to_string(),
                 packages: Vec::new(),
@@ -248,7 +256,7 @@ mod tests {
                 settings: settings::Settings::get_settings(),
             },
             UvVenv {
-                name: "venv2".to_string(),
+                name: Cow::Borrowed("venv2"),
                 python_version: "3.11".to_string(),
                 path: "/other/path".to_string(),
                 packages: Vec::new(),

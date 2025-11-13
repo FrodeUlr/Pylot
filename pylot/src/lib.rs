@@ -4,7 +4,7 @@
 //!
 pub mod cli;
 
-use std::io;
+use std::{borrow::Cow, io};
 
 use shared::{
     constants::{DEFAULT_PYTHON_VERSION, ERROR_CREATING_VENV},
@@ -68,16 +68,16 @@ pub async fn check() -> Result<(), Box<dyn std::error::Error>> {
 /// // With named_pos:
 /// let numpy = "numpy".to_string();
 /// let pandas = "pandas".to_string();
-/// create("test_env", "3.8", vec![numpy, pandas], "", false);
+/// create("test_env", Some("3.8"), Some(vec![numpy, pandas]), None, false);
 /// // Install default packages defined in settings.toml:
-/// create("test_env", "3.8", vec![], "", true);
+/// create("test_env", Some("3.8"), None, None, true);
 /// // With requirements file:
-/// create("test_env", "3.8", vec![], "requirements.txt", false);
+/// create("test_env", None, None, Some("requirements.txt"), false);
 /// ```
 pub async fn create(
     name: &str,
     python_version: Option<&str>,
-    mut packages: Vec<String>,
+    packages: Option<Vec<String>>,
     requirements: Option<&str>,
     default: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -94,6 +94,7 @@ pub async fn create(
             .into())
         }
     };
+    let mut pkgs = packages.unwrap_or_default();
     if venvmanager::VENVMANAGER.check_if_exists(name).await {
         return Err(format!(
             "A virtual environment with the name {} already exists",
@@ -102,7 +103,7 @@ pub async fn create(
         .into());
     }
     if let Some(req) = requirements {
-        match update_packages_from_requirements(req, &mut packages).await {
+        match update_packages_from_requirements(req, &mut pkgs).await {
             Ok(_) => {}
             Err(e) => {
                 return Err(format!("Error reading requirements file: {}", e).into());
@@ -110,10 +111,10 @@ pub async fn create(
         }
     }
     let venv = uvvenv::UvVenv::new(
-        name.to_string(),
-        "".to_string(),
-        python_version.unwrap_or(DEFAULT_PYTHON_VERSION).to_string(),
-        packages,
+        Cow::Borrowed(name),
+        "".to_owned(),
+        python_version.unwrap_or(DEFAULT_PYTHON_VERSION).to_owned(),
+        pkgs,
         default,
     );
     match venv.create().await {
@@ -304,7 +305,7 @@ mod tests {
         let cursor = std::io::Cursor::new("y\n");
         let result_un = uninstall(cursor).await;
         assert!(result_un.is_ok());
-        let result = create("test_env", Some("3.8"), vec![], None, false).await;
+        let result = create("test_env", Some("3.8"), None, None, false).await;
         assert!(result.is_err());
     }
 
@@ -325,7 +326,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_missing_name() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let result = create("", None, vec![], None, false).await;
+        let result = create("", None, None, None, false).await;
         assert!(result.is_err());
     }
 

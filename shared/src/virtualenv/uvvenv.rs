@@ -4,11 +4,11 @@ use crate::{
     venvtraits::{Activate, Create, Delete},
 };
 use colored::Colorize;
-use std::fs;
+use std::{borrow::Cow, fs};
 use tokio::fs as async_fs;
 
-pub struct UvVenv {
-    pub name: String,
+pub struct UvVenv<'a> {
+    pub name: Cow<'a, str>,
     pub path: String,
     pub python_version: String,
     pub packages: Vec<String>,
@@ -16,7 +16,7 @@ pub struct UvVenv {
     pub settings: settings::Settings,
 }
 
-impl Create for UvVenv {
+impl<'a> Create for UvVenv<'a> {
     async fn create(&self) -> Result<(), String> {
         if let Some((pwd, args)) = self.get_pwd_args() {
             let mut child = processes::create_child_cmd("uv", &args, "");
@@ -48,7 +48,7 @@ impl Create for UvVenv {
     }
 }
 
-impl Delete for UvVenv {
+impl<'a> Delete for UvVenv<'a> {
     async fn delete<R: std::io::Read>(&self, input: R, confirm: bool) {
         let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
         let venv_path = format!("{}/{}", path, self.name);
@@ -81,7 +81,7 @@ impl Delete for UvVenv {
     }
 }
 
-impl Activate for UvVenv {
+impl<'a> Activate for UvVenv<'a> {
     async fn activate(&self) {
         let (shell, cmd, path) = self.get_shell_cmd();
         if !std::path::Path::new(&path).exists() {
@@ -98,9 +98,9 @@ impl Activate for UvVenv {
     }
 }
 
-impl UvVenv {
+impl<'a> UvVenv<'a> {
     pub fn new(
-        name: String,
+        name: Cow<'a, str>,
         path: String,
         python_version: String,
         packages: Vec<String>,
@@ -143,12 +143,7 @@ impl UvVenv {
         let path = shellexpand::tilde(venvs_path).to_string();
         std::fs::create_dir_all(&path).unwrap();
         std::env::set_current_dir(&path).unwrap();
-        let args = [
-            "venv",
-            self.name.as_str(),
-            "--python",
-            self.python_version.as_str(),
-        ];
+        let args = ["venv", &self.name, "--python", self.python_version.as_str()];
         log::info!("Creating virtual environment: {}", self.name);
         Some((pwd, args))
     }
@@ -217,7 +212,7 @@ mod tests {
     async fn test_generate_command() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let venv = UvVenv::new(
-            "test_venv_cmd".to_string(),
+            Cow::Borrowed("test_venv_cmd"),
             "".to_string(),
             "3.10".to_string(),
             vec!["requests".to_string()],
@@ -247,7 +242,7 @@ mod tests {
         logger::initialize_logger(log::LevelFilter::Trace);
         let pwd_start = std::env::current_dir().unwrap();
         let venv = UvVenv::new(
-            "test_venv_args".to_string(),
+            Cow::Borrowed("test_venv_args"),
             "".to_string(),
             "3.11".to_string(),
             vec![],
@@ -268,7 +263,7 @@ mod tests {
     async fn test_venv() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let venv = UvVenv::new(
-            "test_venv".to_string(),
+            Cow::Borrowed("test_venv"),
             "".to_string(),
             "3.8".to_string(),
             vec![],
@@ -282,7 +277,7 @@ mod tests {
     async fn test_venv_clean() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let venv = UvVenv::new(
-            "test_venv_clean".to_string(),
+            Cow::Borrowed("test_venv_clean"),
             "".to_string(),
             "3.9".to_string(),
             vec!["numpy".to_string(), "pandas".to_string()],
