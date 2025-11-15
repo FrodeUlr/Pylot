@@ -5,19 +5,22 @@ use crate::{
 };
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
 use once_cell::sync::Lazy;
-use std::io::{BufRead, Write};
+use std::{
+    borrow::Cow,
+    io::{BufRead, Write},
+};
 use std::{fs, io::stdout};
 
 pub struct VenvManager;
 
 pub static VENVMANAGER: Lazy<VenvManager> = Lazy::new(VenvManager::new);
 
-impl VenvManager {
+impl<'a> VenvManager {
     fn new() -> Self {
         VenvManager
     }
 
-    pub async fn list(&self) -> Vec<UvVenv> {
+    pub async fn list(&'a self) -> Vec<UvVenv<'a>> {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venvs: Vec<UvVenv> = match fs::read_dir(&path) {
             Ok(entries) => self.collect_venvs(entries),
@@ -26,27 +29,37 @@ impl VenvManager {
         venvs
     }
 
-    pub async fn check_if_exists(&self, name: String) -> bool {
+    pub async fn check_if_exists(&self, name: &str) -> bool {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venv_path = format!("{}/{}", path, name);
         std::path::Path::new(&venv_path).exists()
     }
 
     pub async fn find_venv<R: std::io::Read>(
-        &self,
+        &'a self,
         input: R,
-        name: Option<String>,
+        name: Option<&'a str>,
         method: &str,
-    ) -> Option<UvVenv> {
+    ) -> Result<UvVenv<'a>, Box<dyn std::error::Error>> {
         let venv = match name {
-            Some(n) => uvvenv::UvVenv::new(n, "".to_string(), "".to_string(), vec![], false),
+            Some(n) => uvvenv::UvVenv::new(
+                Cow::Borrowed(n),
+                "".to_string(),
+                "".to_string(),
+                vec![],
+                false,
+            ),
             None => {
                 let mut venvs = self.list().await;
                 if venvs.is_empty() {
                     log::warn!("No virtual environments found");
-                    return None;
+                    return Err(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "No virtual environments found",
+                    )));
                 }
-                self.print_venv_table(&mut venvs).await;
+                self.print_venv_table_to(&mut std::io::stdout(), &mut venvs)
+                    .await;
                 log::info!(
                     "{}{}{}",
                     "Please select a virtual environment to ",
@@ -62,13 +75,12 @@ impl VenvManager {
                         false,
                     ),
                     Err(e) => {
-                        log::error!("{}", e);
-                        return None;
+                        return Err(e.into());
                     }
                 }
             }
         };
-        Some(venv)
+        Ok(venv)
     }
 
     fn get_index<R: std::io::Read>(&self, input: R, size: usize) -> Result<usize, String> {
@@ -90,7 +102,7 @@ impl VenvManager {
         }
     }
 
-    fn collect_venvs(&self, entries: fs::ReadDir) -> Vec<UvVenv> {
+    fn collect_venvs(&'a self, entries: fs::ReadDir) -> Vec<UvVenv<'a>> {
         let venvs: Vec<UvVenv> = entries
             .filter_map(Result::ok)
             .filter_map(|entry| {
@@ -101,9 +113,10 @@ impl VenvManager {
                         dir_path.join(UNIX_PYTHON_EXEC),
                         dir_path.join(UNIX_PYTHON3_EXEC),
                     ];
+                    let folder_name = entry.file_name().to_str()?.to_string();
                     if python_paths.iter().any(|p| p.exists()) {
                         Some(UvVenv::new(
-                            entry.file_name().to_str()?.to_string(),
+                            Cow::Owned(folder_name),
                             dir_path.to_str()?.to_string(),
                             "".to_string(),
                             vec![],
@@ -120,12 +133,17 @@ impl VenvManager {
         venvs
     }
 
-    pub async fn print_venv_table(&self, venvs: &mut [UvVenv]) {
-        self.print_venv_table_to(&mut std::io::stdout(), venvs)
-            .await;
+    pub async fn print_venv_table(&self) {
+        let mut venvs = self.list().await;
+        if venvs.is_empty() {
+            log::info!("No virtual environments found");
+        } else {
+            self.print_venv_table_to(&mut std::io::stdout(), &mut venvs)
+                .await;
+        }
     }
 
-    async fn print_venv_table_to<W: Write>(&self, writer: &mut W, venvs: &mut [UvVenv]) {
+    async fn print_venv_table_to<W: Write>(&self, writer: &mut W, venvs: &mut [UvVenv<'a>]) {
         let mut table = Table::new();
         table
             .load_preset(UTF8_FULL)
@@ -136,7 +154,7 @@ impl VenvManager {
             venv.set_python_version().await;
             table.add_row(vec![
                 (index + 1).to_string(),
-                venv.name.clone(),
+                venv.name.clone().to_string(),
                 venv.python_version.clone(),
             ]);
         }
@@ -163,9 +181,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_if_exists() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let exists = VENVMANAGER
-            .check_if_exists("non_existent_venv".to_string())
-            .await;
+        let exists = VENVMANAGER.check_if_exists("non_existent_venv").await;
         assert!(!exists);
     }
 
@@ -173,7 +189,7 @@ mod tests {
     async fn test_find_venv_none() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let venv = VENVMANAGER.find_venv(io::stdin(), None, "activate").await;
-        assert!(venv.is_some() || venv.is_none());
+        assert!(venv.is_ok() || venv.is_err());
     }
 
     #[tokio::test]
@@ -181,16 +197,16 @@ mod tests {
         logger::initialize_logger(log::LevelFilter::Trace);
         let cursor = std::io::Cursor::new("c\n");
         let venv = VENVMANAGER.find_venv(cursor, None, "activate").await;
-        assert!(venv.is_some() || venv.is_none());
+        assert!(venv.is_ok() || venv.is_err());
     }
 
     #[tokio::test]
     async fn test_find_venv_by_name() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let venv = VENVMANAGER
-            .find_venv(io::stdin(), Some("test_venv".to_string()), "activate")
+            .find_venv(io::stdin(), Some("test_venv"), "activate")
             .await;
-        assert!(venv.is_some());
+        assert!(venv.is_ok());
         assert_eq!(venv.unwrap().name, "test_venv");
     }
 
@@ -208,7 +224,7 @@ mod tests {
         logger::initialize_logger(log::LevelFilter::Trace);
         let mut venvs = vec![
             UvVenv {
-                name: "venv1".to_string(),
+                name: Cow::Borrowed("venv1"),
                 python_version: "3.10".to_string(),
                 path: "/some/path".to_string(),
                 packages: Vec::new(),
@@ -216,7 +232,7 @@ mod tests {
                 settings: settings::Settings::get_settings(),
             },
             UvVenv {
-                name: "venv2".to_string(),
+                name: Cow::Borrowed("venv2"),
                 python_version: "3.11".to_string(),
                 path: "/other/path".to_string(),
                 packages: Vec::new(),
@@ -224,7 +240,9 @@ mod tests {
                 settings: settings::Settings::get_settings(),
             },
         ];
-        VENVMANAGER.print_venv_table(&mut venvs).await;
+        VENVMANAGER
+            .print_venv_table_to(&mut std::io::stdout(), &mut venvs)
+            .await;
     }
 
     #[tokio::test]
@@ -232,7 +250,7 @@ mod tests {
         logger::initialize_logger(log::LevelFilter::Trace);
         let mut venvs = vec![
             UvVenv {
-                name: "venv1".to_string(),
+                name: Cow::Borrowed("venv1"),
                 python_version: "3.10".to_string(),
                 path: "/some/path".to_string(),
                 packages: Vec::new(),
@@ -240,7 +258,7 @@ mod tests {
                 settings: settings::Settings::get_settings(),
             },
             UvVenv {
-                name: "venv2".to_string(),
+                name: Cow::Borrowed("venv2"),
                 python_version: "3.11".to_string(),
                 path: "/other/path".to_string(),
                 packages: Vec::new(),

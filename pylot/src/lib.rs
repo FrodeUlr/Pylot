@@ -1,30 +1,53 @@
+//! A CLI to manage Python virtual environments using Astral UV
+//!
+//! [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/FrodeUlr/pylot/rust.yml?branch=main&style=for-the-badge&logo=github)](https://github.com/FrodeUlr/Pylot) [![Codecov](https://img.shields.io/codecov/c/github/FrodeUlr/Pylot?style=for-the-badge&logo=codecov&label=CODECOV)](https://codecov.io/github/FrodeUlr/pylot)
+//!
 pub mod cli;
 
-use std::io;
+use std::{borrow::Cow, io};
 
 use shared::{
-    constants::ERROR_CREATING_VENV,
+    constants::{DEFAULT_PYTHON_VERSION, ERROR_CREATING_VENV},
     utils, uvctrl, uvvenv, venvmanager,
     venvtraits::{Activate, Create, Delete},
 };
 
 /// Activate a virtual environment by named position or name
 ///
-/// * Examples
+/// # Returns
+/// * `()` - Nothing
 ///
-/// activate(Some("test_env".to_string()), None).await;
-///
-/// activate(None, Some("test_env".to_string())).await;
-pub async fn activate(name: Option<String>) {
-    let venv = venvmanager::VENVMANAGER
+/// # Examples
+/// ```
+/// use pylot::activate;
+/// activate(Some("test_env"));
+/// ```
+pub async fn activate(name: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+    let venv = match venvmanager::VENVMANAGER
         .find_venv(io::stdin(), name, "activate")
-        .await;
-    if let Some(v) = venv {
-        v.activate().await
+        .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(e);
+        }
+    };
+    match venv.activate().await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
 /// Check if Astral UV is installed and configured
+///
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error>>` - Ok if installed, Err if not
+///
+/// # Examples
+/// ```
+/// use pylot::check;
+/// check();
+/// ```
 pub async fn check() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("Checking if Astral UV is installed and configured...");
     match uvctrl::check("uv").await {
@@ -35,20 +58,34 @@ pub async fn check() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Create a new virtual environment
 ///
-/// * Examples
+/// # Arguments
+/// * `name` - The name of the virtual environment
+/// * `python_version` - The Python version to use
+/// * `packages` - A vector of packages to install
+/// * `requirements` - A requirements file to install packages from
+/// * `default` -  Whether to install default packages from settings.toml
 ///
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error>>` - Ok if created
+///
+/// # Examples
 /// ```
 /// use pylot::create;
+///
 /// // With named_pos:
-/// create("test_env".to_string(), "3.8".to_string(), vec!["numpy".to_string(), "pandas".to_string()], "".to_string(), false);
+/// let numpy = "numpy".to_string();
+/// let pandas = "pandas".to_string();
+/// create("test_env", Some("3.8"), Some(vec![numpy, pandas]), None, false);
 /// // Install default packages defined in settings.toml:
-/// create("test_env".to_string(), "3.8".to_string(), vec![], "".to_string(), true);
+/// create("test_env", Some("3.8"), None, None, true);
+/// // With requirements file:
+/// create("test_env", None, None, Some("requirements.txt"), false);
 /// ```
 pub async fn create(
-    name: String,
-    python_version: String,
-    mut packages: Vec<String>,
-    requirements: String,
+    name: &str,
+    python_version: Option<&str>,
+    packages: Option<Vec<String>>,
+    requirements: Option<&str>,
     default: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if name.is_empty() {
@@ -64,35 +101,44 @@ pub async fn create(
             .into())
         }
     };
-    if venvmanager::VENVMANAGER.check_if_exists(name.clone()).await {
+    let mut pkgs = packages.unwrap_or_default();
+    if venvmanager::VENVMANAGER.check_if_exists(name).await {
         return Err(format!(
             "A virtual environment with the name {} already exists",
             name
         )
         .into());
     }
-    match update_packages_from_requirements(requirements, &mut packages).await {
-        Ok(_) => {}
-        Err(e) => {
-            return Err(format!("Error reading requirements file: {}", e).into());
+    if let Some(req) = requirements {
+        match update_packages_from_requirements(req, &mut pkgs).await {
+            Ok(_) => {}
+            Err(e) => {
+                return Err(format!("Error reading requirements file: {}", e).into());
+            }
         }
     }
-    let venv = uvvenv::UvVenv::new(name, "".to_string(), python_version, packages, default);
+    let venv = uvvenv::UvVenv::new(
+        Cow::Borrowed(name),
+        "".to_owned(),
+        python_version.unwrap_or(DEFAULT_PYTHON_VERSION).to_owned(),
+        pkgs,
+        default,
+    );
     match venv.create().await {
         Ok(_) => Ok(()),
-        Err(e) => {
-            venv.delete(io::stdin(), false).await;
-            Err(format!("{}: {}", ERROR_CREATING_VENV, e).into())
-        }
+        Err(e) => match venv.delete(io::stdin(), false).await {
+            Ok(_) => Err(format!("{}: {}", ERROR_CREATING_VENV, e).into()),
+            Err(_) => Err("Failed to clean up after failed venv creation".into()),
+        },
     }
 }
 
-pub async fn update_packages_from_requirements(
-    requirements: String,
+async fn update_packages_from_requirements(
+    requirements: &str,
     packages: &mut Vec<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if !requirements.is_empty() {
-        match utils::read_requirements_file(&requirements).await {
+        match utils::read_requirements_file(requirements).await {
             Ok(read_pkgs) => {
                 for req in read_pkgs {
                     if !packages.contains(&req) {
@@ -106,19 +152,64 @@ pub async fn update_packages_from_requirements(
     Ok(())
 }
 
+/// Delete a virtual environment by name or index position
+///
+/// # Arguments
+/// * `confirm_input` - A reader for user input (e.g., stdin)
+/// * `find_input` - A reader for user input to find the venv (e.g., stdin)
+/// * `name` - The name of the virtual environment to delete
+///
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error>>` - Ok if deleted
+///
+/// # Examples
+/// ```
+/// use pylot::delete;
+/// use std::io;
+///
+/// // With name provided:
+/// delete(io::stdin(), io::stdin(), Some("test_env"));
+/// // Without name provided, will prompt user to select:
+/// delete(io::stdin(), io::stdin(), None);
+/// ```
 pub async fn delete<R: std::io::Read, F: std::io::Read>(
-    input: R,
+    confirm_input: R,
     find_input: F,
-    name: Option<String>,
-) {
-    let venv = venvmanager::VENVMANAGER
+    name: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let venv = match venvmanager::VENVMANAGER
         .find_venv(find_input, name, "delete")
-        .await;
-    if let Some(v) = venv {
-        v.delete(input, true).await
+        .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(e);
+        }
+    };
+    match venv.delete(confirm_input, true).await {
+        Ok(_) => {
+            log::info!("Virtual environment '{}' deleted.", venv.name);
+            Ok(())
+        }
+        Err(e) => Err(e),
     }
 }
 
+/// Install Astral UV
+///
+/// # Arguments
+/// * `input` - A reader for user input (e.g., stdin)
+///
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error>>` - Ok if installed
+///
+/// # Examples
+/// ```
+/// use pylot::install;
+/// use std::io;
+///
+/// install(io::stdin());
+/// ```
 pub async fn install<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::error::Error>> {
     if (uvctrl::check("uv").await).is_ok() {
         log::info!("Astral UV is already installed.");
@@ -130,6 +221,18 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::erro
     }
 }
 
+/// Update Astral UV
+/// Checks for updates and applies them if available
+///
+/// # Returns
+/// * `()` - Nothing
+///
+/// # Examples
+/// ```
+/// use pylot::update;
+///
+/// update();
+/// ```
 pub async fn update() {
     if (uvctrl::check("uv").await).is_err() {
         log::info!("Astral UV is not installed.");
@@ -140,6 +243,22 @@ pub async fn update() {
     });
 }
 
+/// Uninstall Astral UV
+/// Uninstalls Astral UV from the system
+///
+/// # Arguments
+/// * `input` - A reader for user input (e.g., stdin)
+///
+/// # Returns
+/// * `Result<(), Box<dyn std::error::Error>>` - Ok if uninstalled
+///
+/// # Examples
+/// ```
+/// use pylot::uninstall;
+/// use std::io;
+///
+/// uninstall(io::stdin());
+/// ```
 pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::error::Error>> {
     if (uvctrl::check("uv").await).is_err() {
         log::info!("Astral UV is not installed.");
@@ -151,17 +270,19 @@ pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::er
     }
 }
 
+/// List all available virtual environments
+///
+/// # Returns
+/// * `()` - Nothing
+///
+/// # Examples
+/// ```
+/// use pylot::list;
+///
+/// list();
+/// ```
 pub async fn list() {
-    let venvs = venvmanager::VENVMANAGER.list().await;
-    print_venvs(venvs).await;
-}
-
-pub async fn print_venvs(mut venvs: Vec<uvvenv::UvVenv>) {
-    if venvs.is_empty() {
-        log::info!("No virtual environments found");
-    } else {
-        venvmanager::VENVMANAGER.print_venv_table(&mut venvs).await;
-    }
+    venvmanager::VENVMANAGER.print_venv_table().await;
 }
 
 #[cfg(test)]
@@ -184,21 +305,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_print_venvs_empty() {
-        logger::initialize_logger(log::LevelFilter::Trace);
-        print_venvs(vec![]).await;
-    }
-
-    #[tokio::test]
     async fn test_delete() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        delete(io::stdin(), io::stdin(), Some("test_env".to_string())).await;
+        let result = delete(io::stdin(), io::stdin(), Some("test_env")).await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn test_activate() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        activate(Some("test_env_not_here".to_string())).await;
+        let result = activate(Some("test_env_not_here")).await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]
@@ -207,24 +324,17 @@ mod tests {
         let cursor = std::io::Cursor::new("y\n");
         let result_un = uninstall(cursor).await;
         assert!(result_un.is_ok());
-        let result = create(
-            "test_env".to_string(),
-            "3.8".to_string(),
-            vec![],
-            "".to_string(),
-            false,
-        )
-        .await;
+        let result = create("test_env", Some("3.8"), None, None, false).await;
         assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn test_update_packages_from_requirements() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let requirements = "test_requirements.txt".to_string();
+        let requirements = "test_requirements.txt";
         let mut packages = vec!["numpy".to_string()];
         let _ = write(&requirements, "pandas\nscipy\n").await;
-        let result = update_packages_from_requirements(requirements.clone(), &mut packages).await;
+        let result = update_packages_from_requirements(requirements, &mut packages).await;
         assert!(result.is_ok());
         assert!(packages.contains(&"numpy".to_string()));
         assert!(packages.contains(&"pandas".to_string()));
@@ -235,14 +345,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_missing_name() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let result = create(
-            "".to_string(),
-            "3.8".to_string(),
-            vec![],
-            "".to_string(),
-            false,
-        )
-        .await;
+        let result = create("", None, None, None, false).await;
         assert!(result.is_err());
     }
 

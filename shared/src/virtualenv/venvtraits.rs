@@ -7,9 +7,10 @@ pub trait Delete {
         &self,
         input: R,
         confirm: bool,
-    ) -> impl std::future::Future<Output = ()>;
+    ) -> impl std::future::Future<Output = Result<(), Box<dyn std::error::Error>>>;
 }
 
 pub trait Activate {
-    fn activate(&self) -> impl std::future::Future<Output = ()>;
+    fn activate(&self)
+        -> impl std::future::Future<Output = Result<(), Box<dyn std::error::Error>>>;
 }

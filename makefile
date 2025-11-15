@@ -49,7 +49,7 @@ define echo_line
 endef
 endif
 
-.PHONY: all build run clean format test lint
+.PHONY: all build run clean format test lint doc
 
 all: package
 
@@ -96,3 +96,8 @@ rebuild: clean build
 debug:
 	@cargo build
 	@$(COPY_CMD) pylot/settings.toml target/debug/
+
+doc:
+	@$(call echo_line,--- Test and create docs ---,GREEN)
+	@cargo test --doc
+	@cargo doc $(if $(findstring open,$(MAKECMDGOALS)),--open)
