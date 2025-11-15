@@ -160,7 +160,7 @@ async fn update_packages_from_requirements(
 /// * `name` - The name of the virtual environment to delete
 ///
 /// # Returns
-/// * `()` - Nothing
+/// * `Result<(), Box<dyn std::error::Error>>` - Ok if deleted
 ///
 /// # Examples
 /// ```
@@ -227,7 +227,7 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::erro
 /// # Returns
 /// * `()` - Nothing
 ///
-/// # Exmaples
+/// # Examples
 /// ```
 /// use pylot::update;
 ///

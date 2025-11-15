@@ -78,7 +78,7 @@ impl<'a> Delete for UvVenv<'a> {
         }
         match fs::remove_dir_all(venv_path) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Box::new(e))?,
+            Err(e) => Err(Box::new(e)),
         }
     }
 }
