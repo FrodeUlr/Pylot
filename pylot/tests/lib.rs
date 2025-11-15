@@ -37,29 +37,18 @@ mod tests {
             let tc = TestContext::setup().await;
 
             list().await;
-            let result = create(
-                "test_env",
-                None,
-                Some(vec!["numpy".to_string()]),
-                None,
-                true,
-            )
-            .await;
+            let venv_name = "test_env_exists";
+            let result = create(venv_name, None, Some(vec!["numpy".to_string()]), None, true).await;
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
-            let result_exists = create(
-                "test_env",
-                None,
-                Some(vec!["numpy".to_string()]),
-                None,
-                true,
-            )
-            .await;
+            let result_exists =
+                create(venv_name, None, Some(vec!["numpy".to_string()]), None, true).await;
             log::error!("Result exists: {:?}", result_exists);
             assert!(result_exists.is_err());
             let result_index = delete(tc.cursor_no.clone(), tc.cursor_one.clone(), None).await;
             assert!(result_index.is_ok());
-            let result_name = delete(tc.cursor_yes.clone(), tc.cursor_one.clone(), None).await;
+            let result_name =
+                delete(tc.cursor_yes.clone(), std::io::stdin(), Some(venv_name)).await;
             assert!(result_name.is_ok());
         }
     }
@@ -72,7 +61,7 @@ mod tests {
 
             list().await;
             let result_pyerr = create(
-                "test_env",
+                "test_env_invalid_python",
                 Some("0.1"),
                 Some(vec!["numpy".to_string()]),
                 None,
@@ -92,7 +81,7 @@ mod tests {
 
             list().await;
             let result_reqerr = create(
-                "test_env",
+                "test_env_invalid_req",
                 None,
                 Some(vec!["numpy".to_string()]),
                 Some("nofiletest"),
@@ -110,17 +99,18 @@ mod tests {
         {
             use tokio::fs;
 
+            let venv_name = "test_env_req";
             let tc = TestContext::setup().await;
             let pwd = std::env::current_dir().unwrap();
             let requirements = format!("{}/create_requirements.txt", pwd.display());
             let file_result = write(&requirements, "pandas\nscipy\n").await;
             assert!(file_result.is_ok());
             list().await;
-            let result = create("test_env_req", None, None, Some(&requirements), true).await;
+            let result = create(venv_name, None, None, Some(&requirements), true).await;
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             list().await;
-            let result = delete(tc.cursor_yes.clone(), io::stdin(), Some("test_env_req")).await;
+            let result = delete(tc.cursor_yes.clone(), io::stdin(), Some(venv_name)).await;
             assert!(result.is_ok());
             fs::remove_file(requirements).await.unwrap();
         }
@@ -131,10 +121,11 @@ mod tests {
         #[cfg(unix)]
         {
             let tc = TestContext::setup().await;
+            let venv_name = "test_env_def";
 
             list().await;
             let result = create(
-                "test_env_def",
+                venv_name,
                 None,
                 Some(vec!["pandas".to_string()]),
                 None,
@@ -144,7 +135,7 @@ mod tests {
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             list().await;
-            let result = delete(tc.cursor_yes.clone(), io::stdin(), Some("test_env_def")).await;
+            let result = delete(tc.cursor_yes.clone(), io::stdin(), Some(venv_name)).await;
             assert!(result.is_ok());
         }
     }
