@@ -77,8 +77,18 @@ async fn main() {
                 }
             }
             VenvCommands::Delete { name_pos, name } => match name.or(name_pos) {
-                Some(venv_name) => delete(io::stdin(), io::stdin(), Some(&venv_name)).await,
-                None => delete(io::stdin(), io::stdin(), None).await,
+                Some(venv_name) => match delete(io::stdin(), io::stdin(), Some(&venv_name)).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("{}", e);
+                    }
+                },
+                None => match delete(io::stdin(), io::stdin(), None).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("{}", e);
+                    }
+                },
             },
             VenvCommands::List => list().await,
         },

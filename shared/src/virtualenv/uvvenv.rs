@@ -49,12 +49,18 @@ impl<'a> Create for UvVenv<'a> {
 }
 
 impl<'a> Delete for UvVenv<'a> {
-    async fn delete<R: std::io::Read>(&self, input: R, confirm: bool) {
+    async fn delete<R: std::io::Read>(
+        &self,
+        input: R,
+        confirm: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
         let venv_path = format!("{}/{}", path, self.name);
         if !std::path::Path::new(&venv_path).exists() {
-            log::error!("{}", ERROR_VENV_NOT_EXISTS);
-            return;
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Virtual environment does not exist",
+            )));
         }
         let mut choice = !confirm;
         if confirm {
@@ -68,15 +74,11 @@ impl<'a> Delete for UvVenv<'a> {
             choice = utils::confirm(input);
         }
         if !choice {
-            return;
+            return Ok(());
         }
         match fs::remove_dir_all(venv_path) {
-            Ok(_) => {
-                if confirm {
-                    log::info!("'{}' {}", self.name, "has been deleted")
-                }
-            }
-            Err(e) => log::error!("{} {}", e, self.name),
+            Ok(_) => Ok(()),
+            Err(e) => Err(Box::new(e))?,
         }
     }
 }

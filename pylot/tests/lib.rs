@@ -57,8 +57,10 @@ mod tests {
             .await;
             log::error!("Result exists: {:?}", result_exists);
             assert!(result_exists.is_err());
-            delete(tc.cursor_no.clone(), tc.cursor_one.clone(), None).await;
-            delete(tc.cursor_yes.clone(), tc.cursor_one.clone(), None).await;
+            let result_index = delete(tc.cursor_no.clone(), tc.cursor_one.clone(), None).await;
+            assert!(result_index.is_ok());
+            let result_name = delete(tc.cursor_yes.clone(), tc.cursor_one.clone(), None).await;
+            assert!(result_name.is_ok());
         }
     }
 
@@ -118,7 +120,8 @@ mod tests {
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             list().await;
-            delete(tc.cursor_yes.clone(), io::stdin(), Some("test_env_req")).await;
+            let result = delete(tc.cursor_yes.clone(), io::stdin(), Some("test_env_req")).await;
+            assert!(result.is_ok());
             fs::remove_file(requirements).await.unwrap();
         }
     }
@@ -141,7 +144,8 @@ mod tests {
             log::error!("Result: {:?}", result);
             assert!(result.is_ok());
             list().await;
-            delete(tc.cursor_yes.clone(), io::stdin(), Some("test_env_def")).await;
+            let result = delete(tc.cursor_yes.clone(), io::stdin(), Some("test_env_def")).await;
+            assert!(result.is_ok());
         }
     }
 }

@@ -119,10 +119,10 @@ pub async fn create(
     );
     match venv.create().await {
         Ok(_) => Ok(()),
-        Err(e) => {
-            venv.delete(io::stdin(), false).await;
-            Err(format!("{}: {}", ERROR_CREATING_VENV, e).into())
-        }
+        Err(e) => match venv.delete(io::stdin(), false).await {
+            Ok(_) => Err(format!("{}: {}", ERROR_CREATING_VENV, e).into()),
+            Err(_) => Err("Failed to clean up after failed venv creation".into()),
+        },
     }
 }
 
@@ -169,13 +169,21 @@ pub async fn delete<R: std::io::Read, F: std::io::Read>(
     confirm_input: R,
     find_input: F,
     name: Option<&str>,
-) {
+) -> Result<(), Box<dyn std::error::Error>> {
     let venv = venvmanager::VENVMANAGER
         .find_venv(find_input, name, "delete")
         .await;
     if let Some(v) = venv {
-        v.delete(confirm_input, true).await
+        match v.delete(confirm_input, true).await {
+            Ok(_) => {
+                log::info!("Virtual environment '{}' deleted.", v.name);
+            }
+            Err(e) => {
+                return Err(e);
+            }
+        }
     }
+    Ok(())
 }
 
 /// Install Astral UV
@@ -290,7 +298,8 @@ mod tests {
     #[tokio::test]
     async fn test_delete() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        delete(io::stdin(), io::stdin(), Some("test_env")).await;
+        let result = delete(io::stdin(), io::stdin(), Some("test_env")).await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]
