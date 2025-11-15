@@ -40,7 +40,7 @@ impl<'a> VenvManager {
         input: R,
         name: Option<&'a str>,
         method: &str,
-    ) -> Option<UvVenv<'a>> {
+    ) -> Result<UvVenv<'a>, Box<dyn std::error::Error>> {
         let venv = match name {
             Some(n) => uvvenv::UvVenv::new(
                 Cow::Borrowed(n),
@@ -53,7 +53,10 @@ impl<'a> VenvManager {
                 let mut venvs = self.list().await;
                 if venvs.is_empty() {
                     log::warn!("No virtual environments found");
-                    return None;
+                    return Err(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "No virtual environments found",
+                    )));
                 }
                 self.print_venv_table_to(&mut std::io::stdout(), &mut venvs)
                     .await;
@@ -72,13 +75,12 @@ impl<'a> VenvManager {
                         false,
                     ),
                     Err(e) => {
-                        log::error!("{}", e);
-                        return None;
+                        return Err(e.into());
                     }
                 }
             }
         };
-        Some(venv)
+        Ok(venv)
     }
 
     fn get_index<R: std::io::Read>(&self, input: R, size: usize) -> Result<usize, String> {
@@ -187,7 +189,7 @@ mod tests {
     async fn test_find_venv_none() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let venv = VENVMANAGER.find_venv(io::stdin(), None, "activate").await;
-        assert!(venv.is_some() || venv.is_none());
+        assert!(venv.is_ok() || venv.is_err());
     }
 
     #[tokio::test]
@@ -195,7 +197,7 @@ mod tests {
         logger::initialize_logger(log::LevelFilter::Trace);
         let cursor = std::io::Cursor::new("c\n");
         let venv = VENVMANAGER.find_venv(cursor, None, "activate").await;
-        assert!(venv.is_some() || venv.is_none());
+        assert!(venv.is_ok() || venv.is_err());
     }
 
     #[tokio::test]
@@ -204,7 +206,7 @@ mod tests {
         let venv = VENVMANAGER
             .find_venv(io::stdin(), Some("test_venv"), "activate")
             .await;
-        assert!(venv.is_some());
+        assert!(venv.is_ok());
         assert_eq!(venv.unwrap().name, "test_venv");
     }
 

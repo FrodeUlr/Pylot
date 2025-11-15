@@ -22,12 +22,19 @@ use shared::{
 /// use pylot::activate;
 /// activate(Some("test_env"));
 /// ```
-pub async fn activate(name: Option<&str>) {
-    let venv = venvmanager::VENVMANAGER
+pub async fn activate(name: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
+    let venv = match venvmanager::VENVMANAGER
         .find_venv(io::stdin(), name, "activate")
-        .await;
-    if let Some(v) = venv {
-        v.activate().await
+        .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(e);
+        }
+    };
+    match venv.activate().await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
     }
 }
 
@@ -170,20 +177,22 @@ pub async fn delete<R: std::io::Read, F: std::io::Read>(
     find_input: F,
     name: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let venv = venvmanager::VENVMANAGER
+    let venv = match venvmanager::VENVMANAGER
         .find_venv(find_input, name, "delete")
-        .await;
-    if let Some(v) = venv {
-        match v.delete(confirm_input, true).await {
-            Ok(_) => {
-                log::info!("Virtual environment '{}' deleted.", v.name);
-            }
-            Err(e) => {
-                return Err(e);
-            }
+        .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(e);
         }
+    };
+    match venv.delete(confirm_input, true).await {
+        Ok(_) => {
+            log::info!("Virtual environment '{}' deleted.", venv.name);
+            Ok(())
+        }
+        Err(e) => Err(e),
     }
-    Ok(())
 }
 
 /// Install Astral UV
@@ -305,7 +314,8 @@ mod tests {
     #[tokio::test]
     async fn test_activate() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        activate(Some("test_env_not_here")).await;
+        let result = activate(Some("test_env_not_here")).await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]

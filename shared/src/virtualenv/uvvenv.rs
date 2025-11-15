@@ -59,7 +59,7 @@ impl<'a> Delete for UvVenv<'a> {
         if !std::path::Path::new(&venv_path).exists() {
             return Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                "Virtual environment does not exist",
+                ERROR_VENV_NOT_EXISTS,
             )));
         }
         let mut choice = !confirm;
@@ -84,11 +84,13 @@ impl<'a> Delete for UvVenv<'a> {
 }
 
 impl<'a> Activate for UvVenv<'a> {
-    async fn activate(&self) {
+    async fn activate(&self) -> Result<(), Box<dyn std::error::Error>> {
         let (shell, cmd, path) = self.get_shell_cmd();
         if !std::path::Path::new(&path).exists() {
-            log::error!("{}", ERROR_VENV_NOT_EXISTS);
-            return;
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                ERROR_VENV_NOT_EXISTS,
+            )));
         }
         log::info!("\nActivating virtual environment: {}", self.name);
         log::warn!(
@@ -96,7 +98,7 @@ impl<'a> Activate for UvVenv<'a> {
             "Note: To exit the virtual environment, type",
             "'exit'".green()
         );
-        let _ = processes::activate_venv_shell(shell.as_str(), cmd);
+        processes::activate_venv_shell(shell.as_str(), cmd)
     }
 }
 

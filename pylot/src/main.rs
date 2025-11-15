@@ -42,10 +42,15 @@ async fn main() {
         },
 
         Some(Commands::Venv { command }) => match command {
-            VenvCommands::Activate { name_pos, name } => match name.or(name_pos) {
-                Some(venv_name) => activate(Some(&venv_name)).await,
-                None => activate(None).await,
-            },
+            VenvCommands::Activate { name_pos, name } => {
+                let venv_name = name.or(name_pos);
+                match activate(venv_name.as_deref()).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("Error activating environment: {}", e);
+                    }
+                }
+            }
             VenvCommands::Create {
                 name_pos,
                 name,
@@ -76,20 +81,15 @@ async fn main() {
                     }
                 }
             }
-            VenvCommands::Delete { name_pos, name } => match name.or(name_pos) {
-                Some(venv_name) => match delete(io::stdin(), io::stdin(), Some(&venv_name)).await {
+            VenvCommands::Delete { name_pos, name } => {
+                let venv_name = name.or(name_pos);
+                match delete(io::stdin(), io::stdin(), venv_name.as_deref()).await {
                     Ok(_) => {}
                     Err(e) => {
-                        log::error!("{}", e);
+                        log::error!("Error deleting environment: {}", e);
                     }
-                },
-                None => match delete(io::stdin(), io::stdin(), None).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        log::error!("{}", e);
-                    }
-                },
-            },
+                }
+            }
             VenvCommands::List => list().await,
         },
 

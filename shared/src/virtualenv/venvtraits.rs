@@ -11,5 +11,6 @@ pub trait Delete {
 }
 
 pub trait Activate {
-    fn activate(&self) -> impl std::future::Future<Output = ()>;
+    fn activate(&self)
+        -> impl std::future::Future<Output = Result<(), Box<dyn std::error::Error>>>;
 }
