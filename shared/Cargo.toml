@@ -4,6 +4,9 @@ version = "0.5.0"
 edition = "2021"
 authors = ["Fulrix"]
 
+[features]
+testing = []
+
 [dependencies]
 colored = { workspace = true }
 tokio = { workspace = true }

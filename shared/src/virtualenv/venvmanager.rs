@@ -3,7 +3,9 @@ use crate::{
     constants::{UNIX_PYTHON3_EXEC, UNIX_PYTHON_EXEC, WIN_PYTHON_EXEC},
     settings,
 };
-use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
+use comfy_table::{
+    modifiers::UTF8_SOLID_INNER_BORDERS, presets::UTF8_FULL, ContentArrangement, Table,
+};
 use once_cell::sync::Lazy;
 use std::{
     borrow::Cow,
@@ -147,7 +149,7 @@ impl<'a> VenvManager {
         let mut table = Table::new();
         table
             .load_preset(UTF8_FULL)
-            .apply_modifier(UTF8_ROUND_CORNERS)
+            .apply_modifier(UTF8_SOLID_INNER_BORDERS)
             .set_content_arrangement(ContentArrangement::Dynamic)
             .set_header(vec!["Index", "Name", "Version"]);
         for (index, venv) in venvs.iter_mut().enumerate() {

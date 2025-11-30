@@ -15,7 +15,7 @@ use shared::{
 /// Activate a virtual environment by named position or name
 ///
 /// # Returns
-/// * `()` - Nothing
+/// * `Result<(), Box<dyn std::error::Error>>` - Ok if activated
 ///
 /// # Examples
 /// ```

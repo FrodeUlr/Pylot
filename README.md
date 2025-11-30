@@ -116,13 +116,13 @@ Run the following command:
 You will see a list of available virtual environments:
 
 ```text
-  ╭───────┬──────────────┬─────────╮
-  │ Index ┆ Name         ┆ Version │
-  ╞═══════╪══════════════╪═════════╡
-  │ 1     ┆ MyVenv       ┆ 3.11.13 │
-  ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
-  │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
-  ╰───────┴──────────────┴─────────╯
+  ┌───────┬─────────────┬─────────┐
+  │ Index │ Name        │ Version │
+  ╞═══════╪═════════════╪═════════╡
+  │ 1     │ MyVenv      │ 3.12.11 │
+  ├───────┼─────────────┼─────────┤
+  │ 2     │ AnotherVenv │ 3.12.11 │
+  └───────┴─────────────┴─────────┘
   Please select a virtual environment to activate:
 ```
 
@@ -147,13 +147,13 @@ Run the following command:
 You will see a list of available virtual environments:
 
 ```text
-  ╭───────┬──────────────┬─────────╮
-  │ Index ┆ Name         ┆ Version │
-  ╞═══════╪══════════════╪═════════╡
-  │ 1     ┆ MyVenv       ┆ 3.11.13 │
-  ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
-  │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
-  ╰───────┴──────────────┴─────────╯
+  ┌───────┬─────────────┬─────────┐
+  │ Index │ Name        │ Version │
+  ╞═══════╪═════════════╪═════════╡
+  │ 1     │ MyVenv      │ 3.12.11 │
+  ├───────┼─────────────┼─────────┤
+  │ 2     │ AnotherVenv │ 3.12.11 │
+  └───────┴─────────────┴─────────┘
   Please select a virtual environment to delete:
 ```
 
@@ -170,13 +170,13 @@ Run the following command:
 You will see a list of available virtual environments:
 
 ```text
-  ╭───────┬──────────────┬─────────╮
-  │ Index ┆ Name         ┆ Version │
-  ╞═══════╪══════════════╪═════════╡
-  │ 1     ┆ MyVenv       ┆ 3.11.13 │
-  ├╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌┤
-  │ 2     ┆ AnotherVenv  ┆ 3.11.13 │
-  ╰───────┴──────────────┴─────────╯
+  ┌───────┬─────────────┬─────────┐
+  │ Index │ Name        │ Version │
+  ╞═══════╪═════════════╪═════════╡
+  │ 1     │ MyVenv      │ 3.12.11 │
+  ├───────┼─────────────┼─────────┤
+  │ 2     │ AnotherVenv │ 3.12.11 │
+  └───────┴─────────────┴─────────┘
 ```
 
 ### Uninstall Astral UV
