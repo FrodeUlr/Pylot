@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Tabs},
 };
 
-use crate::app::{App, CreateField, Tab};
+use crate::app::{App, ConfirmDialog, CreateField, Tab};
 
 /// Draw the TUI to the given frame
 pub fn draw(frame: &mut Frame, app: &App) {
@@ -31,6 +31,9 @@ pub fn draw(frame: &mut Frame, app: &App) {
     // Dialog overlay – rendered last so it appears on top of everything else.
     if let Some(ref dialog) = app.create_dialog {
         draw_create_dialog(frame, dialog);
+    }
+    if let Some(ref dialog) = app.confirm_dialog {
+        draw_confirm_dialog(frame, dialog);
     }
 }
 fn draw_tabs(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
@@ -194,6 +197,19 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         return;
     }
 
+    // Priority 3: show confirm-dialog hints when a confirmation is pending.
+    if app.confirm_dialog.is_some() {
+        let spans = vec![
+            Span::styled("y / Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::raw(": confirm  "),
+            Span::styled("n / Esc", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::raw(": cancel"),
+        ];
+        let help = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
+        frame.render_widget(help, area);
+        return;
+    }
+
     // When the create dialog is open, show dialog-specific hints instead of the normal bar.
     if app.create_dialog.is_some() {
         let spans = vec![
@@ -330,6 +346,47 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
             .title(" New Virtual Environment ")
             .title_alignment(Alignment::Center)
             .border_style(Style::default().fg(Color::Yellow)),
+    );
+
+    frame.render_widget(paragraph, area);
+}
+
+/// Render the yes/no confirmation dialog as a centered overlay popup.
+fn draw_confirm_dialog(frame: &mut Frame, dialog: &ConfirmDialog) {
+    let area = centered_rect(52, 7, frame.area());
+
+    // Clear the background so the dialog appears cleanly over other widgets.
+    frame.render_widget(Clear, area);
+
+    let lines = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled(
+                dialog.message(),
+                Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+            ),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("This action cannot be undone.", Style::default().fg(Color::DarkGray)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled("[y] Yes", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::raw("    "),
+            Span::styled("[n] No", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+        ]),
+    ];
+
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Confirm ")
+            .title_alignment(Alignment::Center)
+            .border_style(Style::default().fg(Color::Red)),
     );
 
     frame.render_widget(paragraph, area);

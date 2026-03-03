@@ -6,7 +6,7 @@ mod app;
 mod ui;
 
 pub use app::App;
-use app::{CreateDialog, VenvAction};
+use app::{ConfirmAction, ConfirmDialog, CreateDialog, VenvAction};
 
 use crossterm::{
     event::{Event, EventStream, KeyCode, KeyEventKind},
@@ -215,6 +215,44 @@ where
         // Any keypress dismisses a one-shot status message.
         app.status_message = None;
 
+        // --- Confirm dialog captures all input while open ---
+        if let Some(dialog) = app.confirm_dialog.take() {
+            match key.code {
+                KeyCode::Char('y') | KeyCode::Enter => {
+                    // User confirmed – spawn the appropriate background task.
+                    match dialog.action {
+                        ConfirmAction::DeleteVenv(name) => {
+                            let label = format!("Deleting '{}'", name);
+                            spawn_venv_task(app, label, async move {
+                                // confirm=false: the confirmation dialog is the prompt.
+                                UvVenv::new(
+                                    Cow::Owned(name),
+                                    "".to_string(),
+                                    "".to_string(),
+                                    vec![],
+                                    false,
+                                )
+                                .delete(io::Cursor::new(""), false)
+                                .await
+                            });
+                        }
+                        ConfirmAction::UninstallUv => {
+                            // Pressing 'y' is the user's confirmation – auto-reply "y\n"
+                            // so uvctrl::uninstall's stdin prompt is satisfied.
+                            spawn_uv_task(
+                                app,
+                                "Uninstalling UV",
+                                uvctrl::uninstall(io::Cursor::new("y\n")),
+                            );
+                        }
+                    }
+                }
+                // Any other key (including 'n' and Esc) cancels.
+                _ => {}
+            }
+            continue; // dialog consumed the key; skip normal bindings
+        }
+
         // --- Create-venv dialog captures all input while open ---
         if let Some(ref mut dialog) = app.create_dialog {
             match key.code {
@@ -310,13 +348,8 @@ where
                     && app.uv_installed
                     && !app.is_busy() =>
             {
-                // Pressing 'd' is the user's confirmation – auto-reply "y\n" so
-                // uvctrl::uninstall's interactive prompt is satisfied without a shell.
-                spawn_uv_task(
-                    app,
-                    "Uninstalling UV",
-                    uvctrl::uninstall(io::Cursor::new("y\n")),
-                );
+                // Show a confirmation dialog before uninstalling.
+                app.confirm_dialog = Some(ConfirmDialog::new(ConfirmAction::UninstallUv));
             }
 
             // Venv management – only active on the Environments tab and when not busy.
@@ -331,20 +364,9 @@ where
                     && !app.is_busy() =>
             {
                 let name = app.venvs[app.selected].name.to_string();
-                let label = format!("Deleting '{}'", name);
-                spawn_venv_task(app, label, async move {
-                    // confirm=false: pressing 'd' is the user's confirmation, so the
-                    // stdin-based prompt inside delete() is bypassed entirely.
-                    UvVenv::new(
-                        Cow::Owned(name),
-                        "".to_string(),
-                        "".to_string(),
-                        vec![],
-                        false,
-                    )
-                    .delete(io::Cursor::new(""), false)
-                    .await
-                });
+                // Show a confirmation dialog before deleting.
+                app.confirm_dialog =
+                    Some(ConfirmDialog::new(ConfirmAction::DeleteVenv(name)));
             }
             KeyCode::Enter | KeyCode::Char('a')
                 if app.tab == app::Tab::Environments

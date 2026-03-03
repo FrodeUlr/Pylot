@@ -107,6 +107,36 @@ impl CreateDialog {
     }
 }
 
+/// Which destructive action is awaiting user confirmation
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConfirmAction {
+    /// Delete the named virtual environment.
+    DeleteVenv(String),
+    /// Uninstall Astral UV.
+    UninstallUv,
+}
+
+/// Simple yes/no confirmation overlay
+pub struct ConfirmDialog {
+    pub action: ConfirmAction,
+}
+
+impl ConfirmDialog {
+    pub fn new(action: ConfirmAction) -> Self {
+        ConfirmDialog { action }
+    }
+
+    /// Returns the human-readable question shown in the dialog.
+    pub fn message(&self) -> String {
+        match &self.action {
+            ConfirmAction::DeleteVenv(name) => {
+                format!("Delete virtual environment '{}'?", name)
+            }
+            ConfirmAction::UninstallUv => "Uninstall Astral UV?".to_string(),
+        }
+    }
+}
+
 /// Venv management actions that can be triggered from the TUI
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VenvAction {
@@ -150,6 +180,8 @@ pub struct App<'a> {
     pub pending_venv_action: Option<VenvAction>,
     /// When `Some`, the create-venv dialog is open.
     pub create_dialog: Option<CreateDialog>,
+    /// When `Some`, a yes/no confirmation overlay is open.
+    pub confirm_dialog: Option<ConfirmDialog>,
     /// Receiver end of the channel used to collect a background task's result.
     pub bg_rx: Option<tokio::sync::oneshot::Receiver<Result<(), String>>>,
     /// Human-readable label for the running task, shown in the status bar.
@@ -173,6 +205,7 @@ impl<'a> App<'a> {
             pending_action: None,
             pending_venv_action: None,
             create_dialog: None,
+            confirm_dialog: None,
             bg_rx: None,
             bg_task_name: None,
             status_message: None,
@@ -399,5 +432,24 @@ mod tests {
         app.bg_rx = Some(rx);
         assert!(app.is_busy());
         drop(tx); // avoid leak warning
+    }
+
+    #[test]
+    fn test_confirm_dialog_message_delete_venv() {
+        let d = ConfirmDialog::new(ConfirmAction::DeleteVenv("myenv".to_string()));
+        assert!(d.message().contains("myenv"));
+        assert!(d.message().contains("Delete"));
+    }
+
+    #[test]
+    fn test_confirm_dialog_message_uninstall_uv() {
+        let d = ConfirmDialog::new(ConfirmAction::UninstallUv);
+        assert!(d.message().contains("Uninstall"));
+    }
+
+    #[test]
+    fn test_confirm_dialog_none_by_default() {
+        let app = make_app();
+        assert!(app.confirm_dialog.is_none());
     }
 }
