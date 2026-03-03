@@ -22,7 +22,7 @@ fn build_logger(log_level: log::LevelFilter) {
                 Level::Debug => "\x1b[36m", // Cyan
                 Level::Trace => "\x1b[35m", // Magenta
             };
-            writeln!(buf, "{:5}{}", level_color, record.args())
+            writeln!(buf, "{:5}{}\x1b[0m", level_color, record.args())
         })
         .init();
 }

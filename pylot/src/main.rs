@@ -101,94 +101,86 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
+    use assert_cmd::Command;
     use clap::Parser;
+    use predicates::prelude::*;
 
     use pylot::cli::cmds::{Cli, Commands, VenvCommands};
     use shared::constants::ERROR_VENV_NOT_EXISTS;
 
     #[test]
     fn test_cli_output_help() {
-        assert_cli::Assert::main_binary()
-            .with_args(&["--help"])
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+        cmd.arg("--help")
             .current_dir(env!("CARGO_MANIFEST_DIR"))
-            .succeeds()
-            .and()
-            .stdout()
-            .contains("A simple CLI to manage Python virtual enviroonments using Astral UV")
-            .unwrap();
+            .assert()
+            .success()
+            .stdout(predicate::str::contains(
+                "A simple CLI to manage Python virtual enviroonments using Astral UV",
+            ));
     }
 
     #[test]
     fn test_cli_output_version() {
         let version = env!("CARGO_PKG_VERSION");
-        assert_cli::Assert::main_binary()
-            .with_args(&["--version"])
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+        cmd.arg("--version")
             .current_dir(env!("CARGO_MANIFEST_DIR"))
-            .succeeds()
-            .and()
-            .stdout()
-            .contains(format!("pylot {}", version).as_str())
-            .unwrap();
+            .assert()
+            .success()
+            .stdout(predicate::str::contains(format!("pylot {}", version)));
     }
 
     #[test]
     fn test_cli_output_check() {
-        assert_cli::Assert::main_binary()
-            .with_args(&["uv", "check"])
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+        cmd.args(&["uv", "check"])
             .current_dir(env!("CARGO_MANIFEST_DIR"))
-            .succeeds()
-            .and()
-            .stderr()
-            .contains("Checking if Astral UV is installed and configured...")
-            .unwrap();
+            .assert()
+            .success()
+            .stderr(predicate::str::contains(
+                "Checking if Astral UV is installed and configured...",
+            ));
     }
 
     #[test]
     fn test_cli_output_activate() {
-        assert_cli::Assert::main_binary()
-            .with_args(&["venv", "activate"])
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+        cmd.args(&["venv", "activate"])
             .current_dir(env!("CARGO_MANIFEST_DIR"))
-            .succeeds()
-            .and()
-            .stderr()
-            .contains("virtual environment")
-            .unwrap();
+            .assert()
+            .success()
+            .stderr(predicate::str::contains("virtual environment"));
     }
 
     #[test]
     fn test_cli_output_delete() {
-        assert_cli::Assert::main_binary()
-            .with_args(&["venv", "delete"])
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+        cmd.args(&["venv", "delete"])
             .current_dir(env!("CARGO_MANIFEST_DIR"))
-            .succeeds()
-            .and()
-            .stderr()
-            .contains("virtual environment")
-            .unwrap();
+            .assert()
+            .success()
+            .stderr(predicate::str::contains("virtual environment"));
     }
 
     #[test]
     fn test_cli_output_delete_name() {
-        assert_cli::Assert::main_binary()
-            .with_args(&["venv", "delete", "myvenv"])
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+        cmd.args(&["venv", "delete", "myvenv"])
             .current_dir(env!("CARGO_MANIFEST_DIR"))
-            .succeeds()
-            .and()
-            .stderr()
-            .contains(ERROR_VENV_NOT_EXISTS)
-            .unwrap();
+            .assert()
+            .success()
+            .stderr(predicate::str::contains(ERROR_VENV_NOT_EXISTS));
     }
 
     #[test]
     fn test_cli_output_activate_name() {
-        assert_cli::Assert::main_binary()
-            .with_args(&["venv", "activate", "myvenv"])
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+        cmd.args(&["venv", "activate", "myvenv"])
             .current_dir(env!("CARGO_MANIFEST_DIR"))
-            .succeeds()
-            .and()
-            .stderr()
-            .contains(ERROR_VENV_NOT_EXISTS)
-            .unwrap();
+            .assert()
+            .success()
+            .stderr(predicate::str::contains(ERROR_VENV_NOT_EXISTS));
     }
 
     #[test]

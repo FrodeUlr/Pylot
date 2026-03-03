@@ -1,9 +1,8 @@
 use config::{Config, File, FileFormat};
-use once_cell::sync::Lazy;
 use std::{
     env,
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::{LazyLock, Mutex},
 };
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -18,7 +17,7 @@ fn default_venv_path() -> String {
     String::from("~/pylot/venvs")
 }
 
-static SETTINGS: Lazy<Mutex<Settings>> = Lazy::new(|| Mutex::new(Settings::default()));
+static SETTINGS: LazyLock<Mutex<Settings>> = LazyLock::new(|| Mutex::new(Settings::default()));
 
 impl Default for Settings {
     fn default() -> Self {
@@ -49,13 +48,16 @@ impl Settings {
 
         new_settings.validate_venv_path();
 
-        let mut settings_lock = SETTINGS.lock().expect("Failed to lock settings");
-        *settings_lock = new_settings;
+        if let Ok(mut settings_lock) = SETTINGS.lock() {
+            *settings_lock = new_settings;
+        }
     }
 
     pub fn get_settings() -> Settings {
-        let settings_lock = SETTINGS.lock().expect("Failed to lock settings");
-        settings_lock.clone()
+        SETTINGS
+            .lock()
+            .map(|s| s.clone())
+            .unwrap_or_else(|_| Settings::default())
     }
 
     pub fn validate_venv_path(&self) {
@@ -65,7 +67,9 @@ impl Settings {
         }
         if !Path::new(&path).exists() {
             println!("Creating venvs folder: {}", path);
-            std::fs::create_dir_all(&path).expect("Failed to create venvs folder");
+            if let Err(e) = std::fs::create_dir_all(&path) {
+                eprintln!("Failed to create venvs folder: {}", e);
+            }
         }
     }
 
@@ -73,14 +77,16 @@ impl Settings {
     where
         F: Fn() -> std::io::Result<PathBuf>,
     {
-        let exe_dir = match current_exe_fn() {
-            Ok(exe_path) => exe_path.parent().unwrap().to_path_buf(),
+        match current_exe_fn() {
+            Ok(exe_path) => exe_path
+                .parent()
+                .map(|p| p.to_path_buf())
+                .unwrap_or_else(|| PathBuf::from(".")),
             Err(_) => {
                 println!("Could not determine the executable directory");
                 PathBuf::from(".")
             }
-        };
-        exe_dir
+        }
     }
 }
 

@@ -8,6 +8,7 @@ use std::{borrow::Cow, io};
 
 use shared::{
     constants::{DEFAULT_PYTHON_VERSION, ERROR_CREATING_VENV},
+    error::{PylotError, Result},
     utils, uvctrl, uvvenv, venvmanager,
     venvtraits::{Activate, Create, Delete},
 };
@@ -15,45 +16,36 @@ use shared::{
 /// Activate a virtual environment by named position or name
 ///
 /// # Returns
-/// * `Result<(), Box<dyn std::error::Error>>` - Ok if activated
+/// * `Result<()>` - Ok if activated
 ///
 /// # Examples
 /// ```
 /// use pylot::activate;
 /// activate(Some("test_env"));
 /// ```
-pub async fn activate(name: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
-    let venv = match venvmanager::VENVMANAGER
+pub async fn activate(name: Option<&str>) -> Result<()> {
+    let venv = venvmanager::VENVMANAGER
         .find_venv(io::stdin(), name, "activate")
-        .await
-    {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(e);
-        }
-    };
-    match venv.activate().await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e),
-    }
+        .await?;
+    venv.activate().await
 }
 
 /// Check if Astral UV is installed and configured
 ///
 /// # Returns
-/// * `Result<(), Box<dyn std::error::Error>>` - Ok if installed, Err if not
+/// * `Result<()>` - Ok if installed, Err if not
 ///
 /// # Examples
 /// ```
 /// use pylot::check;
 /// check();
 /// ```
-pub async fn check() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn check() -> Result<()> {
     log::info!("Checking if Astral UV is installed and configured...");
-    match uvctrl::check("uv").await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e),
-    }
+    uvctrl::check("uv")
+        .await
+        .map(|_| ())
+        .map_err(|e| PylotError::Other(e.to_string()))
 }
 
 /// Create a new virtual environment
@@ -66,7 +58,7 @@ pub async fn check() -> Result<(), Box<dyn std::error::Error>> {
 /// * `default` -  Whether to install default packages from settings.toml
 ///
 /// # Returns
-/// * `Result<(), Box<dyn std::error::Error>>` - Ok if created
+/// * `Result<()>` - Ok if created
 ///
 /// # Examples
 /// ```
@@ -87,36 +79,37 @@ pub async fn create(
     packages: Option<Vec<String>>,
     requirements: Option<&str>,
     default: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if name.is_empty() {
-        return Err("A valid name is required".into());
-    }
-    match uvctrl::check("uv").await {
-        Ok(_) => {}
-        Err(_) => {
-            return Err(format!(
+) -> Result<()> {
+    // Validate venv name
+    uvvenv::UvVenv::validate_venv_name(name)?;
+    
+    uvctrl::check("uv")
+        .await
+        .map_err(|_| {
+            PylotError::Other(format!(
                 "Astral UV is not installed. Please run '{} uv install' to install it.",
                 env!("CARGO_PKG_NAME")
-            )
-            .into())
-        }
-    };
+            ))
+        })?;
+    
     let mut pkgs = packages.unwrap_or_default();
+    
     if venvmanager::VENVMANAGER.check_if_exists(name).await {
-        return Err(format!(
+        return Err(PylotError::VenvExists(format!(
             "A virtual environment with the name {} already exists",
             name
-        )
-        .into());
+        )));
     }
+    
     if let Some(req) = requirements {
-        match update_packages_from_requirements(req, &mut pkgs).await {
-            Ok(_) => {}
-            Err(e) => {
-                return Err(format!("Error reading requirements file: {}", e).into());
-            }
-        }
+        update_packages_from_requirements(req, &mut pkgs).await?;
     }
+    
+    // Validate all package names
+    for pkg in &pkgs {
+        uvvenv::UvVenv::validate_package_name(pkg)?;
+    }
+    
     let venv = uvvenv::UvVenv::new(
         Cow::Borrowed(name),
         "".to_owned(),
@@ -124,29 +117,33 @@ pub async fn create(
         pkgs,
         default,
     );
+    
     match venv.create().await {
         Ok(_) => Ok(()),
-        Err(e) => match venv.delete(io::stdin(), false).await {
-            Ok(_) => Err(format!("{}: {}", ERROR_CREATING_VENV, e).into()),
-            Err(_) => Err("Failed to clean up after failed venv creation".into()),
-        },
+        Err(e) => {
+            // Try to clean up failed venv creation
+            let _ = venv.delete(io::stdin(), false).await;
+            Err(PylotError::Other(format!("{}: {}", ERROR_CREATING_VENV, e)))
+        }
     }
 }
 
 async fn update_packages_from_requirements(
     requirements: &str,
     packages: &mut Vec<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     if !requirements.is_empty() {
-        match utils::read_requirements_file(requirements).await {
-            Ok(read_pkgs) => {
-                for req in read_pkgs {
-                    if !packages.contains(&req) {
-                        packages.push(req);
-                    }
-                }
+        let read_pkgs = utils::read_requirements_file(requirements)
+            .await
+            .map_err(|e| PylotError::Other(e.to_string()))?;
+        
+        // Preserve package order while deduplicating
+        // This ensures installation order is maintained, which can matter
+        // for packages with conflicting dependencies or when using --no-deps
+        for req in read_pkgs {
+            if !packages.contains(&req) {
+                packages.push(req);
             }
-            Err(e) => Err(e)?,
         }
     }
     Ok(())
@@ -160,7 +157,7 @@ async fn update_packages_from_requirements(
 /// * `name` - The name of the virtual environment to delete
 ///
 /// # Returns
-/// * `Result<(), Box<dyn std::error::Error>>` - Ok if deleted
+/// * `Result<()>` - Ok if deleted
 ///
 /// # Examples
 /// ```
@@ -176,23 +173,14 @@ pub async fn delete<R: std::io::Read, F: std::io::Read>(
     confirm_input: R,
     find_input: F,
     name: Option<&str>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let venv = match venvmanager::VENVMANAGER
+) -> Result<()> {
+    let venv = venvmanager::VENVMANAGER
         .find_venv(find_input, name, "delete")
-        .await
-    {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(e);
-        }
-    };
-    match venv.delete(confirm_input, true).await {
-        Ok(_) => {
-            log::info!("Virtual environment '{}' deleted.", venv.name);
-            Ok(())
-        }
-        Err(e) => Err(e),
-    }
+        .await?;
+    
+    venv.delete(confirm_input, true).await?;
+    log::info!("Virtual environment '{}' deleted.", venv.name);
+    Ok(())
 }
 
 /// Install Astral UV
@@ -201,7 +189,7 @@ pub async fn delete<R: std::io::Read, F: std::io::Read>(
 /// * `input` - A reader for user input (e.g., stdin)
 ///
 /// # Returns
-/// * `Result<(), Box<dyn std::error::Error>>` - Ok if installed
+/// * `Result<()>` - Ok if installed
 ///
 /// # Examples
 /// ```
@@ -210,15 +198,14 @@ pub async fn delete<R: std::io::Read, F: std::io::Read>(
 ///
 /// install(io::stdin());
 /// ```
-pub async fn install<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn install<R: std::io::Read>(input: R) -> Result<()> {
     if (uvctrl::check("uv").await).is_ok() {
         log::info!("Astral UV is already installed.");
         return Ok(());
     }
-    match uvctrl::install(input).await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e.into()),
-    }
+    uvctrl::install(input)
+        .await
+        .map_err(|e| PylotError::Other(e))
 }
 
 /// Update Astral UV
@@ -250,7 +237,7 @@ pub async fn update() {
 /// * `input` - A reader for user input (e.g., stdin)
 ///
 /// # Returns
-/// * `Result<(), Box<dyn std::error::Error>>` - Ok if uninstalled
+/// * `Result<()>` - Ok if uninstalled
 ///
 /// # Examples
 /// ```
@@ -259,15 +246,14 @@ pub async fn update() {
 ///
 /// uninstall(io::stdin());
 /// ```
-pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn uninstall<R: std::io::Read>(input: R) -> Result<()> {
     if (uvctrl::check("uv").await).is_err() {
         log::info!("Astral UV is not installed.");
         return Ok(());
     }
-    match uvctrl::uninstall(input).await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e.into()),
-    }
+    uvctrl::uninstall(input)
+        .await
+        .map_err(|e| PylotError::Other(e))
 }
 
 /// List all available virtual environments
@@ -288,7 +274,6 @@ pub async fn list() {
 #[cfg(test)]
 mod tests {
     use shared::logger;
-    use tokio::fs::{self, write};
 
     use super::*;
 
@@ -331,15 +316,23 @@ mod tests {
     #[tokio::test]
     async fn test_update_packages_from_requirements() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let requirements = "test_requirements.txt";
+        use std::io::Write;
+        
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "pandas").unwrap();
+        writeln!(temp_file, "scipy").unwrap();
+        temp_file.flush().unwrap();
+        
+        let requirements = temp_file.path().to_str().unwrap();
         let mut packages = vec!["numpy".to_string()];
-        let _ = write(&requirements, "pandas\nscipy\n").await;
+        
         let result = update_packages_from_requirements(requirements, &mut packages).await;
         assert!(result.is_ok());
         assert!(packages.contains(&"numpy".to_string()));
         assert!(packages.contains(&"pandas".to_string()));
         assert!(packages.contains(&"scipy".to_string()));
-        fs::remove_file(requirements).await.unwrap();
+        
+        // temp_file is automatically deleted when dropped
     }
 
     #[tokio::test]
@@ -368,36 +361,18 @@ mod tests {
     #[tokio::test]
     async fn test_install_uv_yes() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        #[cfg(unix)]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            assert!(result_in.is_ok());
-        }
-        #[cfg(not(unix))]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            assert!(result_in.is_ok());
-        }
+        let cursor = std::io::Cursor::new("y\n");
+        let result_in = install(cursor.clone()).await;
+        assert!(result_in.is_ok());
     }
 
     #[tokio::test]
     async fn test_install_update_uv_yes() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        #[cfg(unix)]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            update().await;
-            assert!(result_in.is_ok());
-        }
-        #[cfg(not(unix))]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            assert!(result_in.is_ok());
-        }
+        let cursor = std::io::Cursor::new("y\n");
+        let result_in = install(cursor.clone()).await;
+        update().await;
+        assert!(result_in.is_ok());
     }
 
     #[tokio::test]
@@ -422,18 +397,9 @@ mod tests {
     #[tokio::test]
     async fn test_uninstall_update_uv_yes() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        #[cfg(unix)]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_un = uninstall(cursor).await;
-            assert!(result_un.is_ok());
-            update().await;
-        }
-        #[cfg(not(unix))]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_un = uninstall(cursor).await;
-            assert!(result_un.is_ok());
-        }
+        let cursor = std::io::Cursor::new("y\n");
+        let result_un = uninstall(cursor).await;
+        assert!(result_un.is_ok());
+        update().await;
     }
 }

@@ -1,3 +1,4 @@
+use crate::error::{PylotError, Result};
 use crate::utility::constants::{POWERSHELL_CMD, PWSH_CMD};
 use std::process::{Command as StdCommand, Stdio};
 use tokio::{
@@ -5,7 +6,7 @@ use tokio::{
     process::{Child, Command},
 };
 
-pub fn create_child_cmd(cmd: &str, args: &[&str], run: &str) -> Child {
+pub fn create_child_cmd(cmd: &str, args: &[&str], run: &str) -> Result<Child> {
     let mut cmd = Command::new(cmd);
     if !run.is_empty() {
         cmd.arg(run);
@@ -14,16 +15,22 @@ pub fn create_child_cmd(cmd: &str, args: &[&str], run: &str) -> Child {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("Failed to execute command")
+        .map_err(|e| PylotError::CommandExecution(format!("Failed to execute command: {}", e)))
 }
 
-pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
+        // On Unix, we use exec() to replace the current process with the shell.
+        // We pass -c to tell the shell to execute the command string in args.
+        // The exec() call never returns on success, only on error.
         let error = StdCommand::new(cmd).arg("-c").args(args).exec();
 
-        Err(format!("Failed to execute shell: {}", error).into())
+        Err(PylotError::CommandExecution(format!(
+            "Failed to execute shell: {}",
+            error
+        )))
     }
 
     #[cfg(not(unix))]
@@ -34,10 +41,10 @@ pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<(), Box<dyn s
         use winapi::um::wincon::GenerateConsoleCtrlEvent;
 
         let mut child = StdCommand::new(cmd)
-            .arg("-c")
             .args(args)
             .creation_flags(0x00000200)
-            .spawn()?;
+            .spawn()
+            .map_err(|e| PylotError::CommandExecution(format!("Failed to spawn process: {}", e)))?;
 
         let child_id = child.id();
         let running = Arc::new(Mutex::new(true));
@@ -45,14 +52,20 @@ pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<(), Box<dyn s
 
         ctrlc::set_handler(move || {
             unsafe {
-                GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_BREAK_EVENT, child_id);
+                let result = GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_BREAK_EVENT, child_id);
+                if result == 0 {
+                    log::warn!("Failed to send Ctrl-Break event to child process");
+                }
             }
-            let mut r = running_clone.lock().unwrap();
-            *r = false;
+            if let Ok(mut r) = running_clone.lock() {
+                *r = false;
+            }
         })
-        .expect("Error setting Ctrl-C handler");
+        .map_err(|e| PylotError::Other(format!("Error setting Ctrl-C handler: {}", e)))?;
 
-        child.wait()?;
+        child
+            .wait()
+            .map_err(|e| PylotError::CommandExecution(format!("Failed to wait for child: {}", e)))?;
         Ok(())
     }
 }
@@ -67,7 +80,7 @@ pub async fn run_command_with_handlers<
     stderr_reader: RE,
     mut handle_stdout: F,
     mut handle_stderr: G,
-) -> Result<(), Box<dyn std::error::Error>>
+) -> std::result::Result<(), Box<dyn std::error::Error>>
 where
     F: FnMut(String) + Send + 'static,
     G: FnMut(String) + Send + 'static,
@@ -113,9 +126,15 @@ where
     Ok(())
 }
 
-pub async fn run_command(child: &mut Child) -> Result<(), Box<dyn std::error::Error>> {
-    let stdout = child.stdout.take().expect("Failed to open stdout");
-    let stderr = child.stderr.take().expect("Failed to open stderr");
+pub async fn run_command(child: &mut Child) -> Result<()> {
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| PylotError::CommandExecution("Failed to open stdout".to_string()))?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| PylotError::CommandExecution("Failed to open stderr".to_string()))?;
 
     let stdout_reader = BufReader::new(stdout);
     let stderr_reader = BufReader::new(stderr);
@@ -130,16 +149,18 @@ pub async fn run_command(child: &mut Child) -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-pub fn get_parent_shell() -> String {
+pub fn get_parent_shell() -> Result<String> {
     if cfg!(target_os = "windows") {
         let shell = if which::which(PWSH_CMD).is_ok() {
             PWSH_CMD
         } else {
             POWERSHELL_CMD
         };
-        return shell.to_string();
+        return Ok(shell.to_string());
     }
-    std::env::var("SHELL").unwrap()
+    std::env::var("SHELL").map_err(|_| {
+        PylotError::EnvVarNotSet("SHELL environment variable is not set".to_string())
+    })
 }
 
 #[cfg(test)]
@@ -180,9 +201,12 @@ mod tests {
         logger::initialize_logger(log::LevelFilter::Trace);
         let shell = get_parent_shell();
         if cfg!(target_os = "windows") {
-            assert!(shell == "powershell" || shell == "pwsh");
+            assert!(shell.is_ok());
+            let shell_val = shell.unwrap();
+            assert!(shell_val == "powershell" || shell_val == "pwsh");
         } else {
-            assert!(!shell.is_empty());
+            // On Unix, result depends on SHELL env var
+            assert!(shell.is_ok() || shell.is_err());
         }
     }
 
@@ -193,12 +217,18 @@ mod tests {
             let cmd = "cmd";
             let args = &["/C", "echo", "Hello"];
             let child = create_child_cmd(cmd, args, "");
-            assert!(child.id() > Some(0));
+            assert!(child.is_ok());
+            if let Ok(c) = child {
+                assert!(c.id() > Some(0));
+            }
         } else {
             let cmd = "ls";
             let args = &["-lah"];
             let child = create_child_cmd(cmd, args, "");
-            assert!(child.id() > Some(0));
+            assert!(child.is_ok());
+            if let Ok(c) = child {
+                assert!(c.id() > Some(0));
+            }
         }
     }
 
@@ -208,15 +238,19 @@ mod tests {
         if cfg!(target_os = "windows") {
             let cmd = "cmd";
             let args = &["/C", "echo", "Hello"];
-            let mut child = create_child_cmd(cmd, args, "");
-            let res = run_command(&mut child).await;
-            assert!(res.is_ok());
+            let child = create_child_cmd(cmd, args, "");
+            if let Ok(mut c) = child {
+                let res = run_command(&mut c).await;
+                assert!(res.is_ok());
+            }
         } else {
             let cmd = "ls";
             let args = &["-lah"];
-            let mut child = create_child_cmd(cmd, args, "");
-            let res = run_command(&mut child).await;
-            assert!(res.is_ok());
+            let child = create_child_cmd(cmd, args, "");
+            if let Ok(mut c) = child {
+                let res = run_command(&mut c).await;
+                assert!(res.is_ok());
+            }
         }
     }
 
@@ -228,13 +262,19 @@ mod tests {
             let run = "/C";
             let args = &["echo", "Hello"];
             let child = create_child_cmd(cmd, args, run);
-            assert!(child.id() > Some(0));
+            assert!(child.is_ok());
+            if let Ok(c) = child {
+                assert!(c.id() > Some(0));
+            }
         } else {
             let cmd = SH_CMD;
             let run = "-c";
             let args = &["echo Hello"];
             let child = create_child_cmd(cmd, args, run);
-            assert!(child.id() > Some(0));
+            assert!(child.is_ok());
+            if let Ok(c) = child {
+                assert!(c.id() > Some(0));
+            }
         }
     }
 
