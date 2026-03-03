@@ -13,6 +13,7 @@ clap = { workspace = true }
 tokio = { workspace = true }
 clap_complete = { workspace = true }
 log = { workspace = true }
+pylot-tui = { workspace = true }
 
 [dev-dependencies]
 assert_cmd = "2.0"

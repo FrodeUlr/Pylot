@@ -96,6 +96,12 @@ async fn main() {
         None => {
             log::error!("No command provided");
         }
+
+        Some(Commands::Tui) => {
+            if let Err(e) = pylot_tui::run().await {
+                log::error!("TUI error: {}", e);
+            }
+        }
     }
 }
 

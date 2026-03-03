@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["pylot", "shared"]
+members = ["pylot", "shared", "tui"]
 
 [workspace.dependencies]
 colored = "3.0.0"
@@ -20,3 +20,6 @@ env_logger = { version = "0.11", default-features = true, features = ["color"] }
 clap_complete = "4.5"
 thiserror = "2.0"
 futures = "0.3"
+ratatui = "0.30.0"
+crossterm = "0.28.1"
+pylot-tui = { path = "./tui" }
