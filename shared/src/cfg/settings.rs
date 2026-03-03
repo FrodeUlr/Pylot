@@ -1,4 +1,3 @@
-use crate::error::Result;
 use config::{Config, File, FileFormat};
 use std::{
     env,

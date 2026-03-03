@@ -272,7 +272,6 @@ pub async fn list() {
 #[cfg(test)]
 mod tests {
     use shared::logger;
-    use tokio::fs::{self, write};
 
     use super::*;
 
@@ -315,15 +314,23 @@ mod tests {
     #[tokio::test]
     async fn test_update_packages_from_requirements() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let requirements = "test_requirements.txt";
+        use std::io::Write;
+        
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "pandas").unwrap();
+        writeln!(temp_file, "scipy").unwrap();
+        temp_file.flush().unwrap();
+        
+        let requirements = temp_file.path().to_str().unwrap();
         let mut packages = vec!["numpy".to_string()];
-        let _ = write(&requirements, "pandas\nscipy\n").await;
+        
         let result = update_packages_from_requirements(requirements, &mut packages).await;
         assert!(result.is_ok());
         assert!(packages.contains(&"numpy".to_string()));
         assert!(packages.contains(&"pandas".to_string()));
         assert!(packages.contains(&"scipy".to_string()));
-        fs::remove_file(requirements).await.unwrap();
+        
+        // temp_file is automatically deleted when dropped
     }
 
     #[tokio::test]
@@ -352,36 +359,18 @@ mod tests {
     #[tokio::test]
     async fn test_install_uv_yes() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        #[cfg(unix)]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            assert!(result_in.is_ok());
-        }
-        #[cfg(not(unix))]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            assert!(result_in.is_ok());
-        }
+        let cursor = std::io::Cursor::new("y\n");
+        let result_in = install(cursor.clone()).await;
+        assert!(result_in.is_ok());
     }
 
     #[tokio::test]
     async fn test_install_update_uv_yes() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        #[cfg(unix)]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            update().await;
-            assert!(result_in.is_ok());
-        }
-        #[cfg(not(unix))]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_in = install(cursor.clone()).await;
-            assert!(result_in.is_ok());
-        }
+        let cursor = std::io::Cursor::new("y\n");
+        let result_in = install(cursor.clone()).await;
+        update().await;
+        assert!(result_in.is_ok());
     }
 
     #[tokio::test]
@@ -406,18 +395,9 @@ mod tests {
     #[tokio::test]
     async fn test_uninstall_update_uv_yes() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        #[cfg(unix)]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_un = uninstall(cursor).await;
-            assert!(result_un.is_ok());
-            update().await;
-        }
-        #[cfg(not(unix))]
-        {
-            let cursor = std::io::Cursor::new("y\n");
-            let result_un = uninstall(cursor).await;
-            assert!(result_un.is_ok());
-        }
+        let cursor = std::io::Cursor::new("y\n");
+        let result_un = uninstall(cursor).await;
+        assert!(result_un.is_ok());
+        update().await;
     }
 }

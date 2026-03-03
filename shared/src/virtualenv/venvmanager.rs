@@ -186,8 +186,8 @@ mod tests {
     async fn test_list_venvs() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let venvs = VENVMANAGER.list().await;
-        // Test passes regardless of how many venvs exist
-        assert!(venvs.len() >= 0);
+        // Test passes with any number of venvs
+        let _ = venvs.len();
     }
 
     #[tokio::test]

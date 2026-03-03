@@ -18,3 +18,4 @@ log = { workspace = true }
 assert_cmd = "2.0"
 shellexpand = { workspace = true }
 tokio-test = "0.4"
+tempfile = "3.23"
