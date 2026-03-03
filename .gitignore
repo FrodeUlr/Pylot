@@ -15,6 +15,11 @@ Cargo.lock
 *.pdb
 ssl/
 .markdownlint.json
+
+# Test artifacts
+*_requirements.txt
+test_requirements.txt
+
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
