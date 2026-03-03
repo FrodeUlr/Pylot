@@ -8,7 +8,7 @@ mod ui;
 pub use app::App;
 
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+    event::{self, Event, KeyCode, KeyEventKind},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -37,21 +37,29 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut app = App::new(venvs, uv_installed, uv_version);
 
+    // Suppress all log output while the TUI is active so that mio/tokio trace
+    // messages (and any other log output) cannot write to the TTY and corrupt
+    // the alternate-screen display.
+    let prev_log_level = log::max_level();
+    log::set_max_level(log::LevelFilter::Off);
+
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
+    // Clear the alternate screen so no stale content remains before the first
+    // draw, and ratatui's diff works from a known-clean baseline.
+    terminal.clear()?;
 
     let result = run_app(&mut terminal, &mut app);
 
     disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
+
+    // Restore the previous log level now that the TTY is back to normal mode.
+    log::set_max_level(prev_log_level);
 
     result
 }
