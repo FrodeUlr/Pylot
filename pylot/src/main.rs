@@ -13,7 +13,7 @@ use crate::cli::cmds::{UvCommands, VenvCommands};
 #[tokio::main]
 async fn main() {
     settings::Settings::init().await;
-    logger::initialize_logger(log::LevelFilter::Trace);
+    logger::initialize_logger(log::LevelFilter::Info);
     let args = Cli::parse();
 
     match args.commands {
