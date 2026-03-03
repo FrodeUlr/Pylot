@@ -359,6 +359,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires network access to astral.sh CDN to download UV binary"]
     async fn test_install_uv_yes() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let cursor = std::io::Cursor::new("y\n");
@@ -367,6 +368,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires network access to astral.sh CDN to download UV binary"]
     async fn test_install_update_uv_yes() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let cursor = std::io::Cursor::new("y\n");
@@ -376,6 +378,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires network access to astral.sh CDN to download UV binary"]
     async fn test_uninstall_uv_yes() {
         logger::initialize_logger(log::LevelFilter::Trace);
         #[cfg(unix)]
