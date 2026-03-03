@@ -238,7 +238,9 @@ impl<'a> UvVenv<'a> {
         };
 
         // Build command to activate venv and install packages
-        // We pass packages as individual arguments to avoid shell injection
+        // Note: We must concatenate packages into a single command string because both
+        // PowerShell's -Command and sh's -c require a single string argument.
+        // Package names are validated beforehand to prevent injection attacks.
         let (cmd, args) = if cfg!(target_os = "windows") {
             let pwsh_cmd = if uvctrl::check(PWSH_CMD).await.is_ok() {
                 PWSH_CMD
@@ -255,7 +257,7 @@ impl<'a> UvVenv<'a> {
             
             (pwsh_cmd, vec!["-Command".to_string(), command_parts.join(" ")])
         } else {
-            // For Unix, we can use command chaining with proper quoting
+            // For Unix, we use command chaining with sh -c
             let mut command_parts = vec![".".to_string(), activate_script.clone(), "&&".to_string()];
             command_parts.push("uv".to_string());
             command_parts.push("pip".to_string());
@@ -305,7 +307,8 @@ impl<'a> UvVenv<'a> {
             (vec![venv_cmd], venv_path)
         } else {
             let venv_path = format!("{}/{}/bin/activate", path, self.name);
-            // Only pass -c once with the full command string
+            // Return command as a vector - the shell will be invoked with these arguments
+            // The command string includes the shell's -i flag for interactive mode
             let venv_cmd = format!(". {} && {} -i", venv_path, shell.as_str());
             (vec![venv_cmd], venv_path)
         };

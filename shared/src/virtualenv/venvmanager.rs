@@ -185,9 +185,13 @@ mod tests {
     #[tokio::test]
     async fn test_list_venvs() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let venvs = VENVMANAGER.list().await;
-        // Test passes with any number of venvs
-        let _ = venvs.len();
+        let result = VENVMANAGER.list().await;
+        // Test that list operation completes without errors
+        // We can't assert on the exact count as it depends on system state
+        for venv in result {
+            // Verify each venv has a valid name
+            assert!(!venv.name.is_empty());
+        }
     }
 
     #[tokio::test]

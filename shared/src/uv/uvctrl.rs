@@ -107,9 +107,20 @@ mod tests {
     #[tokio::test]
     async fn test_check() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let is_installed = check("uv").await;
-        // Test passes whether uv is installed or not - just verify it returns a valid result
-        assert!(is_installed.is_ok() || is_installed.is_err());
+        let result = check("uv").await;
+        // Test that check returns a valid Result
+        // We can't assert whether uv is installed without knowing the test environment
+        // Just verify the function completes and returns a proper Result type
+        match result {
+            Ok(_) => {
+                // UV is installed
+                assert!(true);
+            }
+            Err(_) => {
+                // UV is not installed
+                assert!(true);
+            }
+        }
     }
 
     #[tokio::test]

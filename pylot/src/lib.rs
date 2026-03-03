@@ -138,6 +138,8 @@ async fn update_packages_from_requirements(
             .map_err(|e| PylotError::Other(e.to_string()))?;
         
         // Use HashSet for efficient deduplication
+        // Note: This doesn't preserve package order, but for pip installations
+        // the order typically doesn't matter as pip resolves dependencies anyway
         let mut package_set: HashSet<String> = packages.drain(..).collect();
         for req in read_pkgs {
             package_set.insert(req);
