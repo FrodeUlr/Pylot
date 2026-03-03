@@ -24,10 +24,11 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
         return value;
     }
 
-    let mut child = processes::create_child_cmd(cmd, args, "");
+    let mut child = processes::create_child_cmd(cmd, args, "")
+        .map_err(|e| format!("Failed to create command: {}", e))?;
     processes::run_command(&mut child)
         .await
-        .map_err(|_| "Installation failed".to_string())?;
+        .map_err(|e| format!("Installation failed: {}", e))?;
     log::info!("Astral UV has been installed.");
     Ok(())
 }
@@ -37,17 +38,19 @@ pub async fn update() -> Result<(), String> {
     if cfg!(target_os = "windows") {
         utils::which_check(&[WINGET_CMD])
             .map_err(|e| format!("Winget is required for update: {}", e))?;
-        let mut child = processes::create_child_cmd(WINGET_CMD, UV_WINGET_UPGRADE_ARGS, "");
+        let mut child = processes::create_child_cmd(WINGET_CMD, UV_WINGET_UPGRADE_ARGS, "")
+            .map_err(|e| format!("Failed to create command: {}", e))?;
         processes::run_command(&mut child)
             .await
-            .map_err(|_| "Update failed".to_string())?;
+            .map_err(|e| format!("Update failed: {}", e))?;
     } else {
         utils::which_check(&[UV_COMMAND])
             .map_err(|e| format!("UV command is required for update: {}", e))?;
-        let mut child = processes::create_child_cmd(UV_COMMAND, UPDATE_ARGS, "");
+        let mut child = processes::create_child_cmd(UV_COMMAND, UPDATE_ARGS, "")
+            .map_err(|e| format!("Failed to create command: {}", e))?;
         processes::run_command(&mut child)
             .await
-            .map_err(|_| "Update failed".to_string())?;
+            .map_err(|e| format!("Update failed: {}", e))?;
     }
     Ok(())
 }
@@ -66,17 +69,18 @@ pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
         return value;
     }
 
-    let mut child = processes::create_child_cmd(cmd, args, "");
+    let mut child = processes::create_child_cmd(cmd, args, "")
+        .map_err(|e| format!("Failed to create command: {}", e))?;
     processes::run_command(&mut child)
         .await
-        .map_err(|_| "Uninstallation failed".to_string())?;
+        .map_err(|e| format!("Uninstallation failed: {}", e))?;
     log::info!("Astral UV has been uninstalled.");
     Ok(())
 }
 
 fn confirm_cmd<R: std::io::Read>(input: R, cmd: &str, args: &[&str]) -> Option<Result<(), String>> {
     log::info!("This will run the following command:\n");
-    log::error!("\t{} {}\n", cmd, args.join(" "));
+    log::info!("\t{} {}\n", cmd, args.join(" "));
     if !confirm(input) {
         log::warn!("Exiting...");
         return Some(Ok(()));

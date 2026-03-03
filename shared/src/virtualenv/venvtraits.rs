@@ -1,5 +1,7 @@
+use crate::error::Result;
+
 pub trait Create {
-    fn create(&self) -> impl std::future::Future<Output = Result<(), String>>;
+    fn create(&self) -> impl std::future::Future<Output = Result<()>>;
 }
 
 pub trait Delete {
@@ -7,10 +9,9 @@ pub trait Delete {
         &self,
         input: R,
         confirm: bool,
-    ) -> impl std::future::Future<Output = Result<(), Box<dyn std::error::Error>>>;
+    ) -> impl std::future::Future<Output = Result<()>>;
 }
 
 pub trait Activate {
-    fn activate(&self)
-        -> impl std::future::Future<Output = Result<(), Box<dyn std::error::Error>>>;
+    fn activate(&self) -> impl std::future::Future<Output = Result<()>>;
 }

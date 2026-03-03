@@ -18,7 +18,7 @@ pub async fn read_requirements_file(
 
 pub fn confirm<R: std::io::Read>(input: R) -> bool {
     let mut stdin = std::io::BufReader::new(input);
-    log::debug!("Do you want to continue? (y/n): ");
+    log::info!("Do you want to continue? (y/n): ");
     let _ = stdout().flush();
     let mut input_string = String::new();
     if stdin.read_line(&mut input_string).is_ok() {
