@@ -76,7 +76,7 @@ impl<'a> VenvManager {
                         vec![],
                         false,
                     ),
-                    Err(e) => {
+                    Err(_) => {
                         return Err(PylotError::Cancelled);
                     }
                 }

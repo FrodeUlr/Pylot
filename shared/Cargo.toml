@@ -10,13 +10,9 @@ testing = []
 [dependencies]
 colored = { workspace = true }
 tokio = { workspace = true }
-ctrlc = { workspace = true }
-winapi = { workspace = true }
 which = { workspace = true }
 config = { workspace = true }
-once_cell = { workspace = true }
 serde = { workspace = true }
-serde_path_to_error = { workspace = true }
 shellexpand = { workspace = true }
 toml = { workspace = true }
 comfy-table = { workspace = true }
@@ -24,6 +20,10 @@ log = { workspace = true }
 env_logger = { workspace = true }
 thiserror = { workspace = true }
 futures = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+ctrlc = { workspace = true }
+winapi = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3.23"
