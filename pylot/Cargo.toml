@@ -16,6 +16,7 @@ log = { workspace = true }
 
 [dev-dependencies]
 assert_cmd = "2.0"
+predicates = "3.0"
 shellexpand = { workspace = true }
 tokio-test = "0.4"
 tempfile = "3.23"
