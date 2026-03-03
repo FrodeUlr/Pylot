@@ -307,8 +307,8 @@ impl<'a> UvVenv<'a> {
             (vec![venv_cmd], venv_path)
         } else {
             let venv_path = format!("{}/{}/bin/activate", path, self.name);
-            // Return command as a vector - the shell will be invoked with these arguments
-            // The command string includes the shell's -i flag for interactive mode
+            // Return command as a single string argument for the shell
+            // The command string includes sourcing the activation script and starting the shell
             let venv_cmd = format!(". {} && {} -i", venv_path, shell.as_str());
             (vec![venv_cmd], venv_path)
         };

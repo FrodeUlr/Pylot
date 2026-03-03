@@ -22,7 +22,10 @@ pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        let error = StdCommand::new(cmd).args(args).exec();
+        // On Unix, we use exec() to replace the current process with the shell.
+        // We pass -c to tell the shell to execute the command string in args.
+        // The exec() call never returns on success, only on error.
+        let error = StdCommand::new(cmd).arg("-c").args(args).exec();
 
         Err(PylotError::CommandExecution(format!(
             "Failed to execute shell: {}",

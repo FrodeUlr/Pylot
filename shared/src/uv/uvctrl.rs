@@ -105,22 +105,17 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_check() {
+    async fn test_check_command_exists() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        let result = check("uv").await;
-        // Test that check returns a valid Result
-        // We can't assert whether uv is installed without knowing the test environment
-        // Just verify the function completes and returns a proper Result type
-        match result {
-            Ok(_) => {
-                // UV is installed
-                assert!(true);
-            }
-            Err(_) => {
-                // UV is not installed
-                assert!(true);
-            }
-        }
+        // Test with a command that should exist on all systems
+        let result = check("sh").await;
+        // On Unix systems, sh should exist
+        #[cfg(unix)]
+        assert!(result.is_ok());
+        
+        // On Windows, sh might not exist
+        #[cfg(not(unix))]
+        let _ = result; // Just verify it doesn't panic
     }
 
     #[tokio::test]
