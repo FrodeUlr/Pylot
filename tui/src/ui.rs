@@ -162,15 +162,27 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         Span::raw(": navigate  "),
     ];
 
-    if app.tab == Tab::UvInfo {
-        if app.uv_installed {
-            spans.push(Span::styled("u", Style::default().fg(Color::Yellow)));
-            spans.push(Span::raw(": update  "));
-            spans.push(Span::styled("d", Style::default().fg(Color::Yellow)));
-            spans.push(Span::raw(": uninstall  "));
-        } else {
-            spans.push(Span::styled("i", Style::default().fg(Color::Yellow)));
-            spans.push(Span::raw(": install  "));
+    match app.tab {
+        Tab::Environments => {
+            spans.push(Span::styled("n", Style::default().fg(Color::Yellow)));
+            spans.push(Span::raw(": new  "));
+            if !app.venvs.is_empty() {
+                spans.push(Span::styled("d", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(": delete  "));
+                spans.push(Span::styled("Enter", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(": activate  "));
+            }
+        }
+        Tab::UvInfo => {
+            if app.uv_installed {
+                spans.push(Span::styled("u", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(": update  "));
+                spans.push(Span::styled("d", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(": uninstall  "));
+            } else {
+                spans.push(Span::styled("i", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(": install  "));
+            }
         }
     }
 

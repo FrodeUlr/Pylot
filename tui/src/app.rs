@@ -8,6 +8,14 @@ pub enum UvAction {
     Uninstall,
 }
 
+/// Venv management actions that can be triggered from the TUI
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VenvAction {
+    Create,
+    Delete,
+    Activate,
+}
+
 /// Tab identifiers for the TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
@@ -34,6 +42,7 @@ pub struct App<'a> {
     pub uv_installed: bool,
     pub uv_version: Option<String>,
     pub pending_action: Option<UvAction>,
+    pub pending_venv_action: Option<VenvAction>,
 }
 
 impl<'a> App<'a> {
@@ -49,6 +58,7 @@ impl<'a> App<'a> {
             uv_installed,
             uv_version,
             pending_action: None,
+            pending_venv_action: None,
         }
     }
 
@@ -83,6 +93,11 @@ impl<'a> App<'a> {
     /// Take (remove and return) a pending UV action, if any.
     pub fn take_pending_action(&mut self) -> Option<UvAction> {
         self.pending_action.take()
+    }
+
+    /// Take (remove and return) a pending venv action, if any.
+    pub fn take_pending_venv_action(&mut self) -> Option<VenvAction> {
+        self.pending_venv_action.take()
     }
 }
 
@@ -157,5 +172,31 @@ mod tests {
 
         app.pending_action = Some(UvAction::Uninstall);
         assert_eq!(app.take_pending_action(), Some(UvAction::Uninstall));
+    }
+
+    #[test]
+    fn test_pending_venv_action_none_by_default() {
+        let mut app = make_app();
+        assert!(app.take_pending_venv_action().is_none());
+    }
+
+    #[test]
+    fn test_pending_venv_action_take() {
+        let mut app = make_app();
+        app.pending_venv_action = Some(VenvAction::Create);
+        assert_eq!(app.take_pending_venv_action(), Some(VenvAction::Create));
+        // Should be cleared after taking.
+        assert!(app.take_pending_venv_action().is_none());
+    }
+
+    #[test]
+    fn test_pending_venv_action_variants() {
+        let mut app = make_app();
+
+        app.pending_venv_action = Some(VenvAction::Delete);
+        assert_eq!(app.take_pending_venv_action(), Some(VenvAction::Delete));
+
+        app.pending_venv_action = Some(VenvAction::Activate);
+        assert_eq!(app.take_pending_venv_action(), Some(VenvAction::Activate));
     }
 }
