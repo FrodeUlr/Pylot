@@ -33,7 +33,6 @@ pub fn draw(frame: &mut Frame, app: &App) {
         draw_create_dialog(frame, dialog);
     }
 }
-
 fn draw_tabs(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     let tab_titles: Vec<Line> = Tab::ALL
         .iter()
@@ -160,7 +159,42 @@ fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
 }
 
 fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
-    // When the dialog is open, show dialog-specific hints instead of the normal bar.
+    // Priority 1: show a one-shot status message (success or error from a background task).
+    if let Some((ref msg, is_error)) = app.status_message {
+        let color = if is_error { Color::Red } else { Color::Green };
+        let spans = vec![
+            Span::styled(
+                if is_error { " ✗ " } else { " ✓ " },
+                Style::default().fg(color).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(msg.as_str(), Style::default().fg(color)),
+            Span::styled(
+                "  (press any key to dismiss)",
+                Style::default().fg(Color::DarkGray),
+            ),
+        ];
+        let bar = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
+        frame.render_widget(bar, area);
+        return;
+    }
+
+    // Priority 2: show the background task name while a task is running.
+    if let Some(ref task_name) = app.bg_task_name {
+        let spans = vec![
+            Span::styled(
+                " ⏳ Running: ",
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(task_name.as_str(), Style::default().fg(Color::Cyan)),
+            Span::styled("…", Style::default().fg(Color::Yellow)),
+            Span::styled("  (q: quit)", Style::default().fg(Color::DarkGray)),
+        ];
+        let bar = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
+        frame.render_widget(bar, area);
+        return;
+    }
+
+    // When the create dialog is open, show dialog-specific hints instead of the normal bar.
     if app.create_dialog.is_some() {
         let spans = vec![
             Span::styled("Tab", Style::default().fg(Color::Yellow)),

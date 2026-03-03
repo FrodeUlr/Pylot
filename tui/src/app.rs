@@ -150,6 +150,12 @@ pub struct App<'a> {
     pub pending_venv_action: Option<VenvAction>,
     /// When `Some`, the create-venv dialog is open.
     pub create_dialog: Option<CreateDialog>,
+    /// Receiver end of the channel used to collect a background task's result.
+    pub bg_rx: Option<tokio::sync::oneshot::Receiver<Result<(), String>>>,
+    /// Human-readable label for the running task, shown in the status bar.
+    pub bg_task_name: Option<String>,
+    /// One-shot status message (text, is_error) – cleared on the next keypress.
+    pub status_message: Option<(String, bool)>,
 }
 
 impl<'a> App<'a> {
@@ -167,6 +173,9 @@ impl<'a> App<'a> {
             pending_action: None,
             pending_venv_action: None,
             create_dialog: None,
+            bg_rx: None,
+            bg_task_name: None,
+            status_message: None,
         }
     }
 
@@ -206,6 +215,11 @@ impl<'a> App<'a> {
     /// Take (remove and return) a pending venv action, if any.
     pub fn take_pending_venv_action(&mut self) -> Option<VenvAction> {
         self.pending_venv_action.take()
+    }
+
+    /// Returns `true` while a background task is in-flight.
+    pub fn is_busy(&self) -> bool {
+        self.bg_rx.is_some()
     }
 }
 
@@ -370,5 +384,20 @@ mod tests {
         d2.version = "  ".to_string();
         // Blank version falls back to DEFAULT_PYTHON_VERSION.
         assert_eq!(d2.effective_version(), shared::constants::DEFAULT_PYTHON_VERSION);
+    }
+
+    #[test]
+    fn test_is_busy_default_false() {
+        let app = make_app();
+        assert!(!app.is_busy());
+    }
+
+    #[test]
+    fn test_is_busy_true_when_rx_set() {
+        let mut app = make_app();
+        let (tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+        app.bg_rx = Some(rx);
+        assert!(app.is_busy());
+        drop(tx); // avoid leak warning
     }
 }
