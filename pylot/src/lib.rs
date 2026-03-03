@@ -4,7 +4,7 @@
 //!
 pub mod cli;
 
-use std::{borrow::Cow, collections::HashSet, io};
+use std::{borrow::Cow, io};
 
 use shared::{
     constants::{DEFAULT_PYTHON_VERSION, ERROR_CREATING_VENV},
@@ -137,16 +137,14 @@ async fn update_packages_from_requirements(
             .await
             .map_err(|e| PylotError::Other(e.to_string()))?;
         
-        // Use HashSet for efficient deduplication.
-        // Note: This doesn't preserve package order. If installation order matters
-        // (e.g., packages with conflicting dependencies or when using --no-deps),
-        // consider preserving order with a manual contains check instead.
-        // For most use cases, pip resolves dependencies correctly regardless of order.
-        let mut package_set: HashSet<String> = packages.drain(..).collect();
+        // Preserve package order while deduplicating
+        // This ensures installation order is maintained, which can matter
+        // for packages with conflicting dependencies or when using --no-deps
         for req in read_pkgs {
-            package_set.insert(req);
+            if !packages.contains(&req) {
+                packages.push(req);
+            }
         }
-        packages.extend(package_set);
     }
     Ok(())
 }
