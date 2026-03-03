@@ -26,7 +26,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Tab::UvInfo => draw_uv_info(frame, app, chunks[1]),
     }
 
-    draw_status_bar(frame, chunks[2]);
+    draw_status_bar(frame, app, chunks[2]);
 }
 
 fn draw_tabs(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
@@ -110,7 +110,7 @@ fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         "Not installed"
     };
 
-    let lines = vec![
+    let mut lines = vec![
         Line::from(""),
         Line::from(vec![
             Span::raw("  Status:   "),
@@ -126,7 +126,27 @@ fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
                 Style::default().fg(Color::Cyan),
             ),
         ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Actions:  ", Style::default().fg(Color::DarkGray)),
+        ]),
     ];
+
+    if app.uv_installed {
+        lines.push(Line::from(vec![
+            Span::raw("    "),
+            Span::styled("[u]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" Update    "),
+            Span::styled("[d]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" Uninstall"),
+        ]));
+    } else {
+        lines.push(Line::from(vec![
+            Span::raw("    "),
+            Span::styled("[i]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" Install"),
+        ]));
+    }
 
     let paragraph = Paragraph::new(lines)
         .block(Block::default().borders(Borders::ALL).title(" Astral UV "));
@@ -134,15 +154,29 @@ fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     frame.render_widget(paragraph, area);
 }
 
-fn draw_status_bar(frame: &mut Frame, area: ratatui::layout::Rect) {
-    let help = Paragraph::new(Line::from(vec![
+fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
+    let mut spans = vec![
         Span::styled(" Tab", Style::default().fg(Color::Yellow)),
         Span::raw(": switch tab  "),
         Span::styled("↑↓", Style::default().fg(Color::Yellow)),
         Span::raw(": navigate  "),
-        Span::styled("q", Style::default().fg(Color::Yellow)),
-        Span::raw(": quit"),
-    ]))
-    .alignment(Alignment::Center);
+    ];
+
+    if app.tab == Tab::UvInfo {
+        if app.uv_installed {
+            spans.push(Span::styled("u", Style::default().fg(Color::Yellow)));
+            spans.push(Span::raw(": update  "));
+            spans.push(Span::styled("d", Style::default().fg(Color::Yellow)));
+            spans.push(Span::raw(": uninstall  "));
+        } else {
+            spans.push(Span::styled("i", Style::default().fg(Color::Yellow)));
+            spans.push(Span::raw(": install  "));
+        }
+    }
+
+    spans.push(Span::styled("q", Style::default().fg(Color::Yellow)));
+    spans.push(Span::raw(": quit"));
+
+    let help = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
     frame.render_widget(help, area);
 }

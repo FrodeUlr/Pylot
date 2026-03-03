@@ -6,6 +6,7 @@ mod app;
 mod ui;
 
 pub use app::App;
+use app::UvAction;
 
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
@@ -52,16 +53,70 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     // draw, and ratatui's diff works from a known-clean baseline.
     terminal.clear()?;
 
-    let result = run_app(&mut terminal, &mut app);
+    loop {
+        let result = run_app(&mut terminal, &mut app);
 
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
+        // Always restore the TTY to normal mode before doing anything else.
+        disable_raw_mode()?;
+        execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+        terminal.show_cursor()?;
+        log::set_max_level(prev_log_level);
 
-    // Restore the previous log level now that the TTY is back to normal mode.
-    log::set_max_level(prev_log_level);
+        // Propagate terminal errors immediately.
+        result?;
 
-    result
+        match app.take_pending_action() {
+            // User pressed q/Esc – we are done.
+            None => break,
+
+            // User triggered a UV management action. Execute it in normal
+            // terminal mode, then re-enter the TUI.
+            Some(action) => {
+                match action {
+                    UvAction::Install => {
+                        if let Err(e) = uvctrl::install(io::stdin()).await {
+                            log::error!("{}", e);
+                        }
+                    }
+                    UvAction::Update => {
+                        if let Err(e) = uvctrl::update().await {
+                            log::error!("{}", e);
+                        }
+                    }
+                    UvAction::Uninstall => {
+                        if let Err(e) = uvctrl::uninstall(io::stdin()).await {
+                            log::error!("{}", e);
+                        }
+                    }
+                }
+
+                println!("\nPress Enter to return to TUI...");
+                let mut buf = String::new();
+                // Ignore read errors (e.g. non-interactive stdin) and continue.
+                let _ = io::stdin().read_line(&mut buf);
+
+                // Refresh UV state after the action.
+                app.uv_installed = uvctrl::check("uv").await.is_ok();
+                app.uv_version = if app.uv_installed {
+                    get_uv_version().await
+                } else {
+                    None
+                };
+                app.venvs = venvmanager::VENVMANAGER.list().await;
+
+                // Re-enter the TUI.
+                log::set_max_level(log::LevelFilter::Off);
+                enable_raw_mode()?;
+                let mut stdout = io::stdout();
+                execute!(stdout, EnterAlternateScreen)?;
+                let backend = CrosstermBackend::new(stdout);
+                terminal = Terminal::new(backend)?;
+                terminal.clear()?;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn run_app<B: ratatui::backend::Backend>(
@@ -84,6 +139,19 @@ where
                 KeyCode::BackTab | KeyCode::Left => app.prev_tab(),
                 KeyCode::Down => app.next_item(),
                 KeyCode::Up => app.prev_item(),
+                // UV management actions – only active on the UV Info tab.
+                KeyCode::Char('i') if app.tab == app::Tab::UvInfo && !app.uv_installed => {
+                    app.pending_action = Some(UvAction::Install);
+                    break;
+                }
+                KeyCode::Char('u') if app.tab == app::Tab::UvInfo && app.uv_installed => {
+                    app.pending_action = Some(UvAction::Update);
+                    break;
+                }
+                KeyCode::Char('d') if app.tab == app::Tab::UvInfo && app.uv_installed => {
+                    app.pending_action = Some(UvAction::Uninstall);
+                    break;
+                }
                 _ => {}
             }
         }

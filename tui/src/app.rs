@@ -1,5 +1,13 @@
 use shared::virtualenv::uvvenv::UvVenv;
 
+/// UV management actions that can be triggered from the TUI
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UvAction {
+    Install,
+    Update,
+    Uninstall,
+}
+
 /// Tab identifiers for the TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
@@ -25,6 +33,7 @@ pub struct App<'a> {
     pub selected: usize,
     pub uv_installed: bool,
     pub uv_version: Option<String>,
+    pub pending_action: Option<UvAction>,
 }
 
 impl<'a> App<'a> {
@@ -39,6 +48,7 @@ impl<'a> App<'a> {
             selected: 0,
             uv_installed,
             uv_version,
+            pending_action: None,
         }
     }
 
@@ -70,6 +80,10 @@ impl<'a> App<'a> {
         }
     }
 
+    /// Take (remove and return) a pending UV action, if any.
+    pub fn take_pending_action(&mut self) -> Option<UvAction> {
+        self.pending_action.take()
+    }
 }
 
 #[cfg(test)]
@@ -117,5 +131,31 @@ mod tests {
     #[test]
     fn test_all_tabs() {
         assert_eq!(Tab::ALL.len(), 2);
+    }
+
+    #[test]
+    fn test_pending_action_none_by_default() {
+        let mut app = make_app();
+        assert!(app.take_pending_action().is_none());
+    }
+
+    #[test]
+    fn test_pending_action_take() {
+        let mut app = make_app();
+        app.pending_action = Some(UvAction::Install);
+        assert_eq!(app.take_pending_action(), Some(UvAction::Install));
+        // Should be cleared after taking.
+        assert!(app.take_pending_action().is_none());
+    }
+
+    #[test]
+    fn test_pending_action_variants() {
+        let mut app = make_app();
+
+        app.pending_action = Some(UvAction::Update);
+        assert_eq!(app.take_pending_action(), Some(UvAction::Update));
+
+        app.pending_action = Some(UvAction::Uninstall);
+        assert_eq!(app.take_pending_action(), Some(UvAction::Uninstall));
     }
 }
