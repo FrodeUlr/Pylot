@@ -6,7 +6,7 @@ mod app;
 mod ui;
 
 pub use app::App;
-use app::{UvAction, VenvAction};
+use app::{CreateDialog, UvAction, VenvAction};
 
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
@@ -19,7 +19,7 @@ use shared::uvvenv::UvVenv;
 use shared::venvtraits::{Activate, Create, Delete};
 use shared::{uvctrl, venvmanager};
 use std::borrow::Cow;
-use std::io::{self, Write};
+use std::io;
 
 /// Run the TUI application
 ///
@@ -102,23 +102,21 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         // --- Venv management actions ---
         if let Some(action) = venv_action {
             match action {
-                VenvAction::Create => {
-                    if let Some((name, version, pkgs, default)) = prompt_create_venv().await {
-                        // The direct `path` field is unused by `create()`; the actual
-                        // path is resolved from `settings.venvs_path` + `name`.
-                        let venv = UvVenv::new(
-                            Cow::Owned(name),
-                            "".to_string(),
-                            version,
-                            pkgs,
-                            default,
-                        );
-                        match venv.create().await {
-                            Ok(_) => println!("Virtual environment created successfully."),
-                            Err(e) => eprintln!("Error creating venv: {}", e),
+                VenvAction::Create { name, version, packages, default_pkgs } => {
+                    let venv = UvVenv::new(
+                        Cow::Owned(name),
+                        "".to_string(),
+                        version,
+                        packages,
+                        default_pkgs,
+                    );
+                    match venv.create().await {
+                        Ok(_) => {}
+                        Err(e) => {
+                            eprintln!("Error creating venv: {}", e);
+                            pause_for_enter();
                         }
                     }
-                    pause_for_enter();
                 }
                 VenvAction::Delete => {
                     if !app.venvs.is_empty() {
@@ -198,56 +196,6 @@ fn pause_for_enter() {
     let _ = io::stdin().read_line(&mut buf);
 }
 
-/// Prompt the user for new venv details and return them, or `None` if cancelled.
-async fn prompt_create_venv() -> Option<(String, String, Vec<String>, bool)> {
-    println!("\n--- Create Virtual Environment ---");
-
-    print!("Name: ");
-    io::stdout().flush().ok();
-    let mut name = String::new();
-    io::stdin().read_line(&mut name).ok();
-    let name = name.trim().to_string();
-    if name.is_empty() {
-        println!("Cancelled (no name provided).");
-        return None;
-    }
-
-    print!("Python version [{}]: ", DEFAULT_PYTHON_VERSION);
-    io::stdout().flush().ok();
-    let mut version = String::new();
-    io::stdin().read_line(&mut version).ok();
-    let version = {
-        let v = version.trim();
-        if v.is_empty() {
-            DEFAULT_PYTHON_VERSION.to_string()
-        } else {
-            v.to_string()
-        }
-    };
-
-    print!("Packages (comma-separated, empty=none): ");
-    io::stdout().flush().ok();
-    let mut pkgs_input = String::new();
-    io::stdin().read_line(&mut pkgs_input).ok();
-    let pkgs: Vec<String> = pkgs_input
-        .trim()
-        .split(',')
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect();
-
-    print!("Install default packages? [y/N]: ");
-    io::stdout().flush().ok();
-    let mut default_input = String::new();
-    io::stdin().read_line(&mut default_input).ok();
-    let default_pkgs = {
-        let t = default_input.trim();
-        t.eq_ignore_ascii_case("y") || t.eq_ignore_ascii_case("yes")
-    };
-
-    Some((name, version, pkgs, default_pkgs))
-}
-
 fn run_app<B: ratatui::backend::Backend>(
     terminal: &mut Terminal<B>,
     app: &mut App,
@@ -262,6 +210,67 @@ where
             if key.kind != KeyEventKind::Press {
                 continue;
             }
+
+            // --- Create-venv dialog captures all input while open ---
+            if let Some(ref mut dialog) = app.create_dialog {
+                match key.code {
+                    KeyCode::Esc => {
+                        app.create_dialog = None;
+                    }
+                    // Tab / Shift-Tab / Down / Up navigate between fields.
+                    KeyCode::Tab | KeyCode::Down => {
+                        let next = dialog.field.next();
+                        dialog.field = next;
+                    }
+                    KeyCode::BackTab | KeyCode::Up => {
+                        let prev = dialog.field.prev();
+                        dialog.field = prev;
+                    }
+                    // Space toggles the boolean field; on text fields it's a char.
+                    KeyCode::Char(' ') => {
+                        if dialog.field == app::CreateField::DefaultPkgs {
+                            dialog.toggle_default();
+                        } else {
+                            dialog.push_char(' ');
+                        }
+                    }
+                    // Enter on the last field confirms; elsewhere advances to next field.
+                    KeyCode::Enter => {
+                        if dialog.field == app::CreateField::DefaultPkgs {
+                            // Collect values and request creation.
+                            let name = dialog.name.trim().to_string();
+                            if name.is_empty() {
+                                app.create_dialog = None;
+                            } else {
+                                let version = dialog.effective_version();
+                                let packages = dialog.parsed_packages();
+                                let default_pkgs = dialog.default_pkgs;
+                                app.create_dialog = None;
+                                app.pending_venv_action = Some(VenvAction::Create {
+                                    name,
+                                    version,
+                                    packages,
+                                    default_pkgs,
+                                });
+                                break;
+                            }
+                        } else {
+                            let next = dialog.field.next();
+                            dialog.field = next;
+                        }
+                    }
+                    KeyCode::Backspace => {
+                        dialog.pop_char();
+                    }
+                    KeyCode::Char(c) => {
+                        dialog.push_char(c);
+                    }
+                    _ => {}
+                }
+                continue; // dialog consumed the key; skip normal bindings
+            }
+
+            // --- Normal (non-dialog) key bindings ---
             match key.code {
                 KeyCode::Char('q') | KeyCode::Esc => break,
                 KeyCode::Tab | KeyCode::Right => app.next_tab(),
@@ -283,8 +292,8 @@ where
                 }
                 // Venv management actions – only active on the Environments tab.
                 KeyCode::Char('n') if app.tab == app::Tab::Environments => {
-                    app.pending_venv_action = Some(VenvAction::Create);
-                    break;
+                    // Open the inline dialog instead of exiting the TUI.
+                    app.create_dialog = Some(CreateDialog::new(DEFAULT_PYTHON_VERSION));
                 }
                 KeyCode::Char('d')
                     if app.tab == app::Tab::Environments && !app.venvs.is_empty() =>

@@ -8,10 +8,115 @@ pub enum UvAction {
     Uninstall,
 }
 
-/// Venv management actions that can be triggered from the TUI
+/// Which field of the create-venv dialog is currently focused
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CreateField {
+    Name,
+    Version,
+    Packages,
+    DefaultPkgs,
+}
+
+impl CreateField {
+    /// Advance to the next field (wraps around).
+    pub fn next(self) -> Self {
+        match self {
+            Self::Name => Self::Version,
+            Self::Version => Self::Packages,
+            Self::Packages => Self::DefaultPkgs,
+            Self::DefaultPkgs => Self::Name,
+        }
+    }
+
+    /// Go to the previous field (wraps around).
+    pub fn prev(self) -> Self {
+        match self {
+            Self::Name => Self::DefaultPkgs,
+            Self::Version => Self::Name,
+            Self::Packages => Self::Version,
+            Self::DefaultPkgs => Self::Packages,
+        }
+    }
+}
+
+/// In-TUI form state for creating a new virtual environment
+pub struct CreateDialog {
+    /// Currently focused input field
+    pub field: CreateField,
+    pub name: String,
+    pub version: String,
+    /// Raw comma-separated packages string as the user types it
+    pub packages: String,
+    pub default_pkgs: bool,
+}
+
+impl CreateDialog {
+    pub fn new(default_version: &str) -> Self {
+        CreateDialog {
+            field: CreateField::Name,
+            name: String::new(),
+            version: default_version.to_string(),
+            packages: String::new(),
+            default_pkgs: false,
+        }
+    }
+
+    /// Push a character into the currently focused text field (no-op for bool field).
+    pub fn push_char(&mut self, c: char) {
+        match self.field {
+            CreateField::Name => self.name.push(c),
+            CreateField::Version => self.version.push(c),
+            CreateField::Packages => self.packages.push(c),
+            CreateField::DefaultPkgs => {}
+        }
+    }
+
+    /// Delete the last character of the currently focused text field.
+    pub fn pop_char(&mut self) {
+        match self.field {
+            CreateField::Name => { self.name.pop(); }
+            CreateField::Version => { self.version.pop(); }
+            CreateField::Packages => { self.packages.pop(); }
+            CreateField::DefaultPkgs => {}
+        }
+    }
+
+    /// Toggle the boolean default-packages field.
+    pub fn toggle_default(&mut self) {
+        self.default_pkgs = !self.default_pkgs;
+    }
+
+    /// Collect packages from the raw comma-separated string.
+    pub fn parsed_packages(&self) -> Vec<String> {
+        self.packages
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    }
+
+    /// Return the effective Python version: the user's input, or `DEFAULT_PYTHON_VERSION`
+    /// if the version field was left blank.
+    pub fn effective_version(&self) -> String {
+        let v = self.version.trim();
+        if v.is_empty() {
+            shared::constants::DEFAULT_PYTHON_VERSION.to_string()
+        } else {
+            v.to_string()
+        }
+    }
+}
+
+/// Venv management actions that can be triggered from the TUI
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VenvAction {
-    Create,
+    /// Create a new venv with the given parameters (collected from the in-TUI dialog).
+    Create {
+        name: String,
+        version: String,
+        packages: Vec<String>,
+        default_pkgs: bool,
+    },
     Delete,
     Activate,
 }
@@ -43,6 +148,8 @@ pub struct App<'a> {
     pub uv_version: Option<String>,
     pub pending_action: Option<UvAction>,
     pub pending_venv_action: Option<VenvAction>,
+    /// When `Some`, the create-venv dialog is open.
+    pub create_dialog: Option<CreateDialog>,
 }
 
 impl<'a> App<'a> {
@@ -59,6 +166,7 @@ impl<'a> App<'a> {
             uv_version,
             pending_action: None,
             pending_venv_action: None,
+            create_dialog: None,
         }
     }
 
@@ -183,8 +291,14 @@ mod tests {
     #[test]
     fn test_pending_venv_action_take() {
         let mut app = make_app();
-        app.pending_venv_action = Some(VenvAction::Create);
-        assert_eq!(app.take_pending_venv_action(), Some(VenvAction::Create));
+        let action = VenvAction::Create {
+            name: "myenv".to_string(),
+            version: "3.12".to_string(),
+            packages: vec![],
+            default_pkgs: false,
+        };
+        app.pending_venv_action = Some(action.clone());
+        assert_eq!(app.take_pending_venv_action(), Some(action));
         // Should be cleared after taking.
         assert!(app.take_pending_venv_action().is_none());
     }
@@ -198,5 +312,63 @@ mod tests {
 
         app.pending_venv_action = Some(VenvAction::Activate);
         assert_eq!(app.take_pending_venv_action(), Some(VenvAction::Activate));
+    }
+
+    #[test]
+    fn test_create_dialog_new() {
+        let d = CreateDialog::new("3.12");
+        assert_eq!(d.field, CreateField::Name);
+        assert_eq!(d.version, "3.12");
+        assert!(d.name.is_empty());
+        assert!(!d.default_pkgs);
+    }
+
+    #[test]
+    fn test_create_dialog_push_pop() {
+        let mut d = CreateDialog::new("3.12");
+        d.push_char('m');
+        d.push_char('y');
+        assert_eq!(d.name, "my");
+        d.pop_char();
+        assert_eq!(d.name, "m");
+    }
+
+    #[test]
+    fn test_create_dialog_field_cycling() {
+        assert_eq!(CreateField::Name.next(), CreateField::Version);
+        assert_eq!(CreateField::Version.next(), CreateField::Packages);
+        assert_eq!(CreateField::Packages.next(), CreateField::DefaultPkgs);
+        assert_eq!(CreateField::DefaultPkgs.next(), CreateField::Name);
+
+        assert_eq!(CreateField::Name.prev(), CreateField::DefaultPkgs);
+        assert_eq!(CreateField::DefaultPkgs.prev(), CreateField::Packages);
+    }
+
+    #[test]
+    fn test_create_dialog_toggle_default() {
+        let mut d = CreateDialog::new("3.12");
+        assert!(!d.default_pkgs);
+        d.toggle_default();
+        assert!(d.default_pkgs);
+        d.toggle_default();
+        assert!(!d.default_pkgs);
+    }
+
+    #[test]
+    fn test_create_dialog_parsed_packages() {
+        let mut d = CreateDialog::new("3.12");
+        d.packages = "requests, flask , ".to_string();
+        assert_eq!(d.parsed_packages(), vec!["requests", "flask"]);
+    }
+
+    #[test]
+    fn test_create_dialog_effective_version() {
+        let d = CreateDialog::new("3.12");
+        assert_eq!(d.effective_version(), "3.12");
+
+        let mut d2 = CreateDialog::new("3.12");
+        d2.version = "  ".to_string();
+        // Blank version falls back to DEFAULT_PYTHON_VERSION.
+        assert_eq!(d2.effective_version(), shared::constants::DEFAULT_PYTHON_VERSION);
     }
 }

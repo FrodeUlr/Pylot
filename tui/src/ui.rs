@@ -1,12 +1,12 @@
 use ratatui::{
     Frame,
-    layout::{Alignment, Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Tabs},
+    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Tabs},
 };
 
-use crate::app::{App, Tab};
+use crate::app::{App, CreateField, Tab};
 
 /// Draw the TUI to the given frame
 pub fn draw(frame: &mut Frame, app: &App) {
@@ -27,6 +27,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
     }
 
     draw_status_bar(frame, app, chunks[2]);
+
+    // Dialog overlay – rendered last so it appears on top of everything else.
+    if let Some(ref dialog) = app.create_dialog {
+        draw_create_dialog(frame, dialog);
+    }
 }
 
 fn draw_tabs(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
@@ -155,6 +160,23 @@ fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
 }
 
 fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
+    // When the dialog is open, show dialog-specific hints instead of the normal bar.
+    if app.create_dialog.is_some() {
+        let spans = vec![
+            Span::styled("Tab", Style::default().fg(Color::Yellow)),
+            Span::raw(": next field  "),
+            Span::styled("Shift+Tab", Style::default().fg(Color::Yellow)),
+            Span::raw(": prev field  "),
+            Span::styled("Enter", Style::default().fg(Color::Yellow)),
+            Span::raw(": confirm  "),
+            Span::styled("Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(": cancel"),
+        ];
+        let help = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
+        frame.render_widget(help, area);
+        return;
+    }
+
     let mut spans = vec![
         Span::styled(" Tab", Style::default().fg(Color::Yellow)),
         Span::raw(": switch tab  "),
@@ -191,4 +213,101 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
 
     let help = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
     frame.render_widget(help, area);
+}
+
+/// Render the create-venv dialog as a centered overlay popup.
+fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
+    let area = centered_rect(60, 14, frame.area());
+
+    // Clear the background so the dialog appears cleanly over other widgets.
+    frame.render_widget(Clear, area);
+
+    let focused_style = Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD);
+    let normal_style = Style::default().fg(Color::White);
+    let hint_style = Style::default().fg(Color::DarkGray);
+
+    // Helper: returns the style for a label based on whether the field is focused.
+    let label_style = |field: CreateField| {
+        if dialog.field == field {
+            focused_style
+        } else {
+            normal_style
+        }
+    };
+
+    let default_indicator = if dialog.default_pkgs { "[x]" } else { "[ ]" };
+
+    let lines = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Name        : ", label_style(CreateField::Name)),
+            Span::styled(dialog.name.as_str(), Style::default().fg(Color::Cyan)),
+            if dialog.field == CreateField::Name {
+                Span::styled("█", Style::default().fg(Color::Cyan))
+            } else {
+                Span::raw("")
+            },
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Python ver. : ", label_style(CreateField::Version)),
+            Span::styled(dialog.version.as_str(), Style::default().fg(Color::Green)),
+            if dialog.field == CreateField::Version {
+                Span::styled("█", Style::default().fg(Color::Green))
+            } else {
+                Span::raw("")
+            },
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Packages    : ", label_style(CreateField::Packages)),
+            Span::styled(dialog.packages.as_str(), Style::default().fg(Color::Magenta)),
+            if dialog.field == CreateField::Packages {
+                Span::styled("█", Style::default().fg(Color::Magenta))
+            } else {
+                Span::raw("")
+            },
+        ]),
+        Line::from(vec![
+            Span::raw("                "),
+            Span::styled("comma-separated, e.g. requests,flask", hint_style),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Default pkgs: ", label_style(CreateField::DefaultPkgs)),
+            Span::styled(default_indicator, label_style(CreateField::DefaultPkgs)),
+            Span::raw("  "),
+            Span::styled("(Space to toggle)", hint_style),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Tab", Style::default().fg(Color::Yellow)),
+            Span::raw(": next field  "),
+            Span::styled("Enter", Style::default().fg(Color::Yellow)),
+            Span::raw(": confirm  "),
+            Span::styled("Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(": cancel"),
+        ]),
+    ];
+
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" New Virtual Environment ")
+            .title_alignment(Alignment::Center)
+            .border_style(Style::default().fg(Color::Yellow)),
+    );
+
+    frame.render_widget(paragraph, area);
+}
+
+/// Return a `Rect` centered within `r` with the given width (columns) and height (rows).
+///
+/// If the requested size exceeds the available space it is clamped to fit.
+fn centered_rect(width: u16, height: u16, r: Rect) -> Rect {
+    let w = width.min(r.width);
+    let h = height.min(r.height);
+    let x = r.x + r.width.saturating_sub(w) / 2;
+    let y = r.y + r.height.saturating_sub(h) / 2;
+    Rect { x, y, width: w, height: h }
 }
