@@ -106,6 +106,7 @@ async fn main() {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use assert_cmd::Command;
     use clap::Parser;

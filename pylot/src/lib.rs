@@ -304,6 +304,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "cannot reliably test missing-UV scenario when CI pre-installs UV to a location not cleaned up by the uninstall script"]
     async fn test_create_missing_uv() {
         logger::initialize_logger(log::LevelFilter::Trace);
         let cursor = std::io::Cursor::new("y\n");
