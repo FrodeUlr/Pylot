@@ -77,6 +77,15 @@ pub enum Commands {
         #[arg(help = "Shell type", value_parser = ["bash", "zsh", "fish", "powershell", "elvish"], default_value = "bash")]
         shell: Option<String>,
     },
+    /// Launch the terminal user interface
+    ///
+    /// # Usage
+    /// * `pylot tui` - Launch the TUI to manage environments and UV
+    #[command(
+        about = "Launch the terminal user interface",
+        long_about = "Launches an interactive terminal user interface to list and manage Python virtual environments and Astral UV"
+    )]
+    Tui,
 }
 
 /// UV management commands

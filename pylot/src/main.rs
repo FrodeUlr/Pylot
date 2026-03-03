@@ -13,7 +13,7 @@ use crate::cli::cmds::{UvCommands, VenvCommands};
 #[tokio::main]
 async fn main() {
     settings::Settings::init().await;
-    logger::initialize_logger(log::LevelFilter::Trace);
+    logger::initialize_logger(log::LevelFilter::Info);
     let args = Cli::parse();
 
     match args.commands {
@@ -96,10 +96,17 @@ async fn main() {
         None => {
             log::error!("No command provided");
         }
+
+        Some(Commands::Tui) => {
+            if let Err(e) = pylot_tui::run().await {
+                log::error!("TUI error: {}", e);
+            }
+        }
     }
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use assert_cmd::Command;
     use clap::Parser;
