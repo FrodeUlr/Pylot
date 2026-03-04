@@ -303,8 +303,10 @@ impl<'a> UvVenv<'a> {
         
         let (cmd, path) = if cfg!(target_os = "windows") {
             let venv_path = format!("{}/{}/scripts/activate.ps1", path, self.name);
-            let venv_cmd = format!("{} && {}", venv_path, shell.as_str());
-            (vec![venv_cmd], venv_path)
+            // Use -NoExit so the shell stays open after activating, and -Command with the
+            // call operator (&) to execute the activation script correctly.
+            let activate_cmd = format!("& '{}'", venv_path);
+            (vec!["-NoExit".to_string(), "-Command".to_string(), activate_cmd], venv_path)
         } else {
             let venv_path = format!("{}/{}/bin/activate", path, self.name);
             // Return the command string to execute. The -c flag will be added by activate_venv_shell.
@@ -387,5 +389,36 @@ mod tests {
         assert_eq!(venv.name, "test_venv_clean");
         assert_eq!(venv.python_version, "3.9");
         assert_eq![venv.packages, &["numpy", "pandas"]]
+    }
+
+    #[tokio::test]
+    async fn test_get_shell_cmd_windows() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let venv = UvVenv::new(
+            Cow::Borrowed("test_venv"),
+            "".to_string(),
+            "3.9".to_string(),
+            vec![],
+            false,
+        );
+        if cfg!(target_os = "windows") {
+            let result = venv.get_shell_cmd();
+            assert!(result.is_ok());
+            let (_shell, cmd, path) = result.unwrap();
+            // Verify that args use -NoExit and -Command instead of a combined path string
+            assert_eq!(cmd.len(), 3);
+            assert_eq!(cmd[0], "-NoExit");
+            assert_eq!(cmd[1], "-Command");
+            assert!(cmd[2].starts_with("& '"));
+            assert!(cmd[2].ends_with("activate.ps1'"));
+            assert!(path.ends_with("activate.ps1"));
+        } else {
+            let result = venv.get_shell_cmd();
+            assert!(result.is_ok());
+            let (_shell, cmd, path) = result.unwrap();
+            assert_eq!(cmd.len(), 1);
+            assert!(cmd[0].contains("activate"));
+            assert!(path.ends_with("activate"));
+        }
     }
 }
