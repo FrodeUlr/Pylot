@@ -35,10 +35,18 @@ pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<()> {
 
     #[cfg(not(unix))]
     {
-        use ctrlc;
         use std::os::windows::process::CommandExt;
-        use std::sync::{Arc, Mutex};
+        use std::sync::atomic::{AtomicU32, Ordering};
+        use std::sync::Once;
         use winapi::um::wincon::GenerateConsoleCtrlEvent;
+
+        // A process-wide atomic that always holds the PID of the currently-active
+        // child shell (0 when none is running).  The Ctrl-C handler reads from it
+        // so that re-activating a new environment after the first one exits works
+        // correctly without re-registering the handler.
+        static CHILD_PID: AtomicU32 = AtomicU32::new(0);
+        // Ensure the handler is registered exactly once for the lifetime of the process.
+        static HANDLER_INIT: Once = Once::new();
 
         let mut child = StdCommand::new(cmd)
             .args(args)
@@ -46,26 +54,33 @@ pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<()> {
             .spawn()
             .map_err(|e| PylotError::CommandExecution(format!("Failed to spawn process: {}", e)))?;
 
-        let child_id = child.id();
-        let running = Arc::new(Mutex::new(true));
-        let running_clone = running.clone();
+        CHILD_PID.store(child.id(), Ordering::SeqCst);
 
-        ctrlc::set_handler(move || {
-            unsafe {
-                let result = GenerateConsoleCtrlEvent(winapi::um::wincon::CTRL_BREAK_EVENT, child_id);
-                if result == 0 {
-                    log::warn!("Failed to send Ctrl-Break event to child process");
+        HANDLER_INIT.call_once(|| {
+            if let Err(e) = ctrlc::set_handler(|| {
+                let pid = CHILD_PID.load(Ordering::SeqCst);
+                if pid != 0 {
+                    unsafe {
+                        let result = GenerateConsoleCtrlEvent(
+                            winapi::um::wincon::CTRL_BREAK_EVENT,
+                            pid,
+                        );
+                        if result == 0 {
+                            log::warn!("Failed to send Ctrl-Break event to child process");
+                        }
+                    }
                 }
+            }) {
+                log::warn!("Failed to register Ctrl-C handler: {}", e);
             }
-            if let Ok(mut r) = running_clone.lock() {
-                *r = false;
-            }
-        })
-        .map_err(|e| PylotError::Other(format!("Error setting Ctrl-C handler: {}", e)))?;
+        });
 
         child
             .wait()
             .map_err(|e| PylotError::CommandExecution(format!("Failed to wait for child: {}", e)))?;
+
+        // Clear the PID so a stale Ctrl-C after the shell exits is a no-op.
+        CHILD_PID.store(0, Ordering::SeqCst);
         Ok(())
     }
 }
