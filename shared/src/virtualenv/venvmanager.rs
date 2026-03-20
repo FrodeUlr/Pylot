@@ -326,4 +326,58 @@ mod tests {
         let index = VENVMANAGER.get_index(cursor, 5);
         assert!(index.is_err());
     }
+
+    #[test]
+    fn test_get_index_quit() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let cursor = std::io::Cursor::new("q\n");
+        let index = VENVMANAGER.get_index(cursor, 5);
+        assert!(index.is_err());
+    }
+
+    #[test]
+    fn test_get_index_zero_rejected() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        // 0 is outside the valid range [1, size].
+        let cursor = std::io::Cursor::new("0\n");
+        let index = VENVMANAGER.get_index(cursor, 5);
+        assert!(index.is_err());
+    }
+
+    #[test]
+    fn test_get_index_exactly_size() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let cursor = std::io::Cursor::new("5\n");
+        let index = VENVMANAGER.get_index(cursor, 5);
+        assert_eq!(index.unwrap(), 5);
+    }
+
+    #[test]
+    fn test_get_index_one() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let cursor = std::io::Cursor::new("1\n");
+        let index = VENVMANAGER.get_index(cursor, 3);
+        assert_eq!(index.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_collect_venvs_non_venv_dir() {
+        // A directory that exists but has no python executable should not be
+        // collected as a venv.
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let tmp_dir = tempdir().unwrap();
+        // Create a subdirectory without any python executable.
+        let sub = tmp_dir.path().join("not_a_venv");
+        fs::create_dir_all(&sub).await.unwrap();
+        let entries = fs::read_dir(tmp_dir.path()).await.unwrap();
+        let venvs = VENVMANAGER.collect_venvs(entries).await;
+        assert!(venvs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_venvmanager_new_singleton() {
+        // Verify that VENVMANAGER can be accessed without panicking.
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let _ = &*VENVMANAGER;
+    }
 }

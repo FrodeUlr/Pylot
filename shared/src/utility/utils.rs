@@ -168,4 +168,63 @@ mod tests {
         let result = confirm(cursor);
         assert!(result);
     }
+
+    // ── which_check ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_which_check_found() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        // `sh` is available on all Unix systems; `cmd` on Windows.
+        #[cfg(unix)]
+        assert!(which_check(&["sh"]).is_ok());
+        #[cfg(windows)]
+        assert!(which_check(&["cmd"]).is_ok());
+    }
+
+    #[test]
+    fn test_which_check_not_found() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let result = which_check(&["this_command_definitely_does_not_exist_12345"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_which_check_empty_list() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        // An empty list means nothing is missing → Ok.
+        assert!(which_check(&[]).is_ok());
+    }
+
+    #[test]
+    fn test_which_check_mixed() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        // One valid command and one that does not exist → Err.
+        #[cfg(unix)]
+        {
+            let result = which_check(&["sh", "this_command_definitely_does_not_exist_12345"]);
+            assert!(result.is_err());
+        }
+    }
+
+    // ── read_requirements_file – additional edge cases ────────────────────────
+
+    #[tokio::test]
+    async fn test_read_requirements_file_empty() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("req.txt");
+        tokio::fs::write(&path, "").await.unwrap();
+        let pkgs = read_requirements_file(path.to_str().unwrap()).await.unwrap();
+        assert!(pkgs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_read_requirements_file_only_comments() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("req_comments.txt");
+        tokio::fs::write(&path, "# comment1\n# comment2\n").await.unwrap();
+        let pkgs = read_requirements_file(path.to_str().unwrap()).await.unwrap();
+        assert!(pkgs.is_empty());
+    }
 }

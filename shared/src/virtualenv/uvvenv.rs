@@ -421,4 +421,99 @@ mod tests {
             assert!(path.ends_with("activate"));
         }
     }
+
+    // ── set_python_version ───────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_set_python_version_reads_cfg_file() {
+        use tempfile::tempdir;
+
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempdir().unwrap();
+        let cfg_path = dir.path().join("pyvenv.cfg");
+        tokio::fs::write(&cfg_path, "home = /usr/bin\nversion = 3.11.2\n")
+            .await
+            .unwrap();
+
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("myenv"),
+            dir.path().to_str().unwrap().to_string(),
+            "".to_string(),
+            vec![],
+            false,
+        );
+        venv.set_python_version().await;
+        assert_eq!(venv.python_version, "3.11.2");
+    }
+
+    #[tokio::test]
+    async fn test_set_python_version_no_cfg_file() {
+        use tempfile::tempdir;
+
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempdir().unwrap();
+
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("myenv"),
+            dir.path().to_str().unwrap().to_string(),
+            "original".to_string(),
+            vec![],
+            false,
+        );
+        // No pyvenv.cfg exists – version should remain unchanged.
+        venv.set_python_version().await;
+        assert_eq!(venv.python_version, "original");
+    }
+
+    #[tokio::test]
+    async fn test_set_python_version_cfg_without_version_key() {
+        use tempfile::tempdir;
+
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempdir().unwrap();
+        let cfg_path = dir.path().join("pyvenv.cfg");
+        tokio::fs::write(&cfg_path, "home = /usr/bin\ninclude-system-site-packages = false\n")
+            .await
+            .unwrap();
+
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("myenv"),
+            dir.path().to_str().unwrap().to_string(),
+            "fallback".to_string(),
+            vec![],
+            false,
+        );
+        venv.set_python_version().await;
+        // No "version" key → version stays unchanged.
+        assert_eq!(venv.python_version, "fallback");
+    }
+
+    // ── validate_package_name – individual dangerous characters ──────────────
+
+    #[test]
+    fn test_validate_package_name_each_dangerous_char() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        for ch in ['&', '|', ';', '$', '`', '\n', '\r', '<', '>', '(', ')', '{', '}'] {
+            let pkg = format!("pkg{}name", ch);
+            assert!(
+                UvVenv::validate_package_name(&pkg).is_err(),
+                "Expected error for package name containing '{}'",
+                ch
+            );
+        }
+    }
+
+    // ── validate_venv_name – additional edge cases ────────────────────────────
+
+    #[test]
+    fn test_validate_venv_name_dot_rejected() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        assert!(UvVenv::validate_venv_name("my.env").is_err());
+    }
+
+    #[test]
+    fn test_validate_venv_name_space_rejected() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        assert!(UvVenv::validate_venv_name("my env").is_err());
+    }
 }
