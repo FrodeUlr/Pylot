@@ -1,6 +1,6 @@
 use crate::{
     constants::{UPDATE_ARGS, UV_COMMAND, UV_WINGET_UPGRADE_ARGS},
-    core::processes,
+    infra::processes,
     utility::constants::{
         SH_CMD, UV_UNIX_INSTALL_ARGS, UV_UNIX_UNINSTALL_ARGS, UV_WINGET_INSTALL_ARGS,
         UV_WINGET_UNINSTALL_ARGS, WINGET_CMD,

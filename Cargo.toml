@@ -1,8 +1,9 @@
 [workspace]
 resolver = "2"
-members = ["pylot", "shared", "tui"]
+members = ["core", "pylot", "shared", "tui"]
 
 [workspace.dependencies]
+pylot-core = { path = "./core" }
 colored = "3.0.0"
 tokio = { version = "1.47.1", features = ["rt-multi-thread", "macros", "process", "fs", "io-util"] }
 ctrlc = "3.5.0"

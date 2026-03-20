@@ -8,6 +8,7 @@ authors = ["Fulrix"]
 testing = []
 
 [dependencies]
+pylot-core = { workspace = true }
 colored = { workspace = true }
 tokio = { workspace = true }
 which = { workspace = true }

@@ -384,7 +384,7 @@ where
 }
 
 async fn get_uv_version() -> Option<String> {
-    use shared::core::processes;
+    use shared::infra::processes;
     let child = processes::create_child_cmd("uv", &["version"], "").ok()?;
     let output = child.wait_with_output().await.ok()?;
     if output.status.success() {
