@@ -37,7 +37,7 @@ jobs:
           command: nextest
           args: run --jobs 1 --workspace --no-fail-fast --profile ci
       - name: Upload test results to Codecov
-        uses: codecov/test-results-action@v5
+        uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report-type: test_results
