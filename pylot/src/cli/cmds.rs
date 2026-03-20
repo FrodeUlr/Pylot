@@ -1,6 +1,6 @@
 use super::styles;
 use clap::{Parser, Subcommand};
-use shared::constants::DEFAULT_PYTHON_VERSION;
+use pylot_shared::constants::DEFAULT_PYTHON_VERSION;
 use styles::custom_styles;
 
 /// Command Line Interface for Pylot

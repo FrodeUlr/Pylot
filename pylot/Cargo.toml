@@ -8,7 +8,7 @@ authors = ["Fulrix"]
 name = "pylot"
 
 [dependencies]
-shared = { workspace = true }
+pylot-shared = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
 clap_complete = { workspace = true }

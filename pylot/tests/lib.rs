@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use pylot::{create, delete, install, list};
-    use shared::logger;
+    use pylot_shared::logger;
     use shellexpand::tilde;
     use std::io;
     use tokio::fs::write;
