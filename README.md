@@ -1,206 +1,299 @@
 # Pylot
 
-<!--toc:start-->
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/FrodeUlr/pylot/rust.yml?branch=main&style=for-the-badge&logo=github)](https://github.com/FrodeUlr/Pylot/actions/workflows/rust.yml)
+[![Codecov](https://img.shields.io/codecov/c/github/FrodeUlr/Pylot?style=for-the-badge&logo=codecov&label=CODECOV)](https://codecov.io/github/FrodeUlr/Pylot)
 
-- [Pylot](#pylot)
-  - [A manager for python virtual environments made using UV](#a-manager-for-python-virtual-environments-made-using-uv)
-  - [Create completions for your shell](#create-completions-for-your-shell)
-  - [**Example usage:**](#example-usage)
-    - [Install Astral UV](#install-astral-uv)
-    - [Update Astral UV if it is already installed](#update-astral-uv-if-it-is-already-installed)
-    - [Check if Astral UV is installed](#check-if-astral-uv-is-installed)
-    - [Create a new virtual environment with specific Python version 3.10 and packages maturin, numpy, pandas](#create-a-new-virtual-environment-with-specific-python-version-310-and-packages-maturin-numpy-pandas)
-    - [Create a new virtual environment with specific Python version 3.10, default packages and maturin](#create-a-new-virtual-environment-with-specific-python-version-310-default-packages-and-maturin)
-    - [Activate a virtual environment by name](#activate-a-virtual-environment-by-name)
-    - [Activate a Virtual Environment by Index](#activate-a-virtual-environment-by-index)
-    - [Delete a virtual environment by name](#delete-a-virtual-environment-by-name)
-    - [Delete a virtual environment using index number](#delete-a-virtual-environment-using-index-number)
-    - [List all available virtual environments](#list-all-available-virtual-environments)
-    - [Uninstall Astral UV](#uninstall-astral-uv)
-    - [Shortcuts/Aliases](#shortcutsaliases)
-    <!--toc:end-->
+Pylot is a Rust workspace for managing Python virtual environments built with Astral UV.
 
-## A manager for python virtual environments made using UV
+It provides:
 
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/FrodeUlr/pylot/rust.yml?branch=main&style=for-the-badge&logo=github)](https://github.com/FrodeUlr/Pylot/actions/workflows/rust.yml) [![Codecov](https://img.shields.io/codecov/c/github/FrodeUlr/Pylot?style=for-the-badge&logo=codecov&label=CODECOV)](https://codecov.io/github/FrodeUlr/pylot)
+- a CLI for installing, checking, updating, and uninstalling UV
+- commands for creating, listing, activating, and deleting Python virtual environments
+- a terminal UI for interactive environment management
+- shell completion generation for common shells
 
-`Pylot` assists you in installing, updating and removing [Astral UV](https://docs.astral.sh/uv/).  
-You can use `Pylot` to create and remove virtual environments, which are created using `UV`.  
-When activated, the virtual environment will be invoked in a child shell session in your current shell.  
-To deactivate the active environment, type `exit` in the terminal.
+## Features
 
-You can specify location of virtual environments and the default python packages by updating the `settings.toml` file.
+- Manage Astral UV from the CLI
+- Create virtual environments with a specific Python version
+- Install packages directly during environment creation
+- Install packages from a requirements file
+- Apply default packages from configuration
+- Activate or delete environments by name or by interactive selection
+- Launch an interactive TUI with `pylot tui`
+- Generate completion scripts for `bash`, `zsh`, `fish`, `powershell`, and `elvish`
 
-## Create completions for your shell
+## Workspace Layout
 
-`Pylot` can generate shell completions for various shells, currently supporting `bash`, `zsh`, `fish`, `powershell` and `elvish`.  
-An example of how to generate and install completions for different shells is shown below:
+This repository is split into multiple crates:
+
+- `pylot`: main CLI binary and public library API
+- `pylot-core`: pure core domain types and errors
+- `pylot-shared`: shared configuration, UV integration, environment management, logging, and utilities
+- `pylot-tui`: terminal UI built with `ratatui` and `crossterm`
+
+## Installation
+
+### Prerequisites
+
+- Rust toolchain
+- UV is optional at install time because Pylot can install it for you
+
+### Install From Source
+
+Install the CLI from the workspace:
+
+```bash
+cargo install --path pylot
+```
+
+### Local Development Run
+
+Run the CLI directly from the workspace:
+
+```bash
+cargo run -p pylot -- --help
+```
+
+Run a specific command:
+
+```bash
+cargo run -p pylot -- venv list
+```
+
+### Packaged Build
+
+Create a release build and copy the executable plus `settings.toml` into `dist/`:
+
+```bash
+make package
+```
+
+## Configuration
+
+Pylot reads `settings.toml` from the same directory as the executable.
+
+The repository includes a sample configuration at `pylot/settings.toml`:
+
+```toml
+venvs_path = "~/pylot/venvs"
+default_pkgs = [
+  "neovim",
+  "pyvim",
+  "pylint",
+  "pydantic",
+  "jupyter",
+  "jupyterthemes",
+  "ruff-lsp",
+]
+```
+
+Settings currently support:
+
+- `venvs_path`: where Pylot stores managed virtual environments
+- `default_pkgs`: packages installed when `--default` is used during creation
+
+### Important For Local Development
+
+Because settings are loaded relative to the compiled executable, `cargo run -p pylot` looks for `settings.toml` in `target/debug/`.
+
+You have three practical options during development:
+
+1. run `make debug` to copy `pylot/settings.toml` into `target/debug/`
+2. run `make package` and execute the binary from `dist/`
+3. manually copy `pylot/settings.toml` next to the compiled executable
+
+If no settings file is found, Pylot falls back to defaults and prints a warning.
+
+## Usage
+
+### UV Management
+
+Check whether UV is installed:
+
+```bash
+pylot uv check
+```
+
+Install UV:
+
+```bash
+pylot uv install
+```
+
+Update UV:
+
+```bash
+pylot uv update
+```
+
+Uninstall UV:
+
+```bash
+pylot uv uninstall
+```
+
+Aliases:
+
+```bash
+pylot u c
+pylot u i
+pylot u up
+pylot u u
+```
+
+### Virtual Environment Management
+
+Create a virtual environment with a specific Python version and packages:
+
+```bash
+pylot venv create myenv --python-version 3.11 --packages requests numpy
+```
+
+Create a virtual environment using default packages from `settings.toml`:
+
+```bash
+pylot venv create myenv --default
+```
+
+Create a virtual environment and install from a requirements file:
+
+```bash
+pylot venv create myenv --requirements requirements.txt
+```
+
+List environments:
+
+```bash
+pylot venv list
+```
+
+Activate an environment by name:
+
+```bash
+pylot venv activate myenv
+```
+
+Activate interactively:
+
+```bash
+pylot venv activate
+```
+
+Delete an environment by name:
+
+```bash
+pylot venv delete myenv
+```
+
+Delete interactively:
+
+```bash
+pylot venv delete
+```
+
+Short aliases:
+
+```bash
+pylot v c myenv -v 3.11 -p requests numpy
+pylot v l
+pylot v a myenv
+pylot v d myenv
+```
+
+### TUI
+
+Launch the terminal UI:
+
+```bash
+pylot tui
+```
+
+The TUI lets you:
+
+- browse managed environments
+- create and delete environments
+- activate environments
+- inspect UV installation status
+- install, update, or uninstall UV interactively
+
+### Shell Completions
+
+Generate completions for supported shells:
+
+```bash
+pylot complete bash
+pylot complete zsh
+pylot complete fish
+pylot complete powershell
+pylot complete elvish
+```
+
+Examples:
 
 ```bash
 # bash
-# Add the generated file to your bash completions directory
-pylot complete bash > /etc/bash_completion.d/pylot.bash
+pylot complete bash > ~/.pylot-completion.bash
+
 # zsh
-# Add the generated file to $FPATH or source it in your .zshrc
-pylot complete zsh > ~/.zsh/completions/pylot.zsh
+pylot complete zsh > ~/.pylot-completion.zsh
+
 # fish
-# Add the generated file to your fish completions directory or source it in your config.fish
-pylot complete fish > ~/.config/fish/completions/pylot_completion.fish
-# powershell
-# Add this to your powershell profile
+pylot complete fish > ~/.config/fish/completions/pylot.fish
+```
+
+PowerShell:
+
+```powershell
 pylot complete powershell | Out-String | Invoke-Expression
-# elvish
-# Add the generated file to your elvish completions directory or source it in your rc.elvish
-pylot complete elvish > ~/.elvish/completions/pylot.elvish
-
 ```
 
-## **Example usage:**
+## Development
 
-### Install Astral UV
-
-Run the following command:
+Useful workspace commands:
 
 ```bash
-  pylot uv install
+make build
+make debug
+make format
+make lint
+make test
+make coverage
+make doc
+make package
+make clean
 ```
 
-### Update Astral UV if it is already installed
-
-Run the following command:
+Direct Cargo equivalents:
 
 ```bash
-  pylot uv update
+cargo fmt
+cargo clippy -- -D warnings
+cargo test -- --test-threads=1 --no-capture
+cargo doc --open
 ```
 
-### Check if Astral UV is installed
+### Documentation Notes
 
-Run the following command:
+`cargo doc --open` documents the public API by default. Items inside private modules will not appear unless they are publicly re-exported or you generate docs with private items enabled.
+
+To include private items in generated documentation:
 
 ```bash
-  pylot uv check
+cargo doc --workspace --no-deps --document-private-items
 ```
 
-### Create a new virtual environment with specific Python version 3.10 and packages maturin, numpy, pandas
+## Testing And CI
 
-Run the following command:
+The GitHub Actions workflow runs:
 
-```bash
-  pylot venv create myenv -v 3.10 -p maturin numpy pandas
-```
+- `cargo nextest` for tests on Linux
+- `cargo llvm-cov` for coverage on Linux and Windows
+- Codecov uploads for coverage and JUnit test results
+- release packaging into workflow artifacts
 
-### Create a new virtual environment with specific Python version 3.10, default packages and maturin
+The Linux nextest profile writes `junit.xml`, which is used for Codecov test result uploads.
 
-Run the following command:
+## License
 
-```bash
-  pylot venv create myenv -v 3.10 -d -p maturin
-```
-
-### Activate a virtual environment by name
-
-Run the following command:
-
-```bash
-  pylot venv activate myenv
-```
-
-### Activate a Virtual Environment by Index
-
-Run the following command:
-
-```bash
-  pylot venv activate
-```
-
-You will see a list of available virtual environments:
-
-```text
-  ┌───────┬─────────────┬─────────┐
-  │ Index │ Name        │ Version │
-  ╞═══════╪═════════════╪═════════╡
-  │ 1     │ MyVenv      │ 3.12.11 │
-  ├───────┼─────────────┼─────────┤
-  │ 2     │ AnotherVenv │ 3.12.11 │
-  └───────┴─────────────┴─────────┘
-  Please select a virtual environment to activate:
-```
-
-Type the index number (e.g., `1`) and press Enter.
-
-### Delete a virtual environment by name
-
-Run the following command:
-
-```bash
-  pylot venv delete myenv
-```
-
-### Delete a virtual environment using index number
-
-Run the following command:
-
-```bash
-  pylot venv delete
-```
-
-You will see a list of available virtual environments:
-
-```text
-  ┌───────┬─────────────┬─────────┐
-  │ Index │ Name        │ Version │
-  ╞═══════╪═════════════╪═════════╡
-  │ 1     │ MyVenv      │ 3.12.11 │
-  ├───────┼─────────────┼─────────┤
-  │ 2     │ AnotherVenv │ 3.12.11 │
-  └───────┴─────────────┴─────────┘
-  Please select a virtual environment to delete:
-```
-
-Type the index number (e.g., `1`) and press Enter.
-
-### List all available virtual environments
-
-Run the following command:
-
-```bash
-  pylot venv list
-```
-
-You will see a list of available virtual environments:
-
-```text
-  ┌───────┬─────────────┬─────────┐
-  │ Index │ Name        │ Version │
-  ╞═══════╪═════════════╪═════════╡
-  │ 1     │ MyVenv      │ 3.12.11 │
-  ├───────┼─────────────┼─────────┤
-  │ 2     │ AnotherVenv │ 3.12.11 │
-  └───────┴─────────────┴─────────┘
-```
-
-### Uninstall Astral UV
-
-Run the following command:
-
-```bash
-  pylot uv uninstall
-```
-
-### Shortcuts/Aliases
-
-```bash
-# Install Astral UV
-pylot u i
-# Uninstall Astral UV
-pylot u u
-# Update Astral UV
-pylot u up
-# Create virtual environment
-pylot v c myenv -v 3.10 -p maturin numpy pandas
-# Delete virtual environment
-pylot v d myenv
-# List virtual environments
-pylot v l
-# And so on...
-```
+This project is licensed under the terms of the [LICENSE](LICENSE) file.
