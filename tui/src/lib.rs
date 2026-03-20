@@ -15,10 +15,10 @@ use crossterm::{
 };
 use futures::StreamExt;
 use ratatui::{Terminal, backend::CrosstermBackend};
-use shared::constants::DEFAULT_PYTHON_VERSION;
-use shared::uvvenv::UvVenv;
-use shared::venvtraits::{Activate, Create, Delete};
-use shared::{uvctrl, venvmanager};
+use pylot_shared::constants::DEFAULT_PYTHON_VERSION;
+use pylot_shared::uvvenv::UvVenv;
+use pylot_shared::venvtraits::{Activate, Create, Delete};
+use pylot_shared::{uvctrl, venvmanager};
 use std::borrow::Cow;
 use std::io;
 use std::time::Duration;
@@ -142,7 +142,7 @@ fn spawn_uv_task(
 fn spawn_venv_task(
     app: &mut App,
     label: String,
-    fut: impl std::future::Future<Output = shared::error::Result<()>> + Send + 'static,
+    fut: impl std::future::Future<Output = pylot_shared::error::Result<()>> + Send + 'static,
 ) {
     let (tx, rx) = oneshot::channel::<Result<(), String>>();
     tokio::spawn(async move {
@@ -384,7 +384,7 @@ where
 }
 
 async fn get_uv_version() -> Option<String> {
-    use shared::core::processes;
+    use pylot_shared::infra::processes;
     let child = processes::create_child_cmd("uv", &["version"], "").ok()?;
     let output = child.wait_with_output().await.ok()?;
     if output.status.success() {

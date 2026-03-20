@@ -6,7 +6,7 @@ use std::{io, str::FromStr};
 
 use clap::{CommandFactory, Parser};
 use cli::cmds::{Cli, Commands};
-use shared::{logger, settings};
+use pylot_shared::{logger, settings};
 
 use crate::cli::cmds::{UvCommands, VenvCommands};
 
@@ -113,7 +113,7 @@ mod tests {
     use predicates::prelude::*;
 
     use pylot::cli::cmds::{Cli, Commands, VenvCommands};
-    use shared::constants::ERROR_VENV_NOT_EXISTS;
+    use pylot_shared::constants::ERROR_VENV_NOT_EXISTS;
 
     #[test]
     fn test_cli_output_help() {

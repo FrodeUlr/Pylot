@@ -1,4 +1,4 @@
-use shared::virtualenv::uvvenv::UvVenv;
+use pylot_shared::virtualenv::uvvenv::UvVenv;
 
 /// UV management actions that can be triggered from the TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -100,7 +100,7 @@ impl CreateDialog {
     pub fn effective_version(&self) -> String {
         let v = self.version.trim();
         if v.is_empty() {
-            shared::constants::DEFAULT_PYTHON_VERSION.to_string()
+            pylot_shared::constants::DEFAULT_PYTHON_VERSION.to_string()
         } else {
             v.to_string()
         }
@@ -416,7 +416,7 @@ mod tests {
         let mut d2 = CreateDialog::new("3.12");
         d2.version = "  ".to_string();
         // Blank version falls back to DEFAULT_PYTHON_VERSION.
-        assert_eq!(d2.effective_version(), shared::constants::DEFAULT_PYTHON_VERSION);
+        assert_eq!(d2.effective_version(), pylot_shared::constants::DEFAULT_PYTHON_VERSION);
     }
 
     #[test]

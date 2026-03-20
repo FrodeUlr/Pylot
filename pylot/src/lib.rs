@@ -6,7 +6,7 @@ pub mod cli;
 
 use std::{borrow::Cow, io};
 
-use shared::{
+use pylot_shared::{
     constants::{DEFAULT_PYTHON_VERSION, ERROR_CREATING_VENV},
     error::{PylotError, Result},
     utils, uvctrl, uvvenv, venvmanager,
@@ -273,7 +273,7 @@ pub async fn list() {
 
 #[cfg(test)]
 mod tests {
-    use shared::logger;
+    use pylot_shared::logger;
 
     use super::*;
 
