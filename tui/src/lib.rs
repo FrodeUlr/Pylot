@@ -398,3 +398,50 @@ async fn get_uv_version() -> Option<String> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::App;
+
+    fn make_empty_app<'a>() -> App<'a> {
+        App::new(vec![], true, Some("uv 0.5.0".to_string()))
+    }
+
+    // ── get_uv_version ───────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_get_uv_version_returns_some_or_none() {
+        // We don't know whether `uv` is installed in the test environment, so
+        // just verify that the function returns without panicking.
+        let _version = get_uv_version().await;
+    }
+
+    // ── spawn_uv_task ────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_spawn_uv_task_sets_busy() {
+        let mut app = make_empty_app();
+        assert!(!app.is_busy());
+        spawn_uv_task(&mut app, "Test task", async { Ok(()) });
+        assert!(app.is_busy());
+        assert_eq!(app.bg_task_name.as_deref(), Some("Test task"));
+    }
+
+    // ── spawn_venv_task ──────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_spawn_venv_task_sets_busy() {
+        let mut app = make_empty_app();
+        assert!(!app.is_busy());
+        spawn_venv_task(&mut app, "Venv task".to_string(), async {
+            Ok::<(), pylot_shared::error::PylotError>(())
+        });
+        assert!(app.is_busy());
+        assert_eq!(app.bg_task_name.as_deref(), Some("Venv task"));
+    }
+
+    // ── pause_for_enter is a side-effectful helper; just verify it compiles.  ─
+    // (It reads from stdin which we can't easily mock in a unit test, so we
+    //  skip calling it directly and rely on the compiler for basic coverage.)
+}

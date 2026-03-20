@@ -452,4 +452,170 @@ mod tests {
         let app = make_app();
         assert!(app.confirm_dialog.is_none());
     }
+
+    // ── Navigation with venvs ────────────────────────────────────────────────
+
+    fn make_app_with_venvs<'a>() -> App<'a> {
+        use pylot_shared::uvvenv::UvVenv;
+        use std::borrow::Cow;
+        let venvs = vec![
+            UvVenv::new(
+                Cow::Owned("env1".to_string()),
+                "".to_string(),
+                "3.11".to_string(),
+                vec![],
+                false,
+            ),
+            UvVenv::new(
+                Cow::Owned("env2".to_string()),
+                "".to_string(),
+                "3.12".to_string(),
+                vec![],
+                false,
+            ),
+            UvVenv::new(
+                Cow::Owned("env3".to_string()),
+                "".to_string(),
+                "3.10".to_string(),
+                vec![],
+                false,
+            ),
+        ];
+        App::new(venvs, true, Some("uv 0.5.0".to_string()))
+    }
+
+    #[test]
+    fn test_next_item_with_venvs() {
+        let mut app = make_app_with_venvs();
+        assert_eq!(app.selected, 0);
+        app.next_item();
+        assert_eq!(app.selected, 1);
+        app.next_item();
+        assert_eq!(app.selected, 2);
+    }
+
+    #[test]
+    fn test_next_item_wraps_around() {
+        let mut app = make_app_with_venvs();
+        app.selected = 2; // last item
+        app.next_item();
+        assert_eq!(app.selected, 0); // wraps to first
+    }
+
+    #[test]
+    fn test_prev_item_with_venvs() {
+        let mut app = make_app_with_venvs();
+        app.selected = 2;
+        app.prev_item();
+        assert_eq!(app.selected, 1);
+        app.prev_item();
+        assert_eq!(app.selected, 0);
+    }
+
+    #[test]
+    fn test_prev_item_wraps_around() {
+        let mut app = make_app_with_venvs();
+        assert_eq!(app.selected, 0);
+        app.prev_item();
+        assert_eq!(app.selected, 2); // wraps to last
+    }
+
+    #[test]
+    fn test_navigation_does_nothing_on_uv_tab() {
+        let mut app = make_app_with_venvs();
+        app.next_tab(); // switch to UvInfo
+        app.next_item();
+        assert_eq!(app.selected, 0); // unchanged on UV tab
+        app.prev_item();
+        assert_eq!(app.selected, 0);
+    }
+
+    // ── CreateDialog – pop_char on empty field ───────────────────────────────
+
+    #[test]
+    fn test_create_dialog_pop_char_empty_does_not_panic() {
+        let mut d = CreateDialog::new("3.12");
+        // pop_char on an empty name field must not panic.
+        d.pop_char();
+        assert!(d.name.is_empty());
+    }
+
+    #[test]
+    fn test_create_dialog_push_pop_version_field() {
+        let mut d = CreateDialog::new("3.12");
+        d.field = CreateField::Version;
+        d.version.clear();
+        d.push_char('3');
+        d.push_char('.');
+        d.push_char('9');
+        assert_eq!(d.version, "3.9");
+        d.pop_char();
+        assert_eq!(d.version, "3.");
+    }
+
+    #[test]
+    fn test_create_dialog_push_pop_packages_field() {
+        let mut d = CreateDialog::new("3.12");
+        d.field = CreateField::Packages;
+        d.push_char('n');
+        d.push_char('u');
+        assert_eq!(d.packages, "nu");
+        d.pop_char();
+        assert_eq!(d.packages, "n");
+    }
+
+    #[test]
+    fn test_create_dialog_push_char_default_pkgs_noop() {
+        let mut d = CreateDialog::new("3.12");
+        d.field = CreateField::DefaultPkgs;
+        // push_char should be a no-op on the bool field.
+        d.push_char('x');
+        d.push_char('y');
+        assert!(d.name.is_empty());
+        assert!(d.packages.is_empty());
+    }
+
+    #[test]
+    fn test_create_dialog_pop_char_default_pkgs_noop() {
+        let mut d = CreateDialog::new("3.12");
+        d.field = CreateField::DefaultPkgs;
+        // pop_char should be a no-op on the bool field.
+        d.pop_char();
+        assert!(!d.default_pkgs); // unchanged
+    }
+
+    // ── App status_message field ─────────────────────────────────────────────
+
+    #[test]
+    fn test_status_message_none_by_default() {
+        let app = make_app();
+        assert!(app.status_message.is_none());
+    }
+
+    #[test]
+    fn test_status_message_can_be_set() {
+        let mut app = make_app();
+        app.status_message = Some(("done".to_string(), false));
+        assert_eq!(app.status_message, Some(("done".to_string(), false)));
+    }
+
+    // ── App bg_task_name field ───────────────────────────────────────────────
+
+    #[test]
+    fn test_bg_task_name_none_by_default() {
+        let app = make_app();
+        assert!(app.bg_task_name.is_none());
+    }
+
+    // ── CreateField prev cycling (complete coverage) ─────────────────────────
+
+    #[test]
+    fn test_create_field_prev_version() {
+        assert_eq!(CreateField::Version.prev(), CreateField::Name);
+    }
+
+    #[test]
+    fn test_create_field_prev_packages() {
+        assert_eq!(CreateField::Packages.prev(), CreateField::Version);
+    }
 }

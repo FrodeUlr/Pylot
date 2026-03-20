@@ -402,3 +402,231 @@ fn centered_rect(width: u16, height: u16, r: Rect) -> Rect {
     let y = r.y + r.height.saturating_sub(h) / 2;
     Rect { x, y, width: w, height: h }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::{
+        App, ConfirmAction, ConfirmDialog, CreateDialog,
+    };
+    use pylot_shared::uvvenv::UvVenv;
+    use ratatui::{Terminal, backend::TestBackend};
+    use std::borrow::Cow;
+
+    fn make_app<'a>() -> App<'a> {
+        App::new(vec![], true, Some("uv 0.5.0".to_string()))
+    }
+
+    fn make_app_with_venvs<'a>() -> App<'a> {
+        let venvs = vec![
+            UvVenv::new(
+                Cow::Owned("env1".to_string()),
+                "".to_string(),
+                "3.11".to_string(),
+                vec![],
+                false,
+            ),
+            UvVenv::new(
+                Cow::Owned("env2".to_string()),
+                "".to_string(),
+                "3.12".to_string(),
+                vec![],
+                false,
+            ),
+        ];
+        App::new(venvs, true, Some("uv 0.5.0".to_string()))
+    }
+
+    // ── centered_rect ────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_centered_rect_basic() {
+        let r = Rect { x: 0, y: 0, width: 100, height: 50 };
+        let result = centered_rect(60, 14, r);
+        assert_eq!(result.width, 60);
+        assert_eq!(result.height, 14);
+        // x should be centered: (100 - 60) / 2 = 20
+        assert_eq!(result.x, 20);
+        // y should be centered: (50 - 14) / 2 = 18
+        assert_eq!(result.y, 18);
+    }
+
+    #[test]
+    fn test_centered_rect_clamped_when_larger_than_parent() {
+        let r = Rect { x: 0, y: 0, width: 40, height: 10 };
+        let result = centered_rect(100, 50, r);
+        // Should be clamped to the parent's dimensions.
+        assert_eq!(result.width, 40);
+        assert_eq!(result.height, 10);
+        assert_eq!(result.x, 0);
+        assert_eq!(result.y, 0);
+    }
+
+    #[test]
+    fn test_centered_rect_zero_size() {
+        let r = Rect { x: 5, y: 3, width: 80, height: 24 };
+        let result = centered_rect(0, 0, r);
+        assert_eq!(result.width, 0);
+        assert_eq!(result.height, 0);
+    }
+
+    #[test]
+    fn test_centered_rect_offset_parent() {
+        let r = Rect { x: 10, y: 5, width: 80, height: 24 };
+        let result = centered_rect(40, 10, r);
+        assert_eq!(result.width, 40);
+        assert_eq!(result.height, 10);
+        // x: 10 + (80 - 40) / 2 = 10 + 20 = 30
+        assert_eq!(result.x, 30);
+        // y: 5 + (24 - 10) / 2 = 5 + 7 = 12
+        assert_eq!(result.y, 12);
+    }
+
+    // ── draw – Environments tab (empty) ──────────────────────────────────────
+
+    #[test]
+    fn test_draw_environments_empty() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let app = make_app();
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    // ── draw – Environments tab with venvs ───────────────────────────────────
+
+    #[test]
+    fn test_draw_environments_with_venvs() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let app = make_app_with_venvs();
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    // ── draw – UV Info tab ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_draw_uv_info_installed() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app();
+        app.next_tab(); // switch to UvInfo
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_uv_info_not_installed() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new(vec![], false, None);
+        app.next_tab();
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    // ── draw – status messages ───────────────────────────────────────────────
+
+    #[test]
+    fn test_draw_with_status_message_ok() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app();
+        app.status_message = Some(("Operation completed.".to_string(), false));
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_with_status_message_error() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app();
+        app.status_message = Some(("Something went wrong.".to_string(), true));
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_with_bg_task_running() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app();
+        app.bg_task_name = Some("Installing UV".to_string());
+        // Simulate a busy state by setting a receiver.
+        let (_tx, rx) = tokio::sync::oneshot::channel::<Result<(), String>>();
+        app.bg_rx = Some(rx);
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    // ── draw – confirm dialog overlay ────────────────────────────────────────
+
+    #[test]
+    fn test_draw_with_confirm_dialog_delete_venv() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app();
+        app.confirm_dialog = Some(ConfirmDialog::new(ConfirmAction::DeleteVenv(
+            "myenv".to_string(),
+        )));
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_with_confirm_dialog_uninstall_uv() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app();
+        app.confirm_dialog = Some(ConfirmDialog::new(ConfirmAction::UninstallUv));
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    // ── draw – create-venv dialog overlay ────────────────────────────────────
+
+    #[test]
+    fn test_draw_with_create_dialog() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app();
+        app.create_dialog = Some(CreateDialog::new("3.12"));
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_create_dialog_all_fields() {
+        use crate::app::CreateField;
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+
+        for field in [
+            CreateField::Name,
+            CreateField::Version,
+            CreateField::Packages,
+            CreateField::DefaultPkgs,
+        ] {
+            let mut app = make_app();
+            let mut dlg = CreateDialog::new("3.12");
+            dlg.field = field;
+            dlg.name = "myenv".to_string();
+            dlg.version = "3.11".to_string();
+            dlg.packages = "requests,flask".to_string();
+            dlg.default_pkgs = true;
+            app.create_dialog = Some(dlg);
+            terminal.draw(|frame| draw(frame, &app)).unwrap();
+        }
+    }
+
+    // ── status-bar branches ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_draw_status_bar_environments_with_venvs() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let app = make_app_with_venvs();
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_status_bar_uv_not_installed() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new(vec![], false, None);
+        app.next_tab();
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+}

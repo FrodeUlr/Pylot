@@ -406,4 +406,77 @@ mod tests {
         assert!(result_un.is_ok());
         update().await;
     }
+
+    // ── update_packages_from_requirements – additional coverage ──────────────
+
+    #[tokio::test]
+    async fn test_update_packages_deduplication() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        use std::io::Write;
+
+        let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+        writeln!(temp_file, "numpy").unwrap(); // already in packages
+        writeln!(temp_file, "scipy").unwrap();
+        temp_file.flush().unwrap();
+
+        let requirements = temp_file.path().to_str().unwrap();
+        let mut packages = vec!["numpy".to_string()]; // pre-existing
+
+        let result = update_packages_from_requirements(requirements, &mut packages).await;
+        assert!(result.is_ok());
+        // numpy must not be duplicated
+        assert_eq!(packages.iter().filter(|p| p.as_str() == "numpy").count(), 1);
+        assert!(packages.contains(&"scipy".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_update_packages_nonexistent_file() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let mut packages = vec![];
+        let result =
+            update_packages_from_requirements("does_not_exist_req.txt", &mut packages).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_update_packages_empty_requirements() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let mut packages = vec!["existing".to_string()];
+        // Passing an empty string should be a no-op (no file read attempted).
+        let result = update_packages_from_requirements("", &mut packages).await;
+        assert!(result.is_ok());
+        assert_eq!(packages, vec!["existing".to_string()]);
+    }
+
+    // ── create – invalid package name ─────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_create_invalid_package_name() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        // A package containing a shell metacharacter should be rejected before
+        // any network or FS operation occurs.
+        let result = create(
+            "valid_env",
+            None,
+            Some(vec!["bad;pkg".to_string()]),
+            None,
+            false,
+        )
+        .await;
+        assert!(result.is_err());
+    }
+
+    // ── delete – venv not found by name ──────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_delete_nonexistent_venv() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let result = delete(
+            std::io::Cursor::new("y\n"),
+            std::io::stdin(),
+            Some("definitely_does_not_exist_venv"),
+        )
+        .await;
+        assert!(result.is_err());
+    }
 }
