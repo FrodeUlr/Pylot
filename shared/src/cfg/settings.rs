@@ -38,7 +38,7 @@ impl Settings {
             .add_source(File::from(settings_path).format(FileFormat::Toml))
             .build()
             .unwrap_or_else(|_| {
-                println!("Settings.toml missing or invalid");
+                eprintln!("Settings.toml missing or invalid");
                 Config::default()
             });
 
@@ -66,7 +66,7 @@ impl Settings {
             path = shellexpand::tilde(&path).to_string();
         }
         if !Path::new(&path).exists() {
-            println!("Creating venvs folder: {}", path);
+            eprintln!("Creating venvs folder: {}", path);
             if let Err(e) = std::fs::create_dir_all(&path) {
                 eprintln!("Failed to create venvs folder: {}", e);
             }
@@ -83,7 +83,7 @@ impl Settings {
                 .map(|p| p.to_path_buf())
                 .unwrap_or_else(|| PathBuf::from(".")),
             Err(_) => {
-                println!("Could not determine the executable directory");
+                eprintln!("Could not determine the executable directory");
                 PathBuf::from(".")
             }
         }
