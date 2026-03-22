@@ -324,7 +324,7 @@ mod tests {
             .current_dir(env!("CARGO_MANIFEST_DIR"))
             .assert()
             .success()
-            .stdout(predicate::str::contains("Settings.toml missing or invalid").not())
+            .stdout(predicate::str::contains("Settings.toml is invalid, using defaults").not())
             .stdout(predicate::str::contains("Creating venvs folder").not())
             .stdout(predicate::str::is_match(r"^\s*using namespace").unwrap());
     }
