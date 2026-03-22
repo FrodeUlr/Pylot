@@ -5,7 +5,7 @@ use std::{
     sync::{LazyLock, Mutex},
 };
 
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Settings {
     #[serde(default = "default_venv_path")]
     pub venvs_path: String,
@@ -31,14 +31,29 @@ impl Default for Settings {
 impl Settings {
     pub async fn init() {
         let exe_dir = Self::get_exe_dir(env::current_exe);
+        Self::init_with_dir(&exe_dir).await;
+    }
 
-        let settings_path = exe_dir.join("settings.toml");
+    async fn init_with_dir(dir: &Path) {
+        let settings_path = dir.join("settings.toml");
+
+        if !settings_path.exists() {
+            match toml::to_string_pretty(&Settings::default())
+                .map_err(|e| format!("Failed to serialize default settings: {}", e))
+                .and_then(|s| {
+                    std::fs::write(&settings_path, s)
+                        .map_err(|e| format!("Failed to write default settings.toml: {}", e))
+                }) {
+                Ok(()) => {}
+                Err(e) => eprintln!("{}", e),
+            }
+        }
 
         let settings = Config::builder()
             .add_source(File::from(settings_path).format(FileFormat::Toml))
             .build()
             .unwrap_or_else(|_| {
-                println!("Settings.toml missing or invalid");
+                eprintln!("Settings.toml is invalid, using defaults");
                 Config::default()
             });
 
@@ -66,7 +81,7 @@ impl Settings {
             path = shellexpand::tilde(&path).to_string();
         }
         if !Path::new(&path).exists() {
-            println!("Creating venvs folder: {}", path);
+            eprintln!("Creating venvs folder: {}", path);
             if let Err(e) = std::fs::create_dir_all(&path) {
                 eprintln!("Failed to create venvs folder: {}", e);
             }
@@ -83,7 +98,7 @@ impl Settings {
                 .map(|p| p.to_path_buf())
                 .unwrap_or_else(|| PathBuf::from(".")),
             Err(_) => {
-                println!("Could not determine the executable directory");
+                eprintln!("Could not determine the executable directory");
                 PathBuf::from(".")
             }
         }
@@ -199,5 +214,23 @@ mod tests {
         let fake_current_exe = || Err(std::io::Error::other("error"));
         let exe_dir = Settings::get_exe_dir(fake_current_exe);
         assert_eq!(exe_dir, PathBuf::from("."));
+    }
+
+    #[tokio::test]
+    async fn test_init_creates_default_settings_toml_when_missing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let settings_path = tmp.path().join("settings.toml");
+
+        assert!(!settings_path.exists(), "settings.toml should not exist yet");
+
+        Settings::init_with_dir(tmp.path()).await;
+
+        assert!(settings_path.exists(), "settings.toml should have been created");
+
+        let content = std::fs::read_to_string(&settings_path).unwrap();
+        assert!(
+            content.contains("venvs_path"),
+            "generated settings.toml should contain venvs_path key"
+        );
     }
 }

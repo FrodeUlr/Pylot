@@ -12,19 +12,25 @@ use crate::cli::cmds::{UvCommands, VenvCommands};
 
 #[tokio::main]
 async fn main() {
-    settings::Settings::init().await;
-    logger::initialize_logger(log::LevelFilter::Info);
     let args = Cli::parse();
 
+    // Handle completion generation before settings/logger init so that no
+    // diagnostic messages are written to stdout and pollute the script output.
+    if let Some(Commands::Complete { shell }) = &args.commands {
+        let shell = shell
+            .as_deref()
+            .and_then(|s| Shell::from_str(s).ok())
+            .unwrap_or(Shell::Bash);
+        let mut cmd = Cli::command();
+        generate(shell, &mut cmd, "pylot", &mut io::stdout());
+        return;
+    }
+
+    settings::Settings::init().await;
+    logger::initialize_logger(log::LevelFilter::Info);
+
     match args.commands {
-        Some(Commands::Complete { shell }) => {
-            let shell = shell
-                .as_deref()
-                .and_then(|s| Shell::from_str(s).ok())
-                .unwrap_or(Shell::Bash);
-            let mut cmd = Cli::command();
-            generate(shell, &mut cmd, "pylot", &mut io::stdout());
-        }
+        Some(Commands::Complete { .. }) => unreachable!(),
         Some(Commands::Uv { command }) => match command {
             UvCommands::Install => match install(io::stdin()).await {
                 Ok(_) => {}
@@ -305,5 +311,21 @@ mod tests {
         } else {
             panic!("Failed to parse complete command for powershell");
         }
+    }
+
+    /// Verifies that `pylot complete powershell` outputs only the completion
+    /// script to stdout, with no diagnostic messages prepended.  PowerShell
+    /// requires `using` statements to be the very first lines of a script, so
+    /// stdout must not contain any diagnostic messages before "using namespace".
+    #[test]
+    fn test_complete_powershell_output_starts_with_using() {
+        let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
+        cmd.args(["complete", "powershell"])
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("Settings.toml is invalid, using defaults").not())
+            .stdout(predicate::str::contains("Creating venvs folder").not())
+            .stdout(predicate::str::is_match(r"^\s*using namespace").unwrap());
     }
 }
