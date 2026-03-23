@@ -15,6 +15,7 @@ pub struct UvVenv<'a> {
     pub packages: Vec<String>,
     pub default: bool,
     pub settings: settings::Settings,
+    pub package_count: Option<usize>,
 }
 
 impl<'a> Create for UvVenv<'a> {
@@ -162,6 +163,7 @@ impl<'a> UvVenv<'a> {
             packages,
             default,
             settings: settings::Settings::get_settings(),
+            package_count: None,
         }
     }
 
@@ -224,6 +226,47 @@ impl<'a> UvVenv<'a> {
                 }
             }
         }
+    }
+
+    /// Count the number of installed packages by scanning `.dist-info` directories
+    /// inside the venv's `site-packages` directory.  Sets `self.package_count`.
+    pub(crate) async fn count_packages(&mut self) {
+        // Unix layout: {path}/lib/pythonX.Y/site-packages/
+        if let Ok(mut lib_entries) =
+            async_fs::read_dir(format!("{}/lib", self.path)).await
+        {
+            while let Ok(Some(entry)) = lib_entries.next_entry().await {
+                if entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false) {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.starts_with("python") {
+                        let site_pkgs = entry.path().join("site-packages");
+                        if let Some(count) = Self::count_dist_info_dirs(&site_pkgs).await {
+                            self.package_count = Some(count);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+        // Windows layout: {path}/Lib/site-packages/
+        let win_path = std::path::Path::new(&self.path)
+            .join("Lib")
+            .join("site-packages");
+        self.package_count = Self::count_dist_info_dirs(&win_path).await;
+    }
+
+    async fn count_dist_info_dirs(site_pkgs: &std::path::Path) -> Option<usize> {
+        let mut entries = async_fs::read_dir(site_pkgs).await.ok()?;
+        let mut count = 0usize;
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let name = entry.file_name();
+            let is_dist_info = name.to_string_lossy().ends_with(".dist-info");
+            let is_dir = entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false);
+            if is_dist_info && is_dir {
+                count += 1;
+            }
+        }
+        Some(count)
     }
 
     /// Install packages without shell command injection
@@ -516,4 +559,82 @@ mod tests {
         logger::initialize_logger(log::LevelFilter::Trace);
         assert!(UvVenv::validate_venv_name("my env").is_err());
     }
+
+    // ── count_packages ───────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_count_packages_no_site_packages_dir() {
+        use tempfile::tempdir;
+
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempdir().unwrap();
+
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("myenv"),
+            dir.path().to_str().unwrap().to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        // No site-packages directory → package_count stays None.
+        venv.count_packages().await;
+        assert_eq!(venv.package_count, None);
+    }
+
+    #[tokio::test]
+    async fn test_count_packages_unix_layout() {
+        use tempfile::tempdir;
+
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempdir().unwrap();
+
+        // Create a fake Unix venv layout with two .dist-info dirs and one non-dist-info dir.
+        let site_pkgs = dir.path().join("lib").join("python3.11").join("site-packages");
+        tokio::fs::create_dir_all(&site_pkgs).await.unwrap();
+        tokio::fs::create_dir_all(site_pkgs.join("requests-2.28.0.dist-info"))
+            .await
+            .unwrap();
+        tokio::fs::create_dir_all(site_pkgs.join("flask-3.0.0.dist-info"))
+            .await
+            .unwrap();
+        tokio::fs::create_dir_all(site_pkgs.join("requests")).await.unwrap(); // not a dist-info dir
+
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("myenv"),
+            dir.path().to_str().unwrap().to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        venv.count_packages().await;
+        assert_eq!(venv.package_count, Some(2));
+    }
+
+    #[tokio::test]
+    async fn test_count_packages_windows_layout() {
+        use tempfile::tempdir;
+
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempdir().unwrap();
+
+        // Create a fake Windows venv layout.
+        let site_pkgs = dir.path().join("Lib").join("site-packages");
+        tokio::fs::create_dir_all(&site_pkgs).await.unwrap();
+        tokio::fs::create_dir_all(site_pkgs.join("numpy-1.26.0.dist-info"))
+            .await
+            .unwrap();
+
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("myenv"),
+            dir.path().to_str().unwrap().to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        venv.count_packages().await;
+        // On Linux the Unix layout search will find no "python*" dir, so it
+        // falls back to the Windows layout.
+        assert_eq!(venv.package_count, Some(1));
+    }
 }
+

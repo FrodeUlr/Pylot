@@ -63,6 +63,16 @@ fn draw_tabs(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
 }
 
 fn draw_environments(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
+    // Split horizontally: venv list (left) + detail panel (right)
+    let columns = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(55),
+            Constraint::Percentage(45),
+        ])
+        .split(area);
+
+    // ── Left: venv list ──────────────────────────────────────────────────────
     let items: Vec<ListItem> = app
         .venvs
         .iter()
@@ -74,11 +84,11 @@ fn draw_environments(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) 
                     Style::default().fg(Color::DarkGray),
                 ),
                 Span::styled(
-                    format!("{:<30}", venv.name.as_ref()),
+                    format!("{:<22}", venv.name.as_ref()),
                     Style::default().fg(Color::Cyan),
                 ),
                 Span::styled(
-                    format!("  Python {}", venv.python_version),
+                    format!("  py{}", venv.python_version),
                     Style::default().fg(Color::Green),
                 ),
             ]);
@@ -101,7 +111,80 @@ fn draw_environments(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) 
         state.select(Some(app.selected));
     }
 
-    frame.render_stateful_widget(list, area, &mut state);
+    frame.render_stateful_widget(list, columns[0], &mut state);
+
+    // ── Right: detail panel ──────────────────────────────────────────────────
+    draw_venv_detail(frame, app, columns[1]);
+}
+
+fn draw_venv_detail(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
+    let label_style = Style::default().fg(Color::DarkGray);
+    let value_style = Style::default().fg(Color::White);
+
+    let lines = if app.venvs.is_empty() {
+        vec![
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                "  No environments found.",
+                Style::default().fg(Color::DarkGray),
+            )]),
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                "  Press [n] to create one.",
+                Style::default().fg(Color::DarkGray),
+            )]),
+        ]
+    } else {
+        let venv = &app.venvs[app.selected];
+
+        // Replace the home directory prefix with ~ for a compact display.
+        let display_path = pylot_shared::utils::shorten_home_path(venv.path.as_str());
+
+        let pkg_text = match venv.package_count {
+            Some(n) => format!("{} installed", n),
+            None => "unknown".to_string(),
+        };
+
+        let version_text = if venv.python_version.is_empty() {
+            "unknown".to_string()
+        } else {
+            format!("Python {}", venv.python_version)
+        };
+
+        vec![
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("  Name     : ", label_style),
+                Span::styled(
+                    venv.name.as_ref().to_string(),
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("  Python   : ", label_style),
+                Span::styled(version_text, Style::default().fg(Color::Green)),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("  Location : ", label_style),
+                Span::styled(display_path, value_style),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("  Packages : ", label_style),
+                Span::styled(pkg_text, Style::default().fg(Color::Magenta)),
+            ]),
+        ]
+    };
+
+    let paragraph = Paragraph::new(lines)
+        .block(Block::default().borders(Borders::ALL).title(" Details "))
+        .wrap(ratatui::widgets::Wrap { trim: false });
+
+    frame.render_widget(paragraph, area);
 }
 
 fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
