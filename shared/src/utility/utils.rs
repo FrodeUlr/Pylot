@@ -28,6 +28,21 @@ pub fn confirm<R: std::io::Read>(input: R) -> bool {
     }
 }
 
+/// Replace the user's home directory prefix in `path` with `~`.
+///
+/// Works on both Unix (`$HOME`) and Windows (`%USERPROFILE%`).
+/// If neither variable is set, the path is returned unchanged.
+pub fn shorten_home_path(path: &str) -> String {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_default();
+    if !home.is_empty() && path.starts_with(&home) {
+        format!("~{}", &path[home.len()..])
+    } else {
+        path.to_string()
+    }
+}
+
 pub fn which_check(cmd: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
     let missing_cmds: Vec<&str> = cmd
         .iter()
@@ -206,7 +221,34 @@ mod tests {
         }
     }
 
-    // ── read_requirements_file – additional edge cases ────────────────────────
+    // ── shorten_home_path ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_shorten_home_path_with_home_prefix() {
+        // We can't set env vars reliably in tests, so we manually test the logic.
+        // The function replaces a known prefix with ~.
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .unwrap_or_default();
+        if !home.is_empty() {
+            let path = format!("{}/venvs/myenv", home);
+            let result = shorten_home_path(&path);
+            assert_eq!(result, "~/venvs/myenv");
+        }
+    }
+
+    #[test]
+    fn test_shorten_home_path_without_home_prefix() {
+        let result = shorten_home_path("/opt/venvs/myenv");
+        assert_eq!(result, "/opt/venvs/myenv");
+    }
+
+    #[test]
+    fn test_shorten_home_path_empty() {
+        let result = shorten_home_path("");
+        assert_eq!(result, "");
+    }
+
 
     #[tokio::test]
     async fn test_read_requirements_file_empty() {

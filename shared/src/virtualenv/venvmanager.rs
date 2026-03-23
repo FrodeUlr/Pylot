@@ -25,10 +25,14 @@ impl<'a> VenvManager {
 
     pub async fn list(&'a self) -> Vec<UvVenv<'a>> {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
-        let venvs: Vec<UvVenv> = match fs::read_dir(&path).await {
+        let mut venvs: Vec<UvVenv> = match fs::read_dir(&path).await {
             Ok(entries) => self.collect_venvs(entries).await,
             Err(_) => Vec::new(),
         };
+        for venv in &mut venvs {
+            venv.set_python_version().await;
+            venv.count_packages().await;
+        }
         venvs
     }
 
@@ -162,6 +166,8 @@ impl<'a> VenvManager {
             .set_content_arrangement(ContentArrangement::Dynamic)
             .set_header(vec!["Index", "Name", "Version"]);
         for (index, venv) in venvs.iter_mut().enumerate() {
+            // set_python_version is already called by list(); call it here only
+            // in case venvs were constructed without going through list().
             venv.set_python_version().await;
             table.add_row(vec![
                 (index + 1).to_string(),
@@ -246,6 +252,8 @@ mod tests {
                 packages: Vec::new(),
                 default: false,
                 settings: settings::Settings::get_settings(),
+                package_count: None,
+                installed_packages: Vec::new(),
             },
             UvVenv {
                 name: Cow::Borrowed("venv2"),
@@ -254,6 +262,8 @@ mod tests {
                 packages: Vec::new(),
                 default: true,
                 settings: settings::Settings::get_settings(),
+                package_count: None,
+                installed_packages: Vec::new(),
             },
         ];
         VENVMANAGER
@@ -272,6 +282,8 @@ mod tests {
                 packages: Vec::new(),
                 default: false,
                 settings: settings::Settings::get_settings(),
+                package_count: None,
+                installed_packages: Vec::new(),
             },
             UvVenv {
                 name: Cow::Borrowed("venv2"),
@@ -280,6 +292,8 @@ mod tests {
                 packages: Vec::new(),
                 default: true,
                 settings: settings::Settings::get_settings(),
+                package_count: None,
+                installed_packages: Vec::new(),
             },
         ];
 

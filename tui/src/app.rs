@@ -188,6 +188,8 @@ pub struct App<'a> {
     pub bg_task_name: Option<String>,
     /// One-shot status message (text, is_error) – cleared on the next keypress.
     pub status_message: Option<(String, bool)>,
+    /// Scroll offset for the packages list in the detail panel.
+    pub pkg_scroll: usize,
 }
 
 impl<'a> App<'a> {
@@ -209,6 +211,7 @@ impl<'a> App<'a> {
             bg_rx: None,
             bg_task_name: None,
             status_message: None,
+            pkg_scroll: 0,
         }
     }
 
@@ -227,6 +230,7 @@ impl<'a> App<'a> {
     pub fn next_item(&mut self) {
         if self.tab == Tab::Environments && !self.venvs.is_empty() {
             self.selected = (self.selected + 1) % self.venvs.len();
+            self.pkg_scroll = 0;
         }
     }
 
@@ -237,6 +241,7 @@ impl<'a> App<'a> {
             } else {
                 self.selected -= 1;
             }
+            self.pkg_scroll = 0;
         }
     }
 
@@ -253,6 +258,19 @@ impl<'a> App<'a> {
     /// Returns `true` while a background task is in-flight.
     pub fn is_busy(&self) -> bool {
         self.bg_rx.is_some()
+    }
+
+    /// Scroll the packages list in the detail panel down by one row.
+    /// `total` is the number of packages in the currently selected venv.
+    pub fn scroll_pkg_down(&mut self, total: usize) {
+        if self.pkg_scroll + 1 < total {
+            self.pkg_scroll += 1;
+        }
+    }
+
+    /// Scroll the packages list in the detail panel up by one row.
+    pub fn scroll_pkg_up(&mut self) {
+        self.pkg_scroll = self.pkg_scroll.saturating_sub(1);
     }
 }
 
@@ -617,5 +635,64 @@ mod tests {
     #[test]
     fn test_create_field_prev_packages() {
         assert_eq!(CreateField::Packages.prev(), CreateField::Version);
+    }
+
+    // ── pkg_scroll ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_pkg_scroll_defaults_to_zero() {
+        let app = make_app();
+        assert_eq!(app.pkg_scroll, 0);
+    }
+
+    #[test]
+    fn test_pkg_scroll_up_at_zero_stays_zero() {
+        let mut app = make_app();
+        app.scroll_pkg_up();
+        assert_eq!(app.pkg_scroll, 0);
+    }
+
+    #[test]
+    fn test_pkg_scroll_down_increments() {
+        let mut app = make_app();
+        app.scroll_pkg_down(5);
+        assert_eq!(app.pkg_scroll, 1);
+        app.scroll_pkg_down(5);
+        assert_eq!(app.pkg_scroll, 2);
+    }
+
+    #[test]
+    fn test_pkg_scroll_down_capped_at_total_minus_one() {
+        let mut app = make_app();
+        // With total=3, max scroll is 2.
+        app.scroll_pkg_down(3);
+        app.scroll_pkg_down(3);
+        app.scroll_pkg_down(3); // should stop at 2
+        assert_eq!(app.pkg_scroll, 2);
+    }
+
+    #[test]
+    fn test_pkg_scroll_up_decrements() {
+        let mut app = make_app();
+        app.pkg_scroll = 3;
+        app.scroll_pkg_up();
+        assert_eq!(app.pkg_scroll, 2);
+    }
+
+    #[test]
+    fn test_next_item_resets_pkg_scroll() {
+        let mut app = make_app_with_venvs();
+        app.pkg_scroll = 5;
+        app.next_item();
+        assert_eq!(app.pkg_scroll, 0);
+    }
+
+    #[test]
+    fn test_prev_item_resets_pkg_scroll() {
+        let mut app = make_app_with_venvs();
+        app.selected = 2;
+        app.pkg_scroll = 5;
+        app.prev_item();
+        assert_eq!(app.pkg_scroll, 0);
     }
 }
