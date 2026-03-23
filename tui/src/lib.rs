@@ -377,6 +377,18 @@ where
                 app.pending_venv_action = Some(VenvAction::Activate);
                 break;
             }
+            // Package list scrolling – active when a venv is selected.
+            KeyCode::Char('j')
+                if app.tab == app::Tab::Environments && !app.venvs.is_empty() =>
+            {
+                let total = app.venvs[app.selected].installed_packages.len();
+                app.scroll_pkg_down(total);
+            }
+            KeyCode::Char('k')
+                if app.tab == app::Tab::Environments && !app.venvs.is_empty() =>
+            {
+                app.scroll_pkg_up();
+            }
             _ => {}
         }
     }

@@ -72,7 +72,29 @@ fn draw_environments(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) 
         ])
         .split(area);
 
-    // ── Left: venv list ──────────────────────────────────────────────────────
+    // ── Left: venv list with column header ───────────────────────────────────
+    let title = format!(" Virtual Environments ({}) ", app.venvs.len());
+    let outer_block = Block::default().borders(Borders::ALL).title(title);
+    let inner_area = outer_block.inner(columns[0]);
+    frame.render_widget(outer_block, columns[0]);
+
+    // Split the inner area: 1-line column header + list
+    let left_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Min(0)])
+        .split(inner_area);
+
+    let header_style = Style::default()
+        .fg(Color::DarkGray)
+        .add_modifier(Modifier::BOLD);
+    let header = Paragraph::new(Line::from(vec![
+        // 7 chars offset matches: 2 (highlight prefix) + 3 (index field) + 2 (". ")
+        Span::styled("       ", header_style),
+        Span::styled(format!("{:<22}", "Name"), header_style),
+        Span::styled("  Version", header_style),
+    ]));
+    frame.render_widget(header, left_chunks[0]);
+
     let items: Vec<ListItem> = app
         .venvs
         .iter()
@@ -88,7 +110,7 @@ fn draw_environments(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) 
                     Style::default().fg(Color::Cyan),
                 ),
                 Span::styled(
-                    format!("  py{}", venv.python_version),
+                    format!("  {}", venv.python_version),
                     Style::default().fg(Color::Green),
                 ),
             ]);
@@ -96,9 +118,7 @@ fn draw_environments(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) 
         })
         .collect();
 
-    let title = format!(" Virtual Environments ({}) ", app.venvs.len());
     let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title(title))
         .highlight_style(
             Style::default()
                 .fg(Color::Yellow)
@@ -111,7 +131,7 @@ fn draw_environments(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) 
         state.select(Some(app.selected));
     }
 
-    frame.render_stateful_widget(list, columns[0], &mut state);
+    frame.render_stateful_widget(list, left_chunks[1], &mut state);
 
     // ── Right: detail panel ──────────────────────────────────────────────────
     draw_venv_detail(frame, app, columns[1]);
@@ -119,72 +139,112 @@ fn draw_environments(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) 
 
 fn draw_venv_detail(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     let label_style = Style::default().fg(Color::DarkGray);
-    let value_style = Style::default().fg(Color::White);
 
-    let lines = if app.venvs.is_empty() {
-        vec![
+    if app.venvs.is_empty() {
+        let lines = vec![
             Line::from(""),
             Line::from(vec![Span::styled(
                 "  No environments found.",
-                Style::default().fg(Color::DarkGray),
+                label_style,
             )]),
             Line::from(""),
             Line::from(vec![Span::styled(
                 "  Press [n] to create one.",
-                Style::default().fg(Color::DarkGray),
+                label_style,
             )]),
-        ]
+        ];
+        frame.render_widget(
+            Paragraph::new(lines)
+                .block(Block::default().borders(Borders::ALL).title(" Details ")),
+            area,
+        );
+        return;
+    }
+
+    let venv = &app.venvs[app.selected];
+
+    // Render the outer block, using the venv name as the title.
+    let block_title = format!(" {} ", venv.name);
+    let outer_block = Block::default()
+        .borders(Borders::ALL)
+        .title(block_title)
+        .title_style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        );
+    let inner = outer_block.inner(area);
+    frame.render_widget(outer_block, area);
+
+    // Split inner area: fixed metadata section + packages list
+    let meta_height = 6u16; // python + blank + location + blank + packages header + divider
+    let inner_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(meta_height), Constraint::Min(0)])
+        .split(inner);
+
+    let display_path = pylot_shared::utils::shorten_home_path(venv.path.as_str());
+    let version_text = if venv.python_version.is_empty() {
+        "unknown".to_string()
     } else {
-        let venv = &app.venvs[app.selected];
-
-        // Replace the home directory prefix with ~ for a compact display.
-        let display_path = pylot_shared::utils::shorten_home_path(venv.path.as_str());
-
-        let pkg_text = match venv.package_count {
-            Some(n) => format!("{} installed", n),
-            None => "unknown".to_string(),
-        };
-
-        let version_text = if venv.python_version.is_empty() {
-            "unknown".to_string()
-        } else {
-            format!("Python {}", venv.python_version)
-        };
-
-        vec![
-            Line::from(""),
-            Line::from(vec![
-                Span::styled("  Name     : ", label_style),
-                Span::styled(
-                    venv.name.as_ref().to_string(),
-                    Style::default()
-                        .fg(Color::Cyan)
-                        .add_modifier(Modifier::BOLD),
-                ),
-            ]),
-            Line::from(""),
-            Line::from(vec![
-                Span::styled("  Python   : ", label_style),
-                Span::styled(version_text, Style::default().fg(Color::Green)),
-            ]),
-            Line::from(""),
-            Line::from(vec![
-                Span::styled("  Location : ", label_style),
-                Span::styled(display_path, value_style),
-            ]),
-            Line::from(""),
-            Line::from(vec![
-                Span::styled("  Packages : ", label_style),
-                Span::styled(pkg_text, Style::default().fg(Color::Magenta)),
-            ]),
-        ]
+        venv.python_version.clone()
     };
+    let pkg_count = venv.installed_packages.len();
+    let divider = "─".repeat(inner_chunks[0].width.saturating_sub(2) as usize);
 
-    let paragraph = Paragraph::new(lines)
-        .block(Block::default().borders(Borders::ALL).title(" Details "))
-        .wrap(ratatui::widgets::Wrap { trim: false });
+    let meta_lines = vec![
+        Line::from(vec![
+            Span::styled("  Python   : ", label_style),
+            Span::styled(version_text, Style::default().fg(Color::Green)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Location : ", label_style),
+            Span::styled(display_path, Style::default().fg(Color::White)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(
+                format!("  Packages ({})  ", pkg_count),
+                Style::default()
+                    .fg(Color::Magenta)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("[j] down  [k] up", label_style),
+        ]),
+        Line::from(Span::styled(divider, label_style)),
+    ];
+    frame.render_widget(Paragraph::new(meta_lines), inner_chunks[0]);
 
-    frame.render_widget(paragraph, area);
+    // Packages list (scrollable via pkg_scroll)
+    let pkg_items: Vec<ListItem> = venv
+        .installed_packages
+        .iter()
+        .map(|p| {
+            // "name version" → name in magenta, version in dark gray
+            let line = match p.splitn(2, ' ').collect::<Vec<_>>().as_slice() {
+                [name, version] => Line::from(vec![
+                    Span::styled(
+                        format!("  {}", name),
+                        Style::default().fg(Color::Magenta),
+                    ),
+                    Span::styled(
+                        format!(" {}", version),
+                        Style::default().fg(Color::DarkGray),
+                    ),
+                ]),
+                _ => Line::from(Span::styled(
+                    format!("  {}", p),
+                    Style::default().fg(Color::Magenta),
+                )),
+            };
+            ListItem::new(line)
+        })
+        .collect();
+
+    let pkg_list = List::new(pkg_items);
+    let mut pkg_state = ListState::default().with_offset(app.pkg_scroll);
+    frame.render_stateful_widget(pkg_list, inner_chunks[1], &mut pkg_state);
 }
 
 fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
@@ -326,6 +386,8 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
                 spans.push(Span::raw(": delete  "));
                 spans.push(Span::styled("Enter", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(": activate  "));
+                spans.push(Span::styled("j/k", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(": scroll pkgs  "));
             }
         }
         Tab::UvInfo => {

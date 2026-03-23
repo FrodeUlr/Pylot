@@ -16,6 +16,8 @@ pub struct UvVenv<'a> {
     pub default: bool,
     pub settings: settings::Settings,
     pub package_count: Option<usize>,
+    /// Sorted list of installed package display strings (`"name version"`).
+    pub installed_packages: Vec<String>,
 }
 
 impl<'a> Create for UvVenv<'a> {
@@ -164,6 +166,7 @@ impl<'a> UvVenv<'a> {
             default,
             settings: settings::Settings::get_settings(),
             package_count: None,
+            installed_packages: Vec::new(),
         }
     }
 
@@ -228,8 +231,8 @@ impl<'a> UvVenv<'a> {
         }
     }
 
-    /// Count the number of installed packages by scanning `.dist-info` directories
-    /// inside the venv's `site-packages` directory.  Sets `self.package_count`.
+    /// Scan the venv's `site-packages` for `.dist-info` directories.
+    /// Populates `self.package_count` and `self.installed_packages` (sorted).
     pub(crate) async fn count_packages(&mut self) {
         // Unix layout: {path}/lib/pythonX.Y/site-packages/
         if let Ok(mut lib_entries) =
@@ -240,8 +243,9 @@ impl<'a> UvVenv<'a> {
                     let name = entry.file_name().to_string_lossy().to_string();
                     if name.starts_with("python") {
                         let site_pkgs = entry.path().join("site-packages");
-                        if let Some(count) = Self::count_dist_info_dirs(&site_pkgs).await {
-                            self.package_count = Some(count);
+                        if let Some(pkgs) = Self::collect_dist_info_packages(&site_pkgs).await {
+                            self.package_count = Some(pkgs.len());
+                            self.installed_packages = pkgs;
                             return;
                         }
                     }
@@ -252,21 +256,44 @@ impl<'a> UvVenv<'a> {
         let win_path = std::path::Path::new(&self.path)
             .join("Lib")
             .join("site-packages");
-        self.package_count = Self::count_dist_info_dirs(&win_path).await;
+        if let Some(pkgs) = Self::collect_dist_info_packages(&win_path).await {
+            self.package_count = Some(pkgs.len());
+            self.installed_packages = pkgs;
+        }
     }
 
-    async fn count_dist_info_dirs(site_pkgs: &std::path::Path) -> Option<usize> {
+    /// Collect the names of all installed packages by scanning `.dist-info` directories
+    /// inside `site_pkgs`.  Returns `None` if the directory cannot be read.
+    async fn collect_dist_info_packages(site_pkgs: &std::path::Path) -> Option<Vec<String>> {
         let mut entries = async_fs::read_dir(site_pkgs).await.ok()?;
-        let mut count = 0usize;
+        let mut packages = Vec::new();
         while let Ok(Some(entry)) = entries.next_entry().await {
             let name = entry.file_name();
-            let is_dist_info = name.to_string_lossy().ends_with(".dist-info");
+            let name_str = name.to_string_lossy();
+            let is_dist_info = name_str.ends_with(".dist-info");
             let is_dir = entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false);
             if is_dist_info && is_dir {
-                count += 1;
+                packages.push(Self::format_dist_info_name(&name_str));
             }
         }
-        Some(count)
+        packages.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+        Some(packages)
+    }
+
+    /// Convert a `.dist-info` directory name into a human-readable `"name version"` string.
+    ///
+    /// For example `requests-2.28.0.dist-info` → `"requests 2.28.0"`, and
+    /// `Pillow-10.0.0.dist-info` → `"pillow 10.0.0"` (name normalised to lowercase,
+    /// underscores replaced with hyphens per PEP 427).
+    fn format_dist_info_name(dir_name: &str) -> String {
+        let base = dir_name.trim_end_matches(".dist-info");
+        if let Some(pos) = base.rfind('-') {
+            let name = base[..pos].replace('_', "-").to_lowercase();
+            let version = &base[pos + 1..];
+            format!("{} {}", name, version)
+        } else {
+            base.replace('_', "-").to_lowercase()
+        }
     }
 
     /// Install packages without shell command injection
@@ -576,9 +603,10 @@ mod tests {
             vec![],
             false,
         );
-        // No site-packages directory → package_count stays None.
+        // No site-packages directory → package_count stays None, list empty.
         venv.count_packages().await;
         assert_eq!(venv.package_count, None);
+        assert!(venv.installed_packages.is_empty());
     }
 
     #[tokio::test]
@@ -608,6 +636,10 @@ mod tests {
         );
         venv.count_packages().await;
         assert_eq!(venv.package_count, Some(2));
+        assert_eq!(venv.installed_packages.len(), 2);
+        // Sorted alphabetically: flask before requests
+        assert_eq!(venv.installed_packages[0], "flask 3.0.0");
+        assert_eq!(venv.installed_packages[1], "requests 2.28.0");
     }
 
     #[tokio::test]
@@ -635,6 +667,32 @@ mod tests {
         // On Linux the Unix layout search will find no "python*" dir, so it
         // falls back to the Windows layout.
         assert_eq!(venv.package_count, Some(1));
+        assert_eq!(venv.installed_packages, vec!["numpy 1.26.0"]);
+    }
+
+    // ── format_dist_info_name ────────────────────────────────────────────────
+
+    #[test]
+    fn test_format_dist_info_name_simple() {
+        assert_eq!(UvVenv::format_dist_info_name("requests-2.28.0.dist-info"), "requests 2.28.0");
+    }
+
+    #[test]
+    fn test_format_dist_info_name_underscores() {
+        // Underscores in the package name are replaced with hyphens (PEP 427).
+        assert_eq!(UvVenv::format_dist_info_name("my_package-1.0.0.dist-info"), "my-package 1.0.0");
+    }
+
+    #[test]
+    fn test_format_dist_info_name_uppercase() {
+        // Name is normalised to lowercase.
+        assert_eq!(UvVenv::format_dist_info_name("Pillow-10.0.0.dist-info"), "pillow 10.0.0");
+    }
+
+    #[test]
+    fn test_format_dist_info_name_no_version() {
+        // No `-` separator → treat the whole thing as the name.
+        assert_eq!(UvVenv::format_dist_info_name("somepkg.dist-info"), "somepkg");
     }
 }
 

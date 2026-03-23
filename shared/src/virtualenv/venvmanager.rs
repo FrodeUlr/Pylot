@@ -253,6 +253,7 @@ mod tests {
                 default: false,
                 settings: settings::Settings::get_settings(),
                 package_count: None,
+                installed_packages: Vec::new(),
             },
             UvVenv {
                 name: Cow::Borrowed("venv2"),
@@ -262,6 +263,7 @@ mod tests {
                 default: true,
                 settings: settings::Settings::get_settings(),
                 package_count: None,
+                installed_packages: Vec::new(),
             },
         ];
         VENVMANAGER
@@ -281,6 +283,7 @@ mod tests {
                 default: false,
                 settings: settings::Settings::get_settings(),
                 package_count: None,
+                installed_packages: Vec::new(),
             },
             UvVenv {
                 name: Cow::Borrowed("venv2"),
@@ -290,6 +293,7 @@ mod tests {
                 default: true,
                 settings: settings::Settings::get_settings(),
                 package_count: None,
+                installed_packages: Vec::new(),
             },
         ];
 
