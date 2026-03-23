@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Tabs},
 };
 
-use crate::app::{App, ConfirmDialog, CreateField, Tab};
+use crate::app::{App, ConfirmDialog, CreateField, PkgDialog, Tab};
 
 /// Draw the TUI to the given frame
 pub fn draw(frame: &mut Frame, app: &App) {
@@ -34,6 +34,14 @@ pub fn draw(frame: &mut Frame, app: &App) {
     }
     if let Some(ref dialog) = app.confirm_dialog {
         draw_confirm_dialog(frame, dialog);
+    }
+    if let Some(ref dialog) = app.pkg_dialog {
+        let venv_name = if !app.venvs.is_empty() {
+            app.venvs[app.selected].name.as_ref()
+        } else {
+            ""
+        };
+        draw_pkg_dialog(frame, dialog, venv_name);
     }
 }
 fn draw_tabs(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
@@ -189,7 +197,34 @@ fn draw_venv_detail(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     } else {
         venv.python_version.clone()
     };
-    let pkg_count = venv.installed_packages.len();
+
+    // Build the packages header and list, accounting for search mode.
+    let search_active = app.pkg_search.is_some();
+    let search_query = app.pkg_search.as_deref().unwrap_or("");
+    let query_lower = search_query.to_lowercase();
+
+    let filtered_packages: Vec<&String> = if search_active && !search_query.is_empty() {
+        venv.installed_packages
+            .iter()
+            .filter(|p| p.to_lowercase().contains(&query_lower))
+            .collect()
+    } else {
+        venv.installed_packages.iter().collect()
+    };
+
+    let total_pkg_count = venv.installed_packages.len();
+    let display_count = if search_active && !search_query.is_empty() {
+        format!("  Packages ({}/{})  ", filtered_packages.len(), total_pkg_count)
+    } else {
+        format!("  Packages ({})  ", total_pkg_count)
+    };
+
+    let pkg_scroll_hint = if search_active {
+        format!("/{}█", search_query)
+    } else {
+        "[j] down  [k] up".to_string()
+    };
+
     let divider = "─".repeat(inner_chunks[0].width.saturating_sub(2) as usize);
 
     let meta_lines = vec![
@@ -205,34 +240,61 @@ fn draw_venv_detail(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         Line::from(""),
         Line::from(vec![
             Span::styled(
-                format!("  Packages ({})  ", pkg_count),
+                display_count,
                 Style::default()
                     .fg(Color::Magenta)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("[j] down  [k] up", label_style),
+            if search_active {
+                Span::styled(
+                    pkg_scroll_hint,
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                )
+            } else {
+                Span::styled(pkg_scroll_hint, label_style)
+            },
         ]),
         Line::from(Span::styled(divider, label_style)),
     ];
     frame.render_widget(Paragraph::new(meta_lines), inner_chunks[0]);
 
-    // Packages list (scrollable via pkg_scroll)
-    let pkg_items: Vec<ListItem> = venv
-        .installed_packages
+    // Packages list (scrollable via pkg_scroll, filtered/highlighted when search active)
+    let pkg_items: Vec<ListItem> = filtered_packages
         .iter()
         .map(|p| {
-            // "name version" → name in magenta, version in dark gray
+            // "name version" → render with optional search highlight
             let line = match p.splitn(2, ' ').collect::<Vec<_>>().as_slice() {
-                [name, version] => Line::from(vec![
-                    Span::styled(
-                        format!("  {}", name),
-                        Style::default().fg(Color::Magenta),
-                    ),
-                    Span::styled(
-                        format!(" {}", version),
-                        Style::default().fg(Color::DarkGray),
-                    ),
-                ]),
+                [name, version] => {
+                    if search_active && !search_query.is_empty() {
+                        // Highlight matches in name and version
+                        let name_spans = highlight_match(
+                            &format!("  {}", name),
+                            &query_lower,
+                            Color::Magenta,
+                            Color::Yellow,
+                        );
+                        let version_spans = highlight_match(
+                            &format!(" {}", version),
+                            &query_lower,
+                            Color::DarkGray,
+                            Color::Yellow,
+                        );
+                        let mut spans = name_spans;
+                        spans.extend(version_spans);
+                        Line::from(spans)
+                    } else {
+                        Line::from(vec![
+                            Span::styled(
+                                format!("  {}", name),
+                                Style::default().fg(Color::Magenta),
+                            ),
+                            Span::styled(
+                                format!(" {}", version),
+                                Style::default().fg(Color::DarkGray),
+                            ),
+                        ])
+                    }
+                }
                 _ => Line::from(Span::styled(
                     format!("  {}", p),
                     Style::default().fg(Color::Magenta),
@@ -243,8 +305,48 @@ fn draw_venv_detail(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         .collect();
 
     let pkg_list = List::new(pkg_items);
-    let mut pkg_state = ListState::default().with_offset(app.pkg_scroll);
+    let pkg_scroll = if search_active { 0 } else { app.pkg_scroll };
+    let mut pkg_state = ListState::default().with_offset(pkg_scroll);
     frame.render_stateful_widget(pkg_list, inner_chunks[1], &mut pkg_state);
+}
+
+/// Split `text` into styled spans, highlighting occurrences of `query` (already lowercase).
+/// Matched portions use `highlight_color`; the rest uses `base_color`.
+fn highlight_match<'a>(
+    text: &str,
+    query: &str,
+    base_color: Color,
+    highlight_color: Color,
+) -> Vec<Span<'a>> {
+    if query.is_empty() {
+        return vec![Span::styled(text.to_string(), Style::default().fg(base_color))];
+    }
+    let mut spans = Vec::new();
+    let text_lower = text.to_lowercase();
+    let mut last = 0;
+    while let Some(pos) = text_lower[last..].find(query) {
+        let abs = last + pos;
+        if abs > last {
+            spans.push(Span::styled(
+                text[last..abs].to_string(),
+                Style::default().fg(base_color),
+            ));
+        }
+        spans.push(Span::styled(
+            text[abs..abs + query.len()].to_string(),
+            Style::default()
+                .fg(highlight_color)
+                .add_modifier(Modifier::BOLD),
+        ));
+        last = abs + query.len();
+    }
+    if last < text.len() {
+        spans.push(Span::styled(
+            text[last..].to_string(),
+            Style::default().fg(base_color),
+        ));
+    }
+    spans
 }
 
 fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
@@ -370,6 +472,63 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         return;
     }
 
+    // When the pkg_dialog is open, show dialog-specific hints.
+    if app.pkg_dialog.is_some() {
+        let action = app.pkg_dialog.as_ref().map(|d| d.title()).unwrap_or("");
+        let spans = vec![
+            Span::styled(action, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::raw("  "),
+            Span::styled("Enter", Style::default().fg(Color::Yellow)),
+            Span::raw(": confirm  "),
+            Span::styled("Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(": cancel"),
+        ];
+        let help = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
+        frame.render_widget(help, area);
+        return;
+    }
+
+    // When package search is active, show search hints (including other venvs).
+    if let Some(ref query) = app.pkg_search {
+        let query_lower = query.to_lowercase();
+        let other_venvs: Vec<&str> = if !query.is_empty() {
+            let current = app.selected;
+            app.venvs
+                .iter()
+                .enumerate()
+                .filter(|(i, v)| {
+                    *i != current
+                        && v.installed_packages
+                            .iter()
+                            .any(|p| p.to_lowercase().contains(&query_lower))
+                })
+                .map(|(_, v)| v.name.as_ref())
+                .collect()
+        } else {
+            vec![]
+        };
+
+        let mut spans = vec![
+            Span::styled("/", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(": search  "),
+            Span::styled("Enter/Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(": close"),
+        ];
+        if !other_venvs.is_empty() {
+            spans.push(Span::styled(
+                "  also in: ",
+                Style::default().fg(Color::DarkGray),
+            ));
+            spans.push(Span::styled(
+                other_venvs.join(", "),
+                Style::default().fg(Color::Cyan),
+            ));
+        }
+        let help = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
+        frame.render_widget(help, area);
+        return;
+    }
+
     let mut spans = vec![
         Span::styled(" Tab", Style::default().fg(Color::Yellow)),
         Span::raw(": switch tab  "),
@@ -386,8 +545,14 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
                 spans.push(Span::raw(": delete  "));
                 spans.push(Span::styled("Enter", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(": activate  "));
+                spans.push(Span::styled("i", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(": add pkg  "));
+                spans.push(Span::styled("r", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(": remove pkg  "));
+                spans.push(Span::styled("/", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(": search  "));
                 spans.push(Span::styled("j/k", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(": scroll pkgs  "));
+                spans.push(Span::raw(": scroll  "));
             }
         }
         Tab::UvInfo => {
@@ -491,6 +656,60 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
             .title(" New Virtual Environment ")
             .title_alignment(Alignment::Center)
             .border_style(Style::default().fg(Color::Yellow)),
+    );
+
+    frame.render_widget(paragraph, area);
+}
+
+/// Render the add/remove-package dialog as a centered overlay popup.
+fn draw_pkg_dialog(frame: &mut Frame, dialog: &PkgDialog, venv_name: &str) {
+    let area = centered_rect(60, 10, frame.area());
+
+    frame.render_widget(Clear, area);
+
+    let hint_style = Style::default().fg(Color::DarkGray);
+    let input_color = match dialog.mode {
+        crate::app::PkgDialogMode::Add => Color::Green,
+        crate::app::PkgDialogMode::Remove => Color::Red,
+    };
+    let border_color = input_color;
+
+    let venv_label = if venv_name.is_empty() {
+        "".to_string()
+    } else {
+        format!("  Venv: {}", venv_name)
+    };
+
+    let lines = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled(venv_label, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Packages    : ", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::styled(dialog.input.as_str(), Style::default().fg(input_color)),
+            Span::styled("█", Style::default().fg(input_color)),
+        ]),
+        Line::from(vec![
+            Span::raw("                "),
+            Span::styled("comma-separated, e.g. requests,flask", hint_style),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Enter", Style::default().fg(Color::Yellow)),
+            Span::raw(": confirm  "),
+            Span::styled("Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(": cancel"),
+        ]),
+    ];
+
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(dialog.title())
+            .title_alignment(Alignment::Center)
+            .border_style(Style::default().fg(border_color)),
     );
 
     frame.render_widget(paragraph, area);
@@ -772,6 +991,50 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = App::new(vec![], false, None);
         app.next_tab();
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    // ── draw – pkg_dialog overlay ─────────────────────────────────────────────
+
+    #[test]
+    fn test_draw_with_pkg_dialog_add() {
+        use crate::app::{PkgDialog, PkgDialogMode};
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app_with_venvs();
+        let mut dlg = PkgDialog::new(PkgDialogMode::Add);
+        dlg.input = "requests,flask".to_string();
+        app.pkg_dialog = Some(dlg);
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_with_pkg_dialog_remove() {
+        use crate::app::{PkgDialog, PkgDialogMode};
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app_with_venvs();
+        app.pkg_dialog = Some(PkgDialog::new(PkgDialogMode::Remove));
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    // ── draw – pkg_search mode ────────────────────────────────────────────────
+
+    #[test]
+    fn test_draw_with_pkg_search_empty_query() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app_with_venvs();
+        app.pkg_search = Some(String::new());
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_with_pkg_search_query() {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app_with_venvs();
+        app.pkg_search = Some("req".to_string());
         terminal.draw(|frame| draw(frame, &app)).unwrap();
     }
 }
