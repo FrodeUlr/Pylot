@@ -14,3 +14,4 @@ log = { workspace = true }
 ratatui = { workspace = true }
 crossterm = { workspace = true, features = ["event-stream"] }
 futures = { workspace = true }
+shellexpand = { workspace = true }

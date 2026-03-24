@@ -312,11 +312,13 @@ impl<'a> UvVenv<'a> {
 
     /// Validates a requirements file path to prevent command injection.
     /// Returns an error if the path contains potentially dangerous characters.
+    /// Note: backslashes should be normalized to forward slashes before calling this.
     pub fn validate_req_file_path(path: &str) -> Result<()> {
         if path.is_empty() {
             return Err(PylotError::PathError("Requirements file path cannot be empty".to_string()));
         }
-        let dangerous_chars = ['&', '|', ';', '$', '`', '\n', '\r', '<', '>', '(', ')', '{', '}', '"', '\\'];
+        // Backslashes are accepted as Windows path separators and normalized before this call.
+        let dangerous_chars = ['&', '|', ';', '$', '`', '\n', '\r', '<', '>', '(', ')', '{', '}', '"', '\''];
         if path.chars().any(|c| dangerous_chars.contains(&c)) {
             return Err(PylotError::PathError(format!(
                 "Requirements file path '{}' contains invalid characters",
@@ -328,12 +330,15 @@ impl<'a> UvVenv<'a> {
 
     /// Install packages from a requirements.txt file into this virtual environment.
     ///
-    /// Validates the path, checks the file exists, then runs `uv pip install -r <req_file>`
+    /// Accepts Windows-style backslash paths (normalizes to forward slashes),
+    /// validates the path, checks the file exists, then runs `uv pip install -r <req_file>`
     /// inside the venv.
     pub async fn install_from_requirements(&self, req_file: &str) -> Result<()> {
-        Self::validate_req_file_path(req_file)?;
+        // Normalize Windows backslashes to forward slashes before validation.
+        let normalized = req_file.replace('\\', "/");
+        Self::validate_req_file_path(&normalized)?;
 
-        let expanded_path = shellexpand::tilde(req_file).to_string();
+        let expanded_path = shellexpand::tilde(&normalized).to_string();
 
         if !async_fs::try_exists(&expanded_path).await.unwrap_or(false) {
             return Err(PylotError::PathError(format!(
@@ -922,6 +927,33 @@ mod tests {
         );
         let result = venv.remove_packages(vec!["evil | cat".to_string()]).await;
         assert!(result.is_err());
+    }
+
+    // ── validate_req_file_path ────────────────────────────────────────────────
+
+    #[test]
+    fn test_validate_req_file_path_empty_is_error() {
+        assert!(UvVenv::validate_req_file_path("").is_err());
+    }
+
+    #[test]
+    fn test_validate_req_file_path_valid_unix() {
+        assert!(UvVenv::validate_req_file_path("/home/user/requirements.txt").is_ok());
+    }
+
+    #[test]
+    fn test_validate_req_file_path_valid_windows_normalized() {
+        // Backslashes are normalized to forward slashes before validation.
+        let normalized = "C:/Users/user/requirements.txt";
+        assert!(UvVenv::validate_req_file_path(normalized).is_ok());
+    }
+
+    #[test]
+    fn test_validate_req_file_path_rejects_injection_chars() {
+        assert!(UvVenv::validate_req_file_path("path;evil").is_err());
+        assert!(UvVenv::validate_req_file_path("path|evil").is_err());
+        assert!(UvVenv::validate_req_file_path("path&evil").is_err());
+        assert!(UvVenv::validate_req_file_path("path$evil").is_err());
     }
 }
 

@@ -456,17 +456,32 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     }
 
     // When the create dialog is open, show dialog-specific hints instead of the normal bar.
-    if app.create_dialog.is_some() {
-        let spans = vec![
-            Span::styled("Tab", Style::default().fg(Color::Yellow)),
-            Span::raw(": next field  "),
-            Span::styled("Shift+Tab", Style::default().fg(Color::Yellow)),
-            Span::raw(": prev field  "),
-            Span::styled("Enter", Style::default().fg(Color::Yellow)),
-            Span::raw(": confirm  "),
-            Span::styled("Esc", Style::default().fg(Color::Yellow)),
-            Span::raw(": cancel"),
-        ];
+    if let Some(ref d) = app.create_dialog {
+        let completions_active =
+            d.field == crate::app::CreateField::ReqFile && !d.completions.is_empty();
+        let spans = if completions_active {
+            vec![
+                Span::styled("↑↓", Style::default().fg(Color::Yellow)),
+                Span::raw(": navigate completions  "),
+                Span::styled("Tab", Style::default().fg(Color::Yellow)),
+                Span::raw(": complete  "),
+                Span::styled("Esc", Style::default().fg(Color::Yellow)),
+                Span::raw(": dismiss"),
+            ]
+        } else {
+            vec![
+                Span::styled("Tab", Style::default().fg(Color::Yellow)),
+                Span::raw(": next field  "),
+                Span::styled("Shift+Tab", Style::default().fg(Color::Yellow)),
+                Span::raw(": prev field  "),
+                Span::styled("←→", Style::default().fg(Color::Yellow)),
+                Span::raw(": cursor  "),
+                Span::styled("Enter", Style::default().fg(Color::Yellow)),
+                Span::raw(": confirm  "),
+                Span::styled("Esc", Style::default().fg(Color::Yellow)),
+                Span::raw(": cancel"),
+            ]
+        };
         let help = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
         frame.render_widget(help, area);
         return;
@@ -577,7 +592,13 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
 
 /// Render the create-venv dialog as a centered overlay popup.
 fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
-    let area = centered_rect(60, 17, frame.area());
+    let completions_active =
+        dialog.field == CreateField::ReqFile && !dialog.completions.is_empty();
+    let max_shown_completions: usize = 6;
+    let shown_count = dialog.completions.len().min(max_shown_completions);
+    // Extra lines: 1 blank separator + N completion rows
+    let extra_height = if completions_active { (shown_count + 1) as u16 } else { 0 };
+    let area = centered_rect(60, 17 + extra_height, frame.area());
 
     // Clear the background so the dialog appears cleanly over other widgets.
     frame.render_widget(Clear, area);
@@ -597,7 +618,20 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
 
     let default_indicator = if dialog.default_pkgs { "[x]" } else { "[ ]" };
 
-    let lines = vec![
+    // Build req_file line with cursor at the correct position.
+    let req_before: String = dialog.req_file.chars().take(dialog.req_file_cursor).collect();
+    let req_after: String = dialog.req_file.chars().skip(dialog.req_file_cursor).collect();
+
+    let mut req_file_spans = vec![
+        Span::styled("  Req. file   : ", label_style(CreateField::ReqFile)),
+        Span::styled(req_before, Style::default().fg(Color::Blue)),
+    ];
+    if dialog.field == CreateField::ReqFile {
+        req_file_spans.push(Span::styled("█", Style::default().fg(Color::Blue)));
+    }
+    req_file_spans.push(Span::styled(req_after, Style::default().fg(Color::Blue)));
+
+    let mut lines = vec![
         Line::from(""),
         Line::from(vec![
             Span::styled("  Name        : ", label_style(CreateField::Name)),
@@ -633,27 +667,60 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
             Span::styled("e.g. requests,flask==2.28.0", hint_style),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("  Req. file   : ", label_style(CreateField::ReqFile)),
-            Span::styled(dialog.req_file.as_str(), Style::default().fg(Color::Blue)),
-            if dialog.field == CreateField::ReqFile {
-                Span::styled("█", Style::default().fg(Color::Blue))
-            } else {
-                Span::raw("")
-            },
-        ]),
+        Line::from(req_file_spans),
         Line::from(vec![
             Span::raw("                "),
             Span::styled("path to requirements.txt (optional)", hint_style),
         ]),
-        Line::from(""),
+    ];
+
+    // Show directory completions when the path ends with '/'.
+    if completions_active {
+        lines.push(Line::from(""));
+        for (i, entry) in dialog.completions.iter().take(max_shown_completions).enumerate() {
+            let is_selected = i == dialog.completion_selected;
+            let (prefix, entry_style) = if is_selected {
+                (
+                    "  ▶ ",
+                    Style::default().fg(Color::Black).bg(Color::Blue).add_modifier(Modifier::BOLD),
+                )
+            } else {
+                ("    ", Style::default().fg(Color::Blue))
+            };
+            lines.push(Line::from(vec![
+                Span::styled(prefix, entry_style),
+                Span::styled(entry.as_str(), entry_style),
+            ]));
+        }
+        if dialog.completions.len() > max_shown_completions {
+            lines.push(Line::from(vec![
+                Span::raw("    "),
+                Span::styled(
+                    format!("… {} more", dialog.completions.len() - max_shown_completions),
+                    hint_style,
+                ),
+            ]));
+        }
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![
+        Span::styled("  Default pkgs: ", label_style(CreateField::DefaultPkgs)),
+        Span::styled(default_indicator, label_style(CreateField::DefaultPkgs)),
+        Span::raw("  "),
+        Span::styled("(Space to toggle)", hint_style),
+    ]));
+    lines.push(Line::from(""));
+    let footer_line = if completions_active {
         Line::from(vec![
-            Span::styled("  Default pkgs: ", label_style(CreateField::DefaultPkgs)),
-            Span::styled(default_indicator, label_style(CreateField::DefaultPkgs)),
-            Span::raw("  "),
-            Span::styled("(Space to toggle)", hint_style),
-        ]),
-        Line::from(""),
+            Span::styled("  ↑↓", Style::default().fg(Color::Yellow)),
+            Span::raw(": navigate  "),
+            Span::styled("Tab", Style::default().fg(Color::Yellow)),
+            Span::raw(": complete  "),
+            Span::styled("Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(": dismiss"),
+        ])
+    } else {
         Line::from(vec![
             Span::styled("  Tab", Style::default().fg(Color::Yellow)),
             Span::raw(": next field  "),
@@ -661,8 +728,9 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
             Span::raw(": confirm  "),
             Span::styled("Esc", Style::default().fg(Color::Yellow)),
             Span::raw(": cancel"),
-        ]),
-    ];
+        ])
+    };
+    lines.push(footer_line);
 
     let paragraph = Paragraph::new(lines).block(
         Block::default()

@@ -102,6 +102,12 @@ pub struct CreateDialog {
     pub packages: String,
     /// Optional path to a requirements.txt file to install on creation
     pub req_file: String,
+    /// Cursor position (in characters) within `req_file`.
+    pub req_file_cursor: usize,
+    /// Directory completions shown when `req_file` ends with `/`.
+    pub completions: Vec<String>,
+    /// Index of the currently highlighted completion entry.
+    pub completion_selected: usize,
     pub default_pkgs: bool,
 }
 
@@ -113,28 +119,53 @@ impl CreateDialog {
             version: default_version.to_string(),
             packages: String::new(),
             req_file: String::new(),
+            req_file_cursor: 0,
+            completions: Vec::new(),
+            completion_selected: 0,
             default_pkgs: false,
         }
     }
 
     /// Push a character into the currently focused text field (no-op for bool field).
+    /// For `ReqFile`, backslashes are normalized to forward slashes and the character
+    /// is inserted at the current cursor position.
     pub fn push_char(&mut self, c: char) {
         match self.field {
             CreateField::Name => self.name.push(c),
             CreateField::Version => self.version.push(c),
             CreateField::Packages => self.packages.push(c),
-            CreateField::ReqFile => self.req_file.push(c),
+            CreateField::ReqFile => {
+                // Normalize Windows-style backslashes to forward slashes.
+                let c = if c == '\\' { '/' } else { c };
+                let byte_idx = self.req_file
+                    .char_indices()
+                    .nth(self.req_file_cursor)
+                    .map_or(self.req_file.len(), |(i, _)| i);
+                self.req_file.insert(byte_idx, c);
+                self.req_file_cursor += 1;
+            }
             CreateField::DefaultPkgs => {}
         }
     }
 
     /// Delete the last character of the currently focused text field.
+    /// For `ReqFile`, deletes the character immediately before the cursor (Backspace).
     pub fn pop_char(&mut self) {
         match self.field {
             CreateField::Name => { self.name.pop(); }
             CreateField::Version => { self.version.pop(); }
             CreateField::Packages => { self.packages.pop(); }
-            CreateField::ReqFile => { self.req_file.pop(); }
+            CreateField::ReqFile => {
+                if self.req_file_cursor > 0 {
+                    let byte_idx = self.req_file
+                        .char_indices()
+                        .nth(self.req_file_cursor - 1)
+                        .map(|(i, _)| i)
+                        .unwrap_or(0);
+                    self.req_file.remove(byte_idx);
+                    self.req_file_cursor -= 1;
+                }
+            }
             CreateField::DefaultPkgs => {}
         }
     }
@@ -142,6 +173,36 @@ impl CreateDialog {
     /// Toggle the boolean default-packages field.
     pub fn toggle_default(&mut self) {
         self.default_pkgs = !self.default_pkgs;
+    }
+
+    /// Move the req_file cursor one character to the left.
+    pub fn req_file_cursor_left(&mut self) {
+        self.req_file_cursor = self.req_file_cursor.saturating_sub(1);
+    }
+
+    /// Move the req_file cursor one character to the right.
+    pub fn req_file_cursor_right(&mut self) {
+        let max = self.req_file.chars().count();
+        if self.req_file_cursor < max {
+            self.req_file_cursor += 1;
+        }
+    }
+
+    /// Move the req_file cursor to the start of the input.
+    pub fn req_file_cursor_home(&mut self) {
+        self.req_file_cursor = 0;
+    }
+
+    /// Move the req_file cursor to the end of the input.
+    pub fn req_file_cursor_end(&mut self) {
+        self.req_file_cursor = self.req_file.chars().count();
+    }
+
+    /// Append `entry` to req_file (used when a directory completion is accepted).
+    /// Updates the cursor to the new end of the string.
+    pub fn req_file_complete(&mut self, entry: &str) {
+        self.req_file.push_str(entry);
+        self.req_file_cursor = self.req_file.chars().count();
     }
 
     /// Collect packages from the raw comma-separated string.
@@ -453,6 +514,9 @@ mod tests {
         assert_eq!(d.version, "3.12");
         assert!(d.name.is_empty());
         assert!(d.req_file.is_empty());
+        assert_eq!(d.req_file_cursor, 0);
+        assert!(d.completions.is_empty());
+        assert_eq!(d.completion_selected, 0);
         assert!(!d.default_pkgs);
     }
 
@@ -661,8 +725,89 @@ mod tests {
         d.push_char('m');
         d.push_char('p');
         assert_eq!(d.req_file, "/tmp");
+        assert_eq!(d.req_file_cursor, 4);
         d.pop_char();
         assert_eq!(d.req_file, "/tm");
+        assert_eq!(d.req_file_cursor, 3);
+    }
+
+    #[test]
+    fn test_create_dialog_req_file_backslash_normalized() {
+        let mut d = CreateDialog::new("3.12");
+        d.field = CreateField::ReqFile;
+        d.push_char('C');
+        d.push_char(':');
+        d.push_char('\\');
+        d.push_char('f');
+        // Backslash should be stored as forward slash.
+        assert_eq!(d.req_file, "C:/f");
+    }
+
+    #[test]
+    fn test_create_dialog_req_file_cursor_left_right() {
+        let mut d = CreateDialog::new("3.12");
+        d.field = CreateField::ReqFile;
+        d.push_char('a');
+        d.push_char('b');
+        d.push_char('c');
+        assert_eq!(d.req_file_cursor, 3);
+        d.req_file_cursor_left();
+        assert_eq!(d.req_file_cursor, 2);
+        d.req_file_cursor_right();
+        assert_eq!(d.req_file_cursor, 3);
+        // Cannot go past end.
+        d.req_file_cursor_right();
+        assert_eq!(d.req_file_cursor, 3);
+    }
+
+    #[test]
+    fn test_create_dialog_req_file_cursor_left_clamp() {
+        let mut d = CreateDialog::new("3.12");
+        d.field = CreateField::ReqFile;
+        d.req_file_cursor_left(); // must not underflow
+        assert_eq!(d.req_file_cursor, 0);
+    }
+
+    #[test]
+    fn test_create_dialog_req_file_cursor_home_end() {
+        let mut d = CreateDialog::new("3.12");
+        d.field = CreateField::ReqFile;
+        d.push_char('/');
+        d.push_char('t');
+        d.push_char('m');
+        d.push_char('p');
+        assert_eq!(d.req_file_cursor, 4);
+        d.req_file_cursor_home();
+        assert_eq!(d.req_file_cursor, 0);
+        d.req_file_cursor_end();
+        assert_eq!(d.req_file_cursor, 4);
+    }
+
+    #[test]
+    fn test_create_dialog_req_file_insert_mid() {
+        // Inserting a character mid-string when cursor is not at the end.
+        let mut d = CreateDialog::new("3.12");
+        d.field = CreateField::ReqFile;
+        d.push_char('a');
+        d.push_char('c'); // "ac", cursor = 2
+        d.req_file_cursor_left(); // cursor = 1
+        d.push_char('b'); // insert 'b' at pos 1 → "abc", cursor = 2
+        assert_eq!(d.req_file, "abc");
+        assert_eq!(d.req_file_cursor, 2);
+    }
+
+    #[test]
+    fn test_create_dialog_req_file_complete() {
+        let mut d = CreateDialog::new("3.12");
+        d.field = CreateField::ReqFile;
+        d.push_char('/');
+        d.push_char('t');
+        d.push_char('m');
+        d.push_char('p');
+        d.push_char('/');
+        d.req_file_complete("requirements.txt");
+        assert_eq!(d.req_file, "/tmp/requirements.txt");
+        assert_eq!(d.req_file_cursor, d.req_file.chars().count());
     }
 
     #[test]
