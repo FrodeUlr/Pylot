@@ -281,19 +281,27 @@ where
                             let version = dialog.effective_version();
                             let packages = dialog.parsed_packages();
                             let default_pkgs = dialog.default_pkgs;
+                            let req_file = dialog.req_file.trim().to_string();
+                            let req_file_opt = if req_file.is_empty() { None } else { Some(req_file) };
                             let label = format!("Creating '{}'", name);
                             app.create_dialog = None;
                             // Spawn background task – TUI stays open.
                             spawn_venv_task(app, label, async move {
-                                UvVenv::new(
+                                let venv = UvVenv::new(
                                     Cow::Owned(name),
                                     "".to_string(),
                                     version,
                                     packages,
                                     default_pkgs,
-                                )
-                                .create()
-                                .await
+                                );
+                                venv.create().await?;
+                                if let Some(ref path) = req_file_opt {
+                                    venv.install_from_requirements(path).await
+                                        .map_err(|e| pylot_shared::error::PylotError::Other(
+                                            format!("Venv created; requirements install failed: {}", e)
+                                        ))?;
+                                }
+                                Ok(())
                             });
                         } else {
                             app.create_dialog = None;
@@ -448,7 +456,7 @@ where
                 app.confirm_dialog =
                     Some(ConfirmDialog::new(ConfirmAction::DeleteVenv(name)));
             }
-            KeyCode::Enter | KeyCode::Char('a')
+            KeyCode::Enter
                 if app.tab == app::Tab::Environments
                     && !app.venvs.is_empty()
                     && !app.is_busy() =>
@@ -470,7 +478,7 @@ where
                 app.scroll_pkg_up();
             }
             // Add packages – active when a venv is selected and not busy.
-            KeyCode::Char('i')
+            KeyCode::Char('i') | KeyCode::Char('a')
                 if app.tab == app::Tab::Environments
                     && !app.venvs.is_empty()
                     && !app.is_busy() =>

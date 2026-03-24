@@ -310,6 +310,93 @@ impl<'a> UvVenv<'a> {
         self.install_packages(pkgs, venvs_path).await
     }
 
+    /// Validates a requirements file path to prevent command injection.
+    /// Returns an error if the path contains potentially dangerous characters.
+    pub fn validate_req_file_path(path: &str) -> Result<()> {
+        if path.is_empty() {
+            return Err(PylotError::PathError("Requirements file path cannot be empty".to_string()));
+        }
+        let dangerous_chars = ['&', '|', ';', '$', '`', '\n', '\r', '<', '>', '(', ')', '{', '}', '"', '\\'];
+        if path.chars().any(|c| dangerous_chars.contains(&c)) {
+            return Err(PylotError::PathError(format!(
+                "Requirements file path '{}' contains invalid characters",
+                path
+            )));
+        }
+        Ok(())
+    }
+
+    /// Install packages from a requirements.txt file into this virtual environment.
+    ///
+    /// Validates the path, checks the file exists, then runs `uv pip install -r <req_file>`
+    /// inside the venv.
+    pub async fn install_from_requirements(&self, req_file: &str) -> Result<()> {
+        Self::validate_req_file_path(req_file)?;
+
+        let expanded_path = shellexpand::tilde(req_file).to_string();
+
+        if !async_fs::try_exists(&expanded_path).await.unwrap_or(false) {
+            return Err(PylotError::PathError(format!(
+                "Requirements file not found: {}",
+                expanded_path
+            )));
+        }
+
+        log::info!("Installing from requirements file: {}", expanded_path);
+
+        let venvs_path = shellexpand::tilde(&self.settings.venvs_path).to_string();
+        let activate_script = if cfg!(target_os = "windows") {
+            format!("{}/{}/scripts/activate.ps1", venvs_path, self.name)
+        } else {
+            format!("{}/{}/bin/activate", venvs_path, self.name)
+        };
+
+        let (cmd, args) = if cfg!(target_os = "windows") {
+            let pwsh_cmd = if uvctrl::check(PWSH_CMD).await.is_ok() {
+                PWSH_CMD
+            } else {
+                POWERSHELL_CMD
+            };
+            let command = format!(
+                "{} ; uv pip install -r \"{}\"",
+                activate_script, expanded_path
+            );
+            (pwsh_cmd, vec!["-Command".to_string(), command])
+        } else {
+            let command = format!(
+                ". {} && uv pip install -r \"{}\"",
+                activate_script, expanded_path
+            );
+            (SH_CMD, vec!["-c".to_string(), command])
+        };
+
+        let mut child = tokio::process::Command::new(cmd)
+            .args(&args)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| PylotError::CommandExecution(format!("Failed to install from requirements: {}", e)))?;
+
+        let stdout = child.stdout.take()
+            .ok_or_else(|| PylotError::CommandExecution("Failed to open stdout".to_string()))?;
+        let stderr = child.stderr.take()
+            .ok_or_else(|| PylotError::CommandExecution("Failed to open stderr".to_string()))?;
+
+        let stdout_reader = tokio::io::BufReader::new(stdout);
+        let stderr_reader = tokio::io::BufReader::new(stderr);
+
+        processes::run_command_with_handlers(
+            stdout_reader,
+            stderr_reader,
+            |line| log::info!("{}", line),
+            |line| log::warn!("{}", line),
+        )
+        .await
+        .map_err(|e| PylotError::CommandExecution(format!("Error installing from requirements: {}", e)))?;
+
+        Ok(())
+    }
+
     /// Remove packages from this virtual environment.
     ///
     /// Validates all package names then runs `uv pip uninstall` inside the venv.

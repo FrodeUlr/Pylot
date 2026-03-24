@@ -545,7 +545,7 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
                 spans.push(Span::raw(": delete  "));
                 spans.push(Span::styled("Enter", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(": activate  "));
-                spans.push(Span::styled("i", Style::default().fg(Color::Yellow)));
+                spans.push(Span::styled("a", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(": add pkg  "));
                 spans.push(Span::styled("r", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(": remove pkg  "));
@@ -577,7 +577,7 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
 
 /// Render the create-venv dialog as a centered overlay popup.
 fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
-    let area = centered_rect(60, 14, frame.area());
+    let area = centered_rect(60, 17, frame.area());
 
     // Clear the background so the dialog appears cleanly over other widgets.
     frame.render_widget(Clear, area);
@@ -630,7 +630,21 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
         ]),
         Line::from(vec![
             Span::raw("                "),
-            Span::styled("comma-separated, e.g. requests,flask", hint_style),
+            Span::styled("e.g. requests,flask==2.28.0", hint_style),
+        ]),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Req. file   : ", label_style(CreateField::ReqFile)),
+            Span::styled(dialog.req_file.as_str(), Style::default().fg(Color::Blue)),
+            if dialog.field == CreateField::ReqFile {
+                Span::styled("█", Style::default().fg(Color::Blue))
+            } else {
+                Span::raw("")
+            },
+        ]),
+        Line::from(vec![
+            Span::raw("                "),
+            Span::styled("path to requirements.txt (optional)", hint_style),
         ]),
         Line::from(""),
         Line::from(vec![
@@ -693,7 +707,7 @@ fn draw_pkg_dialog(frame: &mut Frame, dialog: &PkgDialog, venv_name: &str) {
         ]),
         Line::from(vec![
             Span::raw("                "),
-            Span::styled("comma-separated, e.g. requests,flask", hint_style),
+            Span::styled("e.g. requests,flask==2.28.0", hint_style),
         ]),
         Line::from(""),
         Line::from(vec![

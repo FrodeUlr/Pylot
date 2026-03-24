@@ -64,6 +64,7 @@ pub enum CreateField {
     Name,
     Version,
     Packages,
+    ReqFile,
     DefaultPkgs,
 }
 
@@ -73,7 +74,8 @@ impl CreateField {
         match self {
             Self::Name => Self::Version,
             Self::Version => Self::Packages,
-            Self::Packages => Self::DefaultPkgs,
+            Self::Packages => Self::ReqFile,
+            Self::ReqFile => Self::DefaultPkgs,
             Self::DefaultPkgs => Self::Name,
         }
     }
@@ -84,7 +86,8 @@ impl CreateField {
             Self::Name => Self::DefaultPkgs,
             Self::Version => Self::Name,
             Self::Packages => Self::Version,
-            Self::DefaultPkgs => Self::Packages,
+            Self::ReqFile => Self::Packages,
+            Self::DefaultPkgs => Self::ReqFile,
         }
     }
 }
@@ -97,6 +100,8 @@ pub struct CreateDialog {
     pub version: String,
     /// Raw comma-separated packages string as the user types it
     pub packages: String,
+    /// Optional path to a requirements.txt file to install on creation
+    pub req_file: String,
     pub default_pkgs: bool,
 }
 
@@ -107,6 +112,7 @@ impl CreateDialog {
             name: String::new(),
             version: default_version.to_string(),
             packages: String::new(),
+            req_file: String::new(),
             default_pkgs: false,
         }
     }
@@ -117,6 +123,7 @@ impl CreateDialog {
             CreateField::Name => self.name.push(c),
             CreateField::Version => self.version.push(c),
             CreateField::Packages => self.packages.push(c),
+            CreateField::ReqFile => self.req_file.push(c),
             CreateField::DefaultPkgs => {}
         }
     }
@@ -127,6 +134,7 @@ impl CreateDialog {
             CreateField::Name => { self.name.pop(); }
             CreateField::Version => { self.version.pop(); }
             CreateField::Packages => { self.packages.pop(); }
+            CreateField::ReqFile => { self.req_file.pop(); }
             CreateField::DefaultPkgs => {}
         }
     }
@@ -196,6 +204,8 @@ pub enum VenvAction {
         version: String,
         packages: Vec<String>,
         default_pkgs: bool,
+        /// Optional path to a requirements.txt file to install after creation.
+        req_file: Option<String>,
     },
     Delete,
     Activate,
@@ -417,6 +427,7 @@ mod tests {
             version: "3.12".to_string(),
             packages: vec![],
             default_pkgs: false,
+            req_file: None,
         };
         app.pending_venv_action = Some(action.clone());
         assert_eq!(app.take_pending_venv_action(), Some(action));
@@ -441,6 +452,7 @@ mod tests {
         assert_eq!(d.field, CreateField::Name);
         assert_eq!(d.version, "3.12");
         assert!(d.name.is_empty());
+        assert!(d.req_file.is_empty());
         assert!(!d.default_pkgs);
     }
 
@@ -458,11 +470,13 @@ mod tests {
     fn test_create_dialog_field_cycling() {
         assert_eq!(CreateField::Name.next(), CreateField::Version);
         assert_eq!(CreateField::Version.next(), CreateField::Packages);
-        assert_eq!(CreateField::Packages.next(), CreateField::DefaultPkgs);
+        assert_eq!(CreateField::Packages.next(), CreateField::ReqFile);
+        assert_eq!(CreateField::ReqFile.next(), CreateField::DefaultPkgs);
         assert_eq!(CreateField::DefaultPkgs.next(), CreateField::Name);
 
         assert_eq!(CreateField::Name.prev(), CreateField::DefaultPkgs);
-        assert_eq!(CreateField::DefaultPkgs.prev(), CreateField::Packages);
+        assert_eq!(CreateField::DefaultPkgs.prev(), CreateField::ReqFile);
+        assert_eq!(CreateField::ReqFile.prev(), CreateField::Packages);
     }
 
     #[test]
@@ -636,6 +650,19 @@ mod tests {
         assert_eq!(d.packages, "nu");
         d.pop_char();
         assert_eq!(d.packages, "n");
+    }
+
+    #[test]
+    fn test_create_dialog_push_pop_req_file_field() {
+        let mut d = CreateDialog::new("3.12");
+        d.field = CreateField::ReqFile;
+        d.push_char('/');
+        d.push_char('t');
+        d.push_char('m');
+        d.push_char('p');
+        assert_eq!(d.req_file, "/tmp");
+        d.pop_char();
+        assert_eq!(d.req_file, "/tm");
     }
 
     #[test]
