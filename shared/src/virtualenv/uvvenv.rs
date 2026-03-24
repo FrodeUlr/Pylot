@@ -296,6 +296,95 @@ impl<'a> UvVenv<'a> {
         }
     }
 
+    /// Add packages to this virtual environment.
+    ///
+    /// Validates all package names then runs `uv pip install` inside the venv.
+    pub async fn add_packages(&self, pkgs: Vec<String>) -> Result<()> {
+        if pkgs.is_empty() {
+            return Ok(());
+        }
+        for pkg in &pkgs {
+            Self::validate_package_name(pkg)?;
+        }
+        let venvs_path = shellexpand::tilde(&self.settings.venvs_path).to_string();
+        self.install_packages(pkgs, venvs_path).await
+    }
+
+    /// Remove packages from this virtual environment.
+    ///
+    /// Validates all package names then runs `uv pip uninstall` inside the venv.
+    pub async fn remove_packages(&self, pkgs: Vec<String>) -> Result<()> {
+        if pkgs.is_empty() {
+            return Ok(());
+        }
+        for pkg in &pkgs {
+            Self::validate_package_name(pkg)?;
+        }
+        let venvs_path = shellexpand::tilde(&self.settings.venvs_path).to_string();
+        self.uninstall_packages(pkgs, venvs_path).await
+    }
+
+    /// Uninstall packages without shell command injection
+    async fn uninstall_packages(&self, pkgs: Vec<String>, venv_path: String) -> Result<()> {
+        log::info!("{} {}", "Uninstalling package(s):", pkgs.join(", "));
+
+        let activate_script = if cfg!(target_os = "windows") {
+            format!("{}/{}/scripts/activate.ps1", venv_path, self.name)
+        } else {
+            format!("{}/{}/bin/activate", venv_path, self.name)
+        };
+
+        let (cmd, args) = if cfg!(target_os = "windows") {
+            let pwsh_cmd = if uvctrl::check(PWSH_CMD).await.is_ok() {
+                PWSH_CMD
+            } else {
+                POWERSHELL_CMD
+            };
+
+            let mut command_parts = vec![activate_script.clone(), ";".to_string()];
+            command_parts.push("uv".to_string());
+            command_parts.push("pip".to_string());
+            command_parts.push("uninstall".to_string());
+            command_parts.extend(pkgs.iter().cloned());
+
+            (pwsh_cmd, vec!["-Command".to_string(), command_parts.join(" ")])
+        } else {
+            let mut command_parts = vec![".".to_string(), activate_script.clone(), "&&".to_string()];
+            command_parts.push("uv".to_string());
+            command_parts.push("pip".to_string());
+            command_parts.push("uninstall".to_string());
+            command_parts.extend(pkgs.iter().cloned());
+
+            (SH_CMD, vec!["-c".to_string(), command_parts.join(" ")])
+        };
+
+        let mut child = tokio::process::Command::new(cmd)
+            .args(&args)
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| PylotError::CommandExecution(format!("Failed to uninstall packages: {}", e)))?;
+
+        let stdout = child.stdout.take()
+            .ok_or_else(|| PylotError::CommandExecution("Failed to open stdout".to_string()))?;
+        let stderr = child.stderr.take()
+            .ok_or_else(|| PylotError::CommandExecution("Failed to open stderr".to_string()))?;
+
+        let stdout_reader = tokio::io::BufReader::new(stdout);
+        let stderr_reader = tokio::io::BufReader::new(stderr);
+
+        processes::run_command_with_handlers(
+            stdout_reader,
+            stderr_reader,
+            |line| log::info!("{}", line),
+            |line| log::warn!("{}", line),
+        )
+        .await
+        .map_err(|e| PylotError::CommandExecution(format!("Error uninstalling packages: {}", e)))?;
+
+        Ok(())
+    }
+
     /// Install packages without shell command injection
     async fn install_packages(&self, pkgs: Vec<String>, venv_path: String) -> Result<()> {
         log::info!("{} {}", "Installing package(s):", pkgs.join(", "));
@@ -693,6 +782,59 @@ mod tests {
     fn test_format_dist_info_name_no_version() {
         // No `-` separator → treat the whole thing as the name.
         assert_eq!(UvVenv::format_dist_info_name("somepkg.dist-info"), "somepkg");
+    }
+
+    // ── add_packages / remove_packages (validation) ──────────────────────────
+
+    #[tokio::test]
+    async fn test_add_packages_empty_list_returns_ok() {
+        let venv = UvVenv::new(
+            Cow::Borrowed("myvenv"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        // Empty list should short-circuit without attempting any subprocess.
+        assert!(venv.add_packages(vec![]).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_remove_packages_empty_list_returns_ok() {
+        let venv = UvVenv::new(
+            Cow::Borrowed("myvenv"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        assert!(venv.remove_packages(vec![]).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_add_packages_rejects_invalid_package_name() {
+        let venv = UvVenv::new(
+            Cow::Borrowed("myvenv"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        let result = venv.add_packages(vec!["evil; rm -rf /".to_string()]).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_remove_packages_rejects_invalid_package_name() {
+        let venv = UvVenv::new(
+            Cow::Borrowed("myvenv"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        let result = venv.remove_packages(vec!["evil | cat".to_string()]).await;
+        assert!(result.is_err());
     }
 }
 

@@ -6,7 +6,7 @@ mod app;
 mod ui;
 
 pub use app::App;
-use app::{ConfirmAction, ConfirmDialog, CreateDialog, VenvAction};
+use app::{ConfirmAction, ConfirmDialog, CreateDialog, PkgDialog, PkgDialogMode, VenvAction};
 
 use crossterm::{
     event::{Event, EventStream, KeyCode, KeyEventKind},
@@ -314,6 +314,86 @@ where
             continue; // dialog consumed the key; skip normal bindings
         }
 
+        // --- Package-management dialog captures all input while open ---
+        if app.pkg_dialog.is_some() {
+            match key.code {
+                KeyCode::Esc => {
+                    app.pkg_dialog = None;
+                }
+                KeyCode::Enter => {
+                    if let Some(dialog) = app.pkg_dialog.take() {
+                        let packages = dialog.parsed_packages();
+                        if !packages.is_empty() && !app.venvs.is_empty() {
+                            let name = app.venvs[app.selected].name.to_string();
+                            match dialog.mode {
+                                PkgDialogMode::Add => {
+                                    let label = format!("Adding packages to '{}'", name);
+                                    spawn_venv_task(app, label, async move {
+                                        UvVenv::new(
+                                            Cow::Owned(name),
+                                            "".to_string(),
+                                            "".to_string(),
+                                            vec![],
+                                            false,
+                                        )
+                                        .add_packages(packages)
+                                        .await
+                                    });
+                                }
+                                PkgDialogMode::Remove => {
+                                    let label = format!("Removing packages from '{}'", name);
+                                    spawn_venv_task(app, label, async move {
+                                        UvVenv::new(
+                                            Cow::Owned(name),
+                                            "".to_string(),
+                                            "".to_string(),
+                                            vec![],
+                                            false,
+                                        )
+                                        .remove_packages(packages)
+                                        .await
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                KeyCode::Backspace => {
+                    if let Some(ref mut d) = app.pkg_dialog {
+                        d.pop_char();
+                    }
+                }
+                KeyCode::Char(c) => {
+                    if let Some(ref mut d) = app.pkg_dialog {
+                        d.push_char(c);
+                    }
+                }
+                _ => {}
+            }
+            continue; // dialog consumed the key; skip normal bindings
+        }
+
+        // --- Package search mode captures all input while active ---
+        if app.pkg_search.is_some() {
+            match key.code {
+                KeyCode::Esc | KeyCode::Enter => {
+                    app.pkg_search = None;
+                }
+                KeyCode::Backspace => {
+                    if let Some(ref mut q) = app.pkg_search {
+                        q.pop();
+                    }
+                }
+                KeyCode::Char(c) => {
+                    if let Some(ref mut q) = app.pkg_search {
+                        q.push(c);
+                    }
+                }
+                _ => {}
+            }
+            continue; // search mode consumed the key; skip normal bindings
+        }
+
         // --- Normal (non-dialog) key bindings ---
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => break,
@@ -388,6 +468,29 @@ where
                 if app.tab == app::Tab::Environments && !app.venvs.is_empty() =>
             {
                 app.scroll_pkg_up();
+            }
+            // Add packages – active when a venv is selected and not busy.
+            KeyCode::Char('i')
+                if app.tab == app::Tab::Environments
+                    && !app.venvs.is_empty()
+                    && !app.is_busy() =>
+            {
+                app.pkg_dialog = Some(PkgDialog::new(PkgDialogMode::Add));
+            }
+            // Remove packages – active when a venv is selected and not busy.
+            KeyCode::Char('r')
+                if app.tab == app::Tab::Environments
+                    && !app.venvs.is_empty()
+                    && !app.is_busy() =>
+            {
+                app.pkg_dialog = Some(PkgDialog::new(PkgDialogMode::Remove));
+            }
+            // Search packages – active when a venv is selected.
+            KeyCode::Char('/')
+                if app.tab == app::Tab::Environments && !app.venvs.is_empty() =>
+            {
+                app.pkg_search = Some(String::new());
+                app.pkg_scroll = 0;
             }
             _ => {}
         }
