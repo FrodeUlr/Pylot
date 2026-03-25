@@ -23,6 +23,7 @@ use std::borrow::Cow;
 use std::io;
 use std::time::Duration;
 use tokio::sync::oneshot;
+use shellexpand;
 
 /// Run the TUI application
 ///
@@ -123,6 +124,87 @@ fn pause_for_enter() {
     let mut buf = String::new();
     let _ = io::stdin().read_line(&mut buf);
 }
+
+/// Read the contents of a directory and return sorted entry names.
+/// Directory entries get a trailing `/` appended so they can be navigated further.
+/// Returns an empty list if the path cannot be read.
+fn read_dir_entries_blocking(dir_path: &str) -> Vec<String> {
+    let expanded = shellexpand::tilde(dir_path).to_string();
+    match std::fs::read_dir(&expanded) {
+        Ok(entries) => {
+            let mut names: Vec<String> = entries
+                .filter_map(|e| e.ok())
+                .map(|e| {
+                    let name = e.file_name().to_string_lossy().to_string();
+                    if e.path().is_dir() {
+                        format!("{}/", name)
+                    } else {
+                        name
+                    }
+                })
+                .collect();
+            names.sort_by(|a, b| {
+                // Directories (trailing '/') sort before files.
+                let a_is_dir = a.ends_with('/');
+                let b_is_dir = b.ends_with('/');
+                b_is_dir.cmp(&a_is_dir).then(a.to_lowercase().cmp(&b.to_lowercase()))
+            });
+            names
+        }
+        Err(_) => Vec::new(),
+    }
+}
+
+/// Recompute `dialog.completions` based on the current `req_file` value.
+///
+/// Finds the last `/` in the normalized path and splits it into:
+/// * `dir_part`  – everything up to and including the `/`
+/// * `filter_prefix` – any text typed after the last `/`
+///
+/// Reads `dir_part` and filters entries by `filter_prefix` (case-insensitive
+/// prefix match). Completions are shown whenever there is at least one `/` in
+/// the path, so typing `c:/som` still lists entries in `c:/` that start with
+/// `som`.
+fn update_completions(dialog: &mut CreateDialog) {
+    let normalized = dialog.req_file.replace('\\', "/");
+
+    if let Some(last_slash) = normalized.rfind('/') {
+        let dir_part = &normalized[..=last_slash]; // includes trailing '/'
+        let filter_prefix = &normalized[last_slash + 1..]; // typed text after '/'
+
+        let mut entries = read_dir_entries_blocking(dir_part);
+
+        // Filter by the text already typed after the last '/'.
+        if !filter_prefix.is_empty() {
+            let prefix_lower = filter_prefix.to_lowercase();
+            entries.retain(|e| {
+                // Strip trailing '/' from directory names before comparing.
+                e.trim_end_matches('/').to_lowercase().starts_with(&prefix_lower)
+            });
+        }
+
+        if !entries.is_empty() {
+            dialog.completions = entries;
+            dialog.completions_dir = dir_part.to_string();
+            dialog.completion_selected = 0;
+            dialog.completion_scroll = 0;
+        } else {
+            dialog.completions.clear();
+            dialog.completions_dir = String::new();
+            dialog.completion_selected = 0;
+            dialog.completion_scroll = 0;
+        }
+    } else {
+        // No '/' in the path – nothing to complete.
+        dialog.completions.clear();
+        dialog.completions_dir = String::new();
+        dialog.completion_selected = 0;
+        dialog.completion_scroll = 0;
+    }
+}
+
+/// Maximum number of completion entries shown at once in the dialog.
+const COMPLETION_MAX_SHOWN: usize = 6;
 
 /// Spawn a background task for a UV management operation and record it in `app`.
 fn spawn_uv_task(
@@ -255,17 +337,103 @@ where
 
         // --- Create-venv dialog captures all input while open ---
         if let Some(ref mut dialog) = app.create_dialog {
-            match key.code {
-                KeyCode::Esc => {
-                    app.create_dialog = None;
+            // ── Phase 1: Esc – dismiss completions first, then close dialog ──
+            if key.code == KeyCode::Esc {
+                if !dialog.completions.is_empty() {
+                    dialog.completions.clear();
+                    dialog.completion_selected = 0;
+                    continue;
                 }
+                app.create_dialog = None;
+                continue;
+            }
+
+            // ── Phase 2: Completion navigation (when ReqFile has completions) ──
+            let completions_active =
+                dialog.field == app::CreateField::ReqFile && !dialog.completions.is_empty();
+            if completions_active {
+                match key.code {
+                    KeyCode::Down => {
+                        if dialog.completion_selected + 1 < dialog.completions.len() {
+                            dialog.completion_selected += 1;
+                            // Scroll the window forward if selection goes past visible area.
+                            if dialog.completion_selected
+                                >= dialog.completion_scroll + COMPLETION_MAX_SHOWN
+                            {
+                                dialog.completion_scroll += 1;
+                            }
+                        }
+                        continue;
+                    }
+                    KeyCode::Up => {
+                        if dialog.completion_selected > 0 {
+                            dialog.completion_selected -= 1;
+                            // Scroll the window back if selection goes above visible area.
+                            if dialog.completion_selected < dialog.completion_scroll {
+                                dialog.completion_scroll =
+                                    dialog.completion_scroll.saturating_sub(1);
+                            }
+                        }
+                        continue;
+                    }
+                    KeyCode::Tab => {
+                        // Accept the currently highlighted completion.
+                        let sel = dialog.completions[dialog.completion_selected].clone();
+                        dialog.req_file_accept_completion(&sel);
+                        update_completions(dialog);
+                        continue;
+                    }
+                    _ => {
+                        // Any other key: dismiss completions and process normally.
+                        dialog.completions.clear();
+                        dialog.completion_selected = 0;
+                        dialog.completion_scroll = 0;
+                        dialog.completions_dir = String::new();
+                    }
+                }
+            }
+
+            // ── Phase 3: Cursor movement (ReqFile field) ──
+            if dialog.field == app::CreateField::ReqFile {
+                match key.code {
+                    KeyCode::Left => {
+                        dialog.req_file_cursor_left();
+                        continue;
+                    }
+                    KeyCode::Right => {
+                        dialog.req_file_cursor_right();
+                        continue;
+                    }
+                    KeyCode::Home => {
+                        dialog.req_file_cursor_home();
+                        continue;
+                    }
+                    KeyCode::End => {
+                        dialog.req_file_cursor_end();
+                        continue;
+                    }
+                    _ => {}
+                }
+            }
+
+            // ── Phase 4: Normal field handling ──
+            let is_req_file_field = dialog.field == app::CreateField::ReqFile;
+            match key.code {
                 KeyCode::Tab | KeyCode::Down => {
                     let next = dialog.field.next();
                     dialog.field = next;
+                    dialog.completions.clear();
+                    dialog.completion_selected = 0;
+                    dialog.completion_scroll = 0;
+                    dialog.completions_dir = String::new();
                 }
                 KeyCode::BackTab | KeyCode::Up => {
                     let prev = dialog.field.prev();
                     dialog.field = prev;
+                    dialog.completions.clear();
+                    dialog.completion_selected = 0;
+                    dialog.completion_scroll = 0;
+                    dialog.completions_dir = String::new();
                 }
                 KeyCode::Char(' ') => {
                     if dialog.field == app::CreateField::DefaultPkgs {
@@ -281,26 +449,41 @@ where
                             let version = dialog.effective_version();
                             let packages = dialog.parsed_packages();
                             let default_pkgs = dialog.default_pkgs;
+                            // Normalize Windows paths before storing.
+                            let req_file = dialog.req_file.trim().replace('\\', "/");
+                            let req_file_opt = if req_file.is_empty() { None } else { Some(req_file) };
                             let label = format!("Creating '{}'", name);
                             app.create_dialog = None;
                             // Spawn background task – TUI stays open.
                             spawn_venv_task(app, label, async move {
-                                UvVenv::new(
+                                let venv = UvVenv::new(
                                     Cow::Owned(name),
                                     "".to_string(),
                                     version,
                                     packages,
                                     default_pkgs,
-                                )
-                                .create()
-                                .await
+                                );
+                                venv.create().await?;
+                                if let Some(ref path) = req_file_opt {
+                                    venv.install_from_requirements(path).await
+                                        .map_err(|e| pylot_shared::error::PylotError::Other(
+                                            format!("Venv created; requirements install failed: {}", e)
+                                        ))?;
+                                }
+                                Ok(())
                             });
+                            continue; // dialog is consumed; skip Phase 5
                         } else {
                             app.create_dialog = None;
+                            continue; // dialog is consumed; skip Phase 5
                         }
                     } else {
                         let next = dialog.field.next();
                         dialog.field = next;
+                        dialog.completions.clear();
+                        dialog.completion_selected = 0;
+                        dialog.completion_scroll = 0;
+                        dialog.completions_dir = String::new();
                     }
                 }
                 KeyCode::Backspace => {
@@ -311,6 +494,12 @@ where
                 }
                 _ => {}
             }
+
+            // ── Phase 5: Recompute completions after any change to req_file ──
+            if is_req_file_field {
+                update_completions(dialog);
+            }
+
             continue; // dialog consumed the key; skip normal bindings
         }
 
@@ -448,7 +637,7 @@ where
                 app.confirm_dialog =
                     Some(ConfirmDialog::new(ConfirmAction::DeleteVenv(name)));
             }
-            KeyCode::Enter | KeyCode::Char('a')
+            KeyCode::Enter
                 if app.tab == app::Tab::Environments
                     && !app.venvs.is_empty()
                     && !app.is_busy() =>
@@ -470,7 +659,7 @@ where
                 app.scroll_pkg_up();
             }
             // Add packages – active when a venv is selected and not busy.
-            KeyCode::Char('i')
+            KeyCode::Char('i') | KeyCode::Char('a')
                 if app.tab == app::Tab::Environments
                     && !app.venvs.is_empty()
                     && !app.is_busy() =>

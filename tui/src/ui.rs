@@ -456,17 +456,32 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     }
 
     // When the create dialog is open, show dialog-specific hints instead of the normal bar.
-    if app.create_dialog.is_some() {
-        let spans = vec![
-            Span::styled("Tab", Style::default().fg(Color::Yellow)),
-            Span::raw(": next field  "),
-            Span::styled("Shift+Tab", Style::default().fg(Color::Yellow)),
-            Span::raw(": prev field  "),
-            Span::styled("Enter", Style::default().fg(Color::Yellow)),
-            Span::raw(": confirm  "),
-            Span::styled("Esc", Style::default().fg(Color::Yellow)),
-            Span::raw(": cancel"),
-        ];
+    if let Some(ref d) = app.create_dialog {
+        let completions_active =
+            d.field == crate::app::CreateField::ReqFile && !d.completions.is_empty();
+        let spans = if completions_active {
+            vec![
+                Span::styled("↑↓", Style::default().fg(Color::Yellow)),
+                Span::raw(": navigate completions  "),
+                Span::styled("Tab", Style::default().fg(Color::Yellow)),
+                Span::raw(": complete  "),
+                Span::styled("Esc", Style::default().fg(Color::Yellow)),
+                Span::raw(": dismiss"),
+            ]
+        } else {
+            vec![
+                Span::styled("Tab", Style::default().fg(Color::Yellow)),
+                Span::raw(": next field  "),
+                Span::styled("Shift+Tab", Style::default().fg(Color::Yellow)),
+                Span::raw(": prev field  "),
+                Span::styled("←→", Style::default().fg(Color::Yellow)),
+                Span::raw(": cursor  "),
+                Span::styled("Enter", Style::default().fg(Color::Yellow)),
+                Span::raw(": confirm  "),
+                Span::styled("Esc", Style::default().fg(Color::Yellow)),
+                Span::raw(": cancel"),
+            ]
+        };
         let help = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
         frame.render_widget(help, area);
         return;
@@ -545,7 +560,7 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
                 spans.push(Span::raw(": delete  "));
                 spans.push(Span::styled("Enter", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(": activate  "));
-                spans.push(Span::styled("i", Style::default().fg(Color::Yellow)));
+                spans.push(Span::styled("a", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(": add pkg  "));
                 spans.push(Span::styled("r", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(": remove pkg  "));
@@ -575,9 +590,33 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     frame.render_widget(help, area);
 }
 
+/// Maximum completions visible at once in the completion dropdown.
+const COMPLETION_MAX_SHOWN: usize = 6;
+
 /// Render the create-venv dialog as a centered overlay popup.
 fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
-    let area = centered_rect(60, 14, frame.area());
+    let completions_active =
+        dialog.field == CreateField::ReqFile && !dialog.completions.is_empty();
+
+    // Compute the visible window into the completions list.
+    let total = dialog.completions.len();
+    let scroll = dialog.completion_scroll;
+    let more_above = scroll > 0;
+    let visible_end = (scroll + COMPLETION_MAX_SHOWN).min(total);
+    let shown_count = if completions_active { visible_end.saturating_sub(scroll) } else { 0 };
+    let more_below = completions_active && visible_end < total;
+
+    // Extra lines: 1 blank separator + shown rows + optional scroll indicators.
+    let extra_height = if completions_active {
+        let rows = shown_count
+            + 1 // blank separator
+            + if more_above { 1 } else { 0 }
+            + if more_below { 1 } else { 0 };
+        rows as u16
+    } else {
+        0
+    };
+    let area = centered_rect(60, 17 + extra_height, frame.area());
 
     // Clear the background so the dialog appears cleanly over other widgets.
     frame.render_widget(Clear, area);
@@ -597,7 +636,20 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
 
     let default_indicator = if dialog.default_pkgs { "[x]" } else { "[ ]" };
 
-    let lines = vec![
+    // Build req_file line with cursor at the correct position.
+    let req_before: String = dialog.req_file.chars().take(dialog.req_file_cursor).collect();
+    let req_after: String = dialog.req_file.chars().skip(dialog.req_file_cursor).collect();
+
+    let mut req_file_spans = vec![
+        Span::styled("  Req. file   : ", label_style(CreateField::ReqFile)),
+        Span::styled(req_before, Style::default().fg(Color::Blue)),
+    ];
+    if dialog.field == CreateField::ReqFile {
+        req_file_spans.push(Span::styled("█", Style::default().fg(Color::Blue)));
+    }
+    req_file_spans.push(Span::styled(req_after, Style::default().fg(Color::Blue)));
+
+    let mut lines = vec![
         Line::from(""),
         Line::from(vec![
             Span::styled("  Name        : ", label_style(CreateField::Name)),
@@ -630,16 +682,79 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
         ]),
         Line::from(vec![
             Span::raw("                "),
-            Span::styled("comma-separated, e.g. requests,flask", hint_style),
+            Span::styled("e.g. requests,flask==2.28.0", hint_style),
         ]),
         Line::from(""),
+        Line::from(req_file_spans),
         Line::from(vec![
-            Span::styled("  Default pkgs: ", label_style(CreateField::DefaultPkgs)),
-            Span::styled(default_indicator, label_style(CreateField::DefaultPkgs)),
-            Span::raw("  "),
-            Span::styled("(Space to toggle)", hint_style),
+            Span::raw("                "),
+            Span::styled("path to requirements.txt (optional)", hint_style),
         ]),
-        Line::from(""),
+    ];
+
+    // Show directory completions with scroll indicators.
+    if completions_active {
+        lines.push(Line::from(""));
+
+        // ▲ indicator when entries are scrolled past above.
+        if more_above {
+            lines.push(Line::from(vec![
+                Span::raw("    "),
+                Span::styled(
+                    format!("▲ {} more above", scroll),
+                    hint_style,
+                ),
+            ]));
+        }
+
+        // Visible completion entries.
+        for i in scroll..visible_end {
+            let entry = &dialog.completions[i];
+            let is_selected = i == dialog.completion_selected;
+            let (prefix, entry_style) = if is_selected {
+                (
+                    "  ▶ ",
+                    Style::default().fg(Color::Black).bg(Color::Blue).add_modifier(Modifier::BOLD),
+                )
+            } else {
+                ("    ", Style::default().fg(Color::Blue))
+            };
+            lines.push(Line::from(vec![
+                Span::styled(prefix, entry_style),
+                Span::styled(entry.as_str(), entry_style),
+            ]));
+        }
+
+        // ▼ indicator when more entries exist below the visible window.
+        if more_below {
+            lines.push(Line::from(vec![
+                Span::raw("    "),
+                Span::styled(
+                    format!("▼ {} more below", total - visible_end),
+                    hint_style,
+                ),
+            ]));
+        }
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![
+        Span::styled("  Default pkgs: ", label_style(CreateField::DefaultPkgs)),
+        Span::styled(default_indicator, label_style(CreateField::DefaultPkgs)),
+        Span::raw("  "),
+        Span::styled("(Space to toggle)", hint_style),
+    ]));
+    lines.push(Line::from(""));
+    let footer_line = if completions_active {
+        Line::from(vec![
+            Span::styled("  ↑↓", Style::default().fg(Color::Yellow)),
+            Span::raw(": navigate  "),
+            Span::styled("Tab", Style::default().fg(Color::Yellow)),
+            Span::raw(": complete  "),
+            Span::styled("Esc", Style::default().fg(Color::Yellow)),
+            Span::raw(": dismiss"),
+        ])
+    } else {
         Line::from(vec![
             Span::styled("  Tab", Style::default().fg(Color::Yellow)),
             Span::raw(": next field  "),
@@ -647,8 +762,9 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
             Span::raw(": confirm  "),
             Span::styled("Esc", Style::default().fg(Color::Yellow)),
             Span::raw(": cancel"),
-        ]),
-    ];
+        ])
+    };
+    lines.push(footer_line);
 
     let paragraph = Paragraph::new(lines).block(
         Block::default()
@@ -693,7 +809,7 @@ fn draw_pkg_dialog(frame: &mut Frame, dialog: &PkgDialog, venv_name: &str) {
         ]),
         Line::from(vec![
             Span::raw("                "),
-            Span::styled("comma-separated, e.g. requests,flask", hint_style),
+            Span::styled("e.g. requests,flask==2.28.0", hint_style),
         ]),
         Line::from(""),
         Line::from(vec![
