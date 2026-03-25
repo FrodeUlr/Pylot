@@ -590,14 +590,32 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     frame.render_widget(help, area);
 }
 
+/// Maximum completions visible at once in the completion dropdown.
+const COMPLETION_MAX_SHOWN: usize = 6;
+
 /// Render the create-venv dialog as a centered overlay popup.
 fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
     let completions_active =
         dialog.field == CreateField::ReqFile && !dialog.completions.is_empty();
-    let max_shown_completions: usize = 6;
-    let shown_count = dialog.completions.len().min(max_shown_completions);
-    // Extra lines: 1 blank separator + N completion rows
-    let extra_height = if completions_active { (shown_count + 1) as u16 } else { 0 };
+
+    // Compute the visible window into the completions list.
+    let total = dialog.completions.len();
+    let scroll = dialog.completion_scroll;
+    let more_above = scroll > 0;
+    let visible_end = (scroll + COMPLETION_MAX_SHOWN).min(total);
+    let shown_count = if completions_active { visible_end.saturating_sub(scroll) } else { 0 };
+    let more_below = completions_active && visible_end < total;
+
+    // Extra lines: 1 blank separator + shown rows + optional scroll indicators.
+    let extra_height = if completions_active {
+        let rows = shown_count
+            + 1 // blank separator
+            + if more_above { 1 } else { 0 }
+            + if more_below { 1 } else { 0 };
+        rows as u16
+    } else {
+        0
+    };
     let area = centered_rect(60, 17 + extra_height, frame.area());
 
     // Clear the background so the dialog appears cleanly over other widgets.
@@ -674,10 +692,24 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
         ]),
     ];
 
-    // Show directory completions when the path ends with '/'.
+    // Show directory completions with scroll indicators.
     if completions_active {
         lines.push(Line::from(""));
-        for (i, entry) in dialog.completions.iter().take(max_shown_completions).enumerate() {
+
+        // ▲ indicator when entries are scrolled past above.
+        if more_above {
+            lines.push(Line::from(vec![
+                Span::raw("    "),
+                Span::styled(
+                    format!("▲ {} more above", scroll),
+                    hint_style,
+                ),
+            ]));
+        }
+
+        // Visible completion entries.
+        for i in scroll..visible_end {
+            let entry = &dialog.completions[i];
             let is_selected = i == dialog.completion_selected;
             let (prefix, entry_style) = if is_selected {
                 (
@@ -692,11 +724,13 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
                 Span::styled(entry.as_str(), entry_style),
             ]));
         }
-        if dialog.completions.len() > max_shown_completions {
+
+        // ▼ indicator when more entries exist below the visible window.
+        if more_below {
             lines.push(Line::from(vec![
                 Span::raw("    "),
                 Span::styled(
-                    format!("… {} more", dialog.completions.len() - max_shown_completions),
+                    format!("▼ {} more below", total - visible_end),
                     hint_style,
                 ),
             ]));

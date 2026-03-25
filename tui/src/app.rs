@@ -104,10 +104,15 @@ pub struct CreateDialog {
     pub req_file: String,
     /// Cursor position (in characters) within `req_file`.
     pub req_file_cursor: usize,
-    /// Directory completions shown when `req_file` ends with `/`.
+    /// Directory completions (filtered by any prefix typed after the last `/`).
     pub completions: Vec<String>,
     /// Index of the currently highlighted completion entry.
     pub completion_selected: usize,
+    /// First visible entry in the completion list (scroll offset).
+    pub completion_scroll: usize,
+    /// The directory portion of the path that was used to build `completions`
+    /// (everything up to and including the last `/`).
+    pub completions_dir: String,
     pub default_pkgs: bool,
 }
 
@@ -122,6 +127,8 @@ impl CreateDialog {
             req_file_cursor: 0,
             completions: Vec::new(),
             completion_selected: 0,
+            completion_scroll: 0,
+            completions_dir: String::new(),
             default_pkgs: false,
         }
     }
@@ -198,10 +205,11 @@ impl CreateDialog {
         self.req_file_cursor = self.req_file.chars().count();
     }
 
-    /// Append `entry` to req_file (used when a directory completion is accepted).
+    /// Accept a completion entry: replaces everything after the last `/` in `req_file`
+    /// with `entry`, using the stored `completions_dir` as the directory base.
     /// Updates the cursor to the new end of the string.
-    pub fn req_file_complete(&mut self, entry: &str) {
-        self.req_file.push_str(entry);
+    pub fn req_file_accept_completion(&mut self, entry: &str) {
+        self.req_file = format!("{}{}", self.completions_dir, entry);
         self.req_file_cursor = self.req_file.chars().count();
     }
 
@@ -797,16 +805,29 @@ mod tests {
     }
 
     #[test]
-    fn test_create_dialog_req_file_complete() {
+    fn test_create_dialog_req_file_accept_completion_appends_to_dir() {
         let mut d = CreateDialog::new("3.12");
         d.field = CreateField::ReqFile;
-        d.push_char('/');
-        d.push_char('t');
-        d.push_char('m');
-        d.push_char('p');
-        d.push_char('/');
-        d.req_file_complete("requirements.txt");
+        // Simulate the state after update_completions set completions_dir.
+        d.req_file = "/tmp/req".to_string();
+        d.req_file_cursor = 8;
+        d.completions_dir = "/tmp/".to_string();
+        d.req_file_accept_completion("requirements.txt");
         assert_eq!(d.req_file, "/tmp/requirements.txt");
+        assert_eq!(d.req_file_cursor, d.req_file.chars().count());
+    }
+
+    #[test]
+    fn test_create_dialog_req_file_accept_completion_dir_then_re_enter() {
+        // Accepting a directory entry should leave a trailing '/' so completions
+        // can be re-triggered for the next level.
+        let mut d = CreateDialog::new("3.12");
+        d.field = CreateField::ReqFile;
+        d.req_file = "/tmp/".to_string();
+        d.req_file_cursor = 5;
+        d.completions_dir = "/tmp/".to_string();
+        d.req_file_accept_completion("subdir/");
+        assert_eq!(d.req_file, "/tmp/subdir/");
         assert_eq!(d.req_file_cursor, d.req_file.chars().count());
     }
 

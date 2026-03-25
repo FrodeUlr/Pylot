@@ -156,17 +156,55 @@ fn read_dir_entries_blocking(dir_path: &str) -> Vec<String> {
 }
 
 /// Recompute `dialog.completions` based on the current `req_file` value.
-/// Completions are populated when the (normalized) path ends with `/`.
+///
+/// Finds the last `/` in the normalized path and splits it into:
+/// * `dir_part`  – everything up to and including the `/`
+/// * `filter_prefix` – any text typed after the last `/`
+///
+/// Reads `dir_part` and filters entries by `filter_prefix` (case-insensitive
+/// prefix match). Completions are shown whenever there is at least one `/` in
+/// the path, so typing `c:/som` still lists entries in `c:/` that start with
+/// `som`.
 fn update_completions(dialog: &mut CreateDialog) {
     let normalized = dialog.req_file.replace('\\', "/");
-    if normalized.ends_with('/') {
-        dialog.completions = read_dir_entries_blocking(&normalized);
-        dialog.completion_selected = 0;
+
+    if let Some(last_slash) = normalized.rfind('/') {
+        let dir_part = &normalized[..=last_slash]; // includes trailing '/'
+        let filter_prefix = &normalized[last_slash + 1..]; // typed text after '/'
+
+        let mut entries = read_dir_entries_blocking(dir_part);
+
+        // Filter by the text already typed after the last '/'.
+        if !filter_prefix.is_empty() {
+            let prefix_lower = filter_prefix.to_lowercase();
+            entries.retain(|e| {
+                // Strip trailing '/' from directory names before comparing.
+                e.trim_end_matches('/').to_lowercase().starts_with(&prefix_lower)
+            });
+        }
+
+        if !entries.is_empty() {
+            dialog.completions = entries;
+            dialog.completions_dir = dir_part.to_string();
+            dialog.completion_selected = 0;
+            dialog.completion_scroll = 0;
+        } else {
+            dialog.completions.clear();
+            dialog.completions_dir = String::new();
+            dialog.completion_selected = 0;
+            dialog.completion_scroll = 0;
+        }
     } else {
+        // No '/' in the path – nothing to complete.
         dialog.completions.clear();
+        dialog.completions_dir = String::new();
         dialog.completion_selected = 0;
+        dialog.completion_scroll = 0;
     }
 }
+
+/// Maximum number of completion entries shown at once in the dialog.
+const COMPLETION_MAX_SHOWN: usize = 6;
 
 /// Spawn a background task for a UV management operation and record it in `app`.
 fn spawn_uv_task(
@@ -318,18 +356,30 @@ where
                     KeyCode::Down => {
                         if dialog.completion_selected + 1 < dialog.completions.len() {
                             dialog.completion_selected += 1;
+                            // Scroll the window forward if selection goes past visible area.
+                            if dialog.completion_selected
+                                >= dialog.completion_scroll + COMPLETION_MAX_SHOWN
+                            {
+                                dialog.completion_scroll += 1;
+                            }
                         }
                         continue;
                     }
                     KeyCode::Up => {
-                        dialog.completion_selected =
-                            dialog.completion_selected.saturating_sub(1);
+                        if dialog.completion_selected > 0 {
+                            dialog.completion_selected -= 1;
+                            // Scroll the window back if selection goes above visible area.
+                            if dialog.completion_selected < dialog.completion_scroll {
+                                dialog.completion_scroll =
+                                    dialog.completion_scroll.saturating_sub(1);
+                            }
+                        }
                         continue;
                     }
                     KeyCode::Tab => {
                         // Accept the currently highlighted completion.
                         let sel = dialog.completions[dialog.completion_selected].clone();
-                        dialog.req_file_complete(&sel);
+                        dialog.req_file_accept_completion(&sel);
                         update_completions(dialog);
                         continue;
                     }
@@ -337,6 +387,8 @@ where
                         // Any other key: dismiss completions and process normally.
                         dialog.completions.clear();
                         dialog.completion_selected = 0;
+                        dialog.completion_scroll = 0;
+                        dialog.completions_dir = String::new();
                     }
                 }
             }
@@ -372,12 +424,16 @@ where
                     dialog.field = next;
                     dialog.completions.clear();
                     dialog.completion_selected = 0;
+                    dialog.completion_scroll = 0;
+                    dialog.completions_dir = String::new();
                 }
                 KeyCode::BackTab | KeyCode::Up => {
                     let prev = dialog.field.prev();
                     dialog.field = prev;
                     dialog.completions.clear();
                     dialog.completion_selected = 0;
+                    dialog.completion_scroll = 0;
+                    dialog.completions_dir = String::new();
                 }
                 KeyCode::Char(' ') => {
                     if dialog.field == app::CreateField::DefaultPkgs {
@@ -426,6 +482,8 @@ where
                         dialog.field = next;
                         dialog.completions.clear();
                         dialog.completion_selected = 0;
+                        dialog.completion_scroll = 0;
+                        dialog.completions_dir = String::new();
                     }
                 }
                 KeyCode::Backspace => {
