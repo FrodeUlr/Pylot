@@ -881,7 +881,10 @@ mod tests {
         let dir = tempfile::TempDir::new().unwrap();
         fs::write(dir.path().join("requirements.txt"), "numpy\n").unwrap();
 
-        let dir_path = dir.path().to_str().unwrap();
+        // Normalise to forward slashes so the expected value matches what
+        // `update_completions` stores in `completions_dir` after its own
+        // backslash → forward-slash normalisation (important on Windows).
+        let dir_path = dir.path().to_str().unwrap().replace('\\', "/");
         let mut dialog = CreateDialog::new("3.12");
         // Trailing '/' makes filter_prefix empty → list all entries.
         dialog.req_file = format!("{}/", dir_path);
