@@ -955,5 +955,223 @@ mod tests {
         assert!(UvVenv::validate_req_file_path("path&evil").is_err());
         assert!(UvVenv::validate_req_file_path("path$evil").is_err());
     }
-}
 
+    // ── delete ────────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_delete_nonexistent_venv_returns_not_found() {
+        use tempfile::tempdir;
+
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempdir().unwrap();
+
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("nonexistent_venv"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        // Point settings at temp dir; venv subdirectory does not exist.
+        venv.settings.venvs_path = dir.path().to_str().unwrap().to_string();
+
+        let result = venv.delete(std::io::Cursor::new(""), false).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), PylotError::VenvNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn test_delete_venv_invalid_name_rejected() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("bad/name"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        venv.settings.venvs_path = "/tmp".to_string();
+
+        let result = venv.delete(std::io::Cursor::new(""), false).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), PylotError::InvalidVenvName(_)));
+    }
+
+    #[tokio::test]
+    async fn test_delete_venv_user_confirms_no() {
+        use tempfile::tempdir;
+
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempdir().unwrap();
+        let venv_dir = dir.path().join("myvenv");
+        tokio::fs::create_dir_all(&venv_dir).await.unwrap();
+
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("myvenv"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        venv.settings.venvs_path = dir.path().to_str().unwrap().to_string();
+
+        // confirm=true but user answers "n" → deletion skipped.
+        let result = venv.delete(std::io::Cursor::new("n\n"), true).await;
+        assert!(result.is_ok());
+        // Directory must still exist.
+        assert!(tokio::fs::try_exists(&venv_dir).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_delete_venv_no_confirm_removes_directory() {
+        use tempfile::tempdir;
+
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempdir().unwrap();
+        let venv_dir = dir.path().join("myvenv");
+        tokio::fs::create_dir_all(&venv_dir).await.unwrap();
+
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("myvenv"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        venv.settings.venvs_path = dir.path().to_str().unwrap().to_string();
+
+        // confirm=false → skip prompt, delete immediately.
+        let result = venv.delete(std::io::Cursor::new(""), false).await;
+        assert!(result.is_ok());
+        // Directory should have been removed.
+        assert!(!tokio::fs::try_exists(&venv_dir).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_delete_venv_user_confirms_yes() {
+        use tempfile::tempdir;
+
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempdir().unwrap();
+        let venv_dir = dir.path().join("myvenv2");
+        tokio::fs::create_dir_all(&venv_dir).await.unwrap();
+
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("myvenv2"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        venv.settings.venvs_path = dir.path().to_str().unwrap().to_string();
+
+        // confirm=true and user answers "y" → directory deleted.
+        let result = venv.delete(std::io::Cursor::new("y\n"), true).await;
+        assert!(result.is_ok());
+        assert!(!tokio::fs::try_exists(&venv_dir).await.unwrap());
+    }
+
+    // ── install_from_requirements ─────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_install_from_requirements_empty_path_is_error() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let venv = UvVenv::new(
+            Cow::Borrowed("myvenv"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        let result = venv.install_from_requirements("").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_install_from_requirements_injection_path_is_error() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let venv = UvVenv::new(
+            Cow::Borrowed("myvenv"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        let result = venv.install_from_requirements("/tmp/evil;cmd").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_install_from_requirements_nonexistent_file_is_error() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let venv = UvVenv::new(
+            Cow::Borrowed("myvenv"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        let result = venv
+            .install_from_requirements("/tmp/nonexistent_req_xyz_abc_123.txt")
+            .await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), PylotError::PathError(_)));
+    }
+
+    #[tokio::test]
+    async fn test_install_from_requirements_backslash_path_normalized() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let venv = UvVenv::new(
+            Cow::Borrowed("myvenv"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        // Backslash path is valid syntax but file does not exist → PathError (not validation error).
+        let result = venv
+            .install_from_requirements("C:\\Users\\user\\nonexistent_req.txt")
+            .await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), PylotError::PathError(_)));
+    }
+
+    // ── activate ──────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_activate_invalid_name_is_error() {
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("bad/name"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        venv.settings.venvs_path = "/tmp".to_string();
+        let result = venv.activate().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_activate_nonexistent_venv_is_not_found() {
+        use tempfile::tempdir;
+
+        logger::initialize_logger(log::LevelFilter::Trace);
+        let dir = tempdir().unwrap();
+
+        let mut venv = UvVenv::new(
+            Cow::Borrowed("myvenv"),
+            "".to_string(),
+            "3.11".to_string(),
+            vec![],
+            false,
+        );
+        // Point settings at temp dir; the venv (and its activate script) do not exist.
+        venv.settings.venvs_path = dir.path().to_str().unwrap().to_string();
+
+        let result = venv.activate().await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), PylotError::VenvNotFound(_)));
+    }
+}

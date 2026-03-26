@@ -748,4 +748,215 @@ mod tests {
     // ── pause_for_enter is a side-effectful helper; just verify it compiles.  ─
     // (It reads from stdin which we can't easily mock in a unit test, so we
     //  skip calling it directly and rely on the compiler for basic coverage.)
+
+    // ── read_dir_entries_blocking ────────────────────────────────────────────
+
+    #[test]
+    fn test_read_dir_entries_blocking_nonexistent() {
+        // A path that doesn't exist → empty list without panicking.
+        let result = read_dir_entries_blocking("/nonexistent_path_xyz_abc_123456");
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_read_dir_entries_blocking_valid_dir() {
+        // Any readable directory should not panic and return a Vec.
+        // We use the system temp dir which is guaranteed to exist.
+        let tmp = std::env::temp_dir();
+        let path = tmp.to_str().unwrap();
+        let _result = read_dir_entries_blocking(path);
+        // Just verify it does not panic; content is environment-dependent.
+    }
+
+    #[test]
+    fn test_read_dir_entries_blocking_dirs_before_files() {
+        use std::fs;
+        let dir = tempfile::TempDir::new().unwrap();
+
+        // Create a file and a subdirectory; the directory should sort first.
+        fs::write(dir.path().join("b_file.txt"), "content").unwrap();
+        fs::create_dir(dir.path().join("a_subdir")).unwrap();
+
+        let path = dir.path().to_str().unwrap();
+        let entries = read_dir_entries_blocking(path);
+
+        assert!(!entries.is_empty(), "Expected at least one entry");
+        // The first entry must be a directory (trailing '/').
+        assert!(
+            entries[0].ends_with('/'),
+            "Expected first entry to be a directory, got '{}'",
+            entries[0]
+        );
+    }
+
+    #[test]
+    fn test_read_dir_entries_blocking_file_no_trailing_slash() {
+        use std::fs;
+        let dir = tempfile::TempDir::new().unwrap();
+        fs::write(dir.path().join("myfile.txt"), "content").unwrap();
+
+        let path = dir.path().to_str().unwrap();
+        let entries = read_dir_entries_blocking(path);
+
+        let file_entry = entries.iter().find(|e| e.starts_with("myfile"));
+        assert!(file_entry.is_some(), "Expected myfile.txt in entries");
+        assert!(
+            !file_entry.unwrap().ends_with('/'),
+            "File entry should not have trailing '/'"
+        );
+    }
+
+    #[test]
+    fn test_read_dir_entries_blocking_dir_has_trailing_slash() {
+        use std::fs;
+        let dir = tempfile::TempDir::new().unwrap();
+        fs::create_dir(dir.path().join("mysubdir")).unwrap();
+
+        let path = dir.path().to_str().unwrap();
+        let entries = read_dir_entries_blocking(path);
+
+        let dir_entry = entries.iter().find(|e| e.starts_with("mysubdir"));
+        assert!(dir_entry.is_some(), "Expected mysubdir in entries");
+        assert_eq!(
+            dir_entry.unwrap().as_str(),
+            "mysubdir/",
+            "Directory entry should have trailing '/'"
+        );
+    }
+
+    #[test]
+    fn test_read_dir_entries_blocking_tilde_expansion() {
+        // Tilde should be expanded without panicking; result may be empty
+        // if the home directory is inaccessible.
+        let _result = read_dir_entries_blocking("~/");
+    }
+
+    // ── update_completions ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_update_completions_no_slash_clears_completions() {
+        let mut dialog = CreateDialog::new("3.12");
+        dialog.req_file = "justtext".to_string();
+        // Pre-populate completions to verify they are cleared.
+        dialog.completions = vec!["something/".to_string()];
+        dialog.completions_dir = "dir/".to_string();
+        dialog.completion_selected = 1;
+        dialog.completion_scroll = 2;
+
+        update_completions(&mut dialog);
+
+        assert!(dialog.completions.is_empty());
+        assert!(dialog.completions_dir.is_empty());
+        assert_eq!(dialog.completion_selected, 0);
+        assert_eq!(dialog.completion_scroll, 0);
+    }
+
+    #[test]
+    fn test_update_completions_empty_req_file_clears() {
+        let mut dialog = CreateDialog::new("3.12");
+        dialog.req_file = String::new();
+        dialog.completions = vec!["old/".to_string()];
+
+        update_completions(&mut dialog);
+
+        assert!(dialog.completions.is_empty());
+    }
+
+    #[test]
+    fn test_update_completions_backslash_normalized_to_slash() {
+        // Backslash paths normalise to '/' before the rfind check.
+        // Use a path whose directory portion does not exist → completions cleared.
+        let mut dialog = CreateDialog::new("3.12");
+        dialog.req_file = "C:\\nonexistent_xyz_abc\\".to_string();
+
+        update_completions(&mut dialog);
+
+        // Non-existent directory → no entries → completions cleared.
+        assert!(dialog.completions.is_empty());
+    }
+
+    #[test]
+    fn test_update_completions_valid_dir_populates_completions() {
+        use std::fs;
+        let dir = tempfile::TempDir::new().unwrap();
+        fs::write(dir.path().join("requirements.txt"), "numpy\n").unwrap();
+
+        let dir_path = dir.path().to_str().unwrap();
+        let mut dialog = CreateDialog::new("3.12");
+        // Trailing '/' makes filter_prefix empty → list all entries.
+        dialog.req_file = format!("{}/", dir_path);
+
+        update_completions(&mut dialog);
+
+        assert!(!dialog.completions.is_empty(), "Expected completions to be populated");
+        assert_eq!(dialog.completions_dir, format!("{}/", dir_path));
+        assert_eq!(dialog.completion_selected, 0);
+        assert_eq!(dialog.completion_scroll, 0);
+    }
+
+    #[test]
+    fn test_update_completions_filter_prefix_narrows_results() {
+        use std::fs;
+        let dir = tempfile::TempDir::new().unwrap();
+        fs::write(dir.path().join("requirements.txt"), "numpy\n").unwrap();
+        fs::write(dir.path().join("other.txt"), "scipy\n").unwrap();
+
+        let dir_path = dir.path().to_str().unwrap();
+        let mut dialog = CreateDialog::new("3.12");
+        // Filter prefix "req" should only match "requirements.txt".
+        dialog.req_file = format!("{}/req", dir_path);
+
+        update_completions(&mut dialog);
+
+        assert!(!dialog.completions.is_empty());
+        for entry in &dialog.completions {
+            assert!(
+                entry.trim_end_matches('/').to_lowercase().starts_with("req"),
+                "Completion '{}' should start with 'req'",
+                entry
+            );
+        }
+    }
+
+    #[test]
+    fn test_update_completions_no_match_clears() {
+        use std::fs;
+        let dir = tempfile::TempDir::new().unwrap();
+        fs::write(dir.path().join("requirements.txt"), "numpy\n").unwrap();
+
+        let dir_path = dir.path().to_str().unwrap();
+        let mut dialog = CreateDialog::new("3.12");
+        // Pre-populate completions to verify they get cleared.
+        dialog.completions = vec!["old/".to_string()];
+        dialog.completion_selected = 1;
+        // Filter prefix that matches nothing.
+        dialog.req_file = format!("{}/zzz_no_match_xyz", dir_path);
+
+        update_completions(&mut dialog);
+
+        assert!(dialog.completions.is_empty());
+        assert!(dialog.completions_dir.is_empty());
+        assert_eq!(dialog.completion_selected, 0);
+        assert_eq!(dialog.completion_scroll, 0);
+    }
+
+    #[test]
+    fn test_update_completions_nonexistent_dir_clears() {
+        let mut dialog = CreateDialog::new("3.12");
+        // Valid slash present but the directory doesn't exist.
+        dialog.req_file = "/nonexistent_xyz_abc_123/somefile".to_string();
+        dialog.completions = vec!["old/".to_string()];
+
+        update_completions(&mut dialog);
+
+        assert!(dialog.completions.is_empty());
+        assert!(dialog.completions_dir.is_empty());
+    }
+
+    // ── COMPLETION_MAX_SHOWN constant ────────────────────────────────────────
+
+    #[test]
+    fn test_completion_max_shown_is_six() {
+        assert_eq!(COMPLETION_MAX_SHOWN, 6);
+    }
 }
