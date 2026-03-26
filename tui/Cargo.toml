@@ -15,3 +15,6 @@ ratatui = { workspace = true }
 crossterm = { workspace = true, features = ["event-stream"] }
 futures = { workspace = true }
 shellexpand = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.23"
