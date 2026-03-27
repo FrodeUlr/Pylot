@@ -5,10 +5,27 @@ use std::{
     sync::{LazyLock, Mutex},
 };
 
+/// Application settings deserialized from `settings.toml`.
+///
+/// The settings file is expected to live in the same directory as the compiled
+/// executable.  If the file does not exist it is created automatically with
+/// default values on first run.
+///
+/// # Example `settings.toml`
+///
+/// ```toml
+/// venvs_path = "~/pylot/venvs"
+/// default_pkgs = ["numpy", "requests"]
+/// ```
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct Settings {
+    /// The directory where managed virtual environments are stored.
+    ///
+    /// Tilde expansion is applied, so `~/pylot/venvs` works on all platforms.
     #[serde(default = "default_venv_path")]
     pub venvs_path: String,
+    /// Packages that are installed automatically when a virtual environment is
+    /// created with the `--default` flag.
     #[serde(default)]
     pub default_pkgs: Vec<String>,
 }
@@ -29,6 +46,12 @@ impl Default for Settings {
 }
 
 impl Settings {
+    /// Load settings from `settings.toml` next to the running executable and
+    /// store them in the process-wide singleton.
+    ///
+    /// This must be called once at application start-up (before any call to
+    /// [`Settings::get_settings`]).  If the file does not exist it is created
+    /// with default values.
     pub async fn init() {
         let exe_dir = Self::get_exe_dir(env::current_exe);
         Self::init_with_dir(&exe_dir).await;
@@ -68,6 +91,9 @@ impl Settings {
         }
     }
 
+    /// Return a clone of the current process-wide settings.
+    ///
+    /// Falls back to [`Settings::default`] if the internal mutex is poisoned.
     pub fn get_settings() -> Settings {
         SETTINGS
             .lock()
@@ -75,6 +101,8 @@ impl Settings {
             .unwrap_or_else(|_| Settings::default())
     }
 
+    /// Ensure that [`Settings::venvs_path`] exists on disk, creating the
+    /// directory (and all missing parents) if necessary.
     pub fn validate_venv_path(&self) {
         let mut path = self.venvs_path.clone();
         if path.starts_with("~") {
@@ -88,6 +116,10 @@ impl Settings {
         }
     }
 
+    /// Return the directory that contains the running executable.
+    ///
+    /// Accepts a callable `current_exe_fn` so the logic can be tested without
+    /// touching the real filesystem.
     pub fn get_exe_dir<F>(current_exe_fn: F) -> PathBuf
     where
         F: Fn() -> std::io::Result<PathBuf>,

@@ -6,6 +6,14 @@ use tokio::{
     process::{Child, Command},
 };
 
+/// Spawn `cmd` as a Tokio async child process with stdout and stderr piped.
+///
+/// If `run` is non-empty it is prepended to `args` as the first argument (used
+/// e.g. for `sh -c <script>`).
+///
+/// # Errors
+///
+/// Returns [`PylotError::CommandExecution`] if the process cannot be spawned.
 pub fn create_child_cmd(cmd: &str, args: &[&str], run: &str) -> Result<Child> {
     let mut cmd = Command::new(cmd);
     if !run.is_empty() {
@@ -18,6 +26,17 @@ pub fn create_child_cmd(cmd: &str, args: &[&str], run: &str) -> Result<Child> {
         .map_err(|e| PylotError::CommandExecution(format!("Failed to execute command: {}", e)))
 }
 
+/// Activate a virtual environment by spawning a new shell with the environment
+/// activated.
+///
+/// On **Unix** the current process is _replaced_ by the new shell via `exec`
+/// (the call never returns on success).  On **Windows** a child process is
+/// spawned and this function blocks until it exits, forwarding Ctrl-C signals
+/// to the child.
+///
+/// # Errors
+///
+/// Returns [`PylotError::CommandExecution`] if the shell cannot be spawned.
 pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<()> {
     #[cfg(unix)]
     {
@@ -85,6 +104,16 @@ pub fn activate_venv_shell(cmd: &str, args: Vec<String>) -> Result<()> {
     }
 }
 
+/// Stream stdout and stderr from async readers, calling `handle_stdout` /
+/// `handle_stderr` for every line.
+///
+/// Lines that contain `"error:"` are treated as fatal and cause the function to
+/// return an error.
+///
+/// # Errors
+///
+/// Returns `Err` if a line contains `"error:"` or if reading either stream
+/// fails.
 pub async fn run_command_with_handlers<
     RO: AsyncBufRead + Unpin + Send + 'static,
     RE: AsyncBufRead + Unpin + Send + 'static,
@@ -141,6 +170,13 @@ where
     Ok(())
 }
 
+/// Run a spawned child process to completion, forwarding stdout lines to the
+/// `info` log level and stderr lines to `warn`.
+///
+/// # Errors
+///
+/// Returns [`PylotError`] if stdout/stderr cannot be read or if a line
+/// contains `"error:"`.
 pub async fn run_command(child: &mut Child) -> Result<()> {
     let stdout = child
         .stdout
@@ -164,6 +200,15 @@ pub async fn run_command(child: &mut Child) -> Result<()> {
     Ok(())
 }
 
+/// Return the shell that should be used for activating virtual environments.
+///
+/// On **Windows** this is `pwsh` if available, otherwise `powershell`.
+/// On **Unix** it reads the `SHELL` environment variable.
+///
+/// # Errors
+///
+/// Returns [`PylotError::EnvVarNotSet`] on Unix when the `SHELL` variable is
+/// not set.
 pub fn get_parent_shell() -> Result<String> {
     if cfg!(target_os = "windows") {
         let shell = if which::which(PWSH_CMD).is_ok() {

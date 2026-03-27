@@ -1,37 +1,56 @@
 use thiserror::Error;
 
+/// The unified error type used throughout the Pylot workspace.
+///
+/// Every public API returns [`Result<T>`] which is an alias for
+/// `std::result::Result<T, PylotError>`.
 #[derive(Error, Debug)]
 pub enum PylotError {
+    /// Wraps a standard [`std::io::Error`].
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
+    /// A subprocess or shell command returned a non-zero exit code or could not
+    /// be spawned.
     #[error("Command execution failed: {0}")]
     CommandExecution(String),
 
+    /// The requested virtual environment directory does not exist.
     #[error("Virtual environment not found: {0}")]
     VenvNotFound(String),
 
+    /// A virtual environment with the same name already exists.
     #[error("Virtual environment already exists: {0}")]
     VenvExists(String),
 
+    /// The supplied virtual environment name contains illegal characters or is
+    /// otherwise rejected by the validation rules.
     #[error("Invalid virtual environment name: {0}")]
     InvalidVenvName(String),
 
+    /// A package name failed validation (e.g. contains shell metacharacters).
     #[error("Invalid package name: {0}")]
     InvalidPackageName(String),
 
+    /// A required environment variable (e.g. `HOME`) is not set.
     #[error("Environment variable not set: {0}")]
     EnvVarNotSet(String),
 
+    /// A filesystem path operation failed for a reason not covered by
+    /// [`PylotError::Io`].
     #[error("Path error: {0}")]
     PathError(String),
 
+    /// The `settings.toml` file could not be read or deserialized.
     #[error("Settings error: {0}")]
     Settings(String),
 
+    /// The user explicitly cancelled an interactive prompt.
     #[error("Cancelled by user")]
     Cancelled,
 
+    /// A catch-all variant for errors that do not fit any of the more specific
+    /// variants above.
     #[error("{0}")]
     Other(String),
 }

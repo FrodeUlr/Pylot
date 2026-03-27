@@ -16,13 +16,26 @@ use tokio::fs;
 
 pub struct VenvManager;
 
+/// Process-wide singleton for all virtual environment discovery and selection
+/// operations.
+///
+/// Obtain it via `VENVMANAGER.list()`, `VENVMANAGER.find_venv(…)`, etc.
 pub static VENVMANAGER: LazyLock<VenvManager> = LazyLock::new(VenvManager::new);
 
+/// Manages the lifecycle of virtual environments stored under
+/// [`Settings::venvs_path`](crate::cfg::settings::Settings::venvs_path).
+///
+/// All methods are async and rely on the Tokio runtime.
 impl<'a> VenvManager {
     fn new() -> Self {
         VenvManager
     }
 
+    /// Return all virtual environments found under the configured
+    /// [`venvs_path`](crate::cfg::settings::Settings::venvs_path).
+    ///
+    /// Each returned [`UvVenv`] has its Python version and package count
+    /// already populated.
     pub async fn list(&'a self) -> Vec<UvVenv<'a>> {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let mut venvs: Vec<UvVenv> = match fs::read_dir(&path).await {
@@ -36,12 +49,24 @@ impl<'a> VenvManager {
         venvs
     }
 
+    /// Return `true` if a directory named `name` exists inside the configured
+    /// venvs directory.
     pub async fn check_if_exists(&self, name: &str) -> bool {
         let path = shellexpand::tilde(&settings::Settings::get_settings().venvs_path).to_string();
         let venv_path = format!("{}/{}", path, name);
         fs::try_exists(&venv_path).await.unwrap_or(false)
     }
 
+    /// Resolve a virtual environment by name, or interactively prompt the user
+    /// to pick one from a printed table.
+    ///
+    /// `method` is a human-readable verb used in the prompt (e.g. `"activate"`).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PylotError::VenvNotFound`] when no environments exist, or
+    /// [`PylotError::Cancelled`] when the user chooses to cancel the
+    /// interactive selection.
     pub async fn find_venv<R: std::io::Read>(
         &'a self,
         input: R,
@@ -148,6 +173,7 @@ impl<'a> VenvManager {
         venvs
     }
 
+    /// Print the venv table to stdout and return without prompting.
     pub async fn print_venv_table(&self) {
         let mut venvs = self.list().await;
         if venvs.is_empty() {

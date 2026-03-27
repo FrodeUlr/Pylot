@@ -8,13 +8,27 @@ use colored::Colorize;
 use std::borrow::Cow;
 use tokio::fs as async_fs;
 
+/// A Python virtual environment managed by Astral UV.
+///
+/// `UvVenv` is the concrete implementation of the [`Create`], [`Delete`], and
+/// [`Activate`] traits.  Instances are typically obtained via
+/// [`VenvManager::list`](crate::virtualenv::venvmanager::VenvManager::list) or
+/// [`VenvManager::find_venv`](crate::virtualenv::venvmanager::VenvManager::find_venv).
 pub struct UvVenv<'a> {
+    /// The name of the virtual environment (used as the directory name).
     pub name: Cow<'a, str>,
+    /// Absolute path to the virtual environment directory.
     pub path: String,
+    /// Python version string (e.g. `"3.12"`).
     pub python_version: String,
+    /// Packages to install during creation.
     pub packages: Vec<String>,
+    /// When `true`, the configured [`default_pkgs`](crate::cfg::settings::Settings::default_pkgs)
+    /// are also installed during creation.
     pub default: bool,
     pub settings: settings::Settings,
+    /// Number of installed packages (populated on demand by scanning the
+    /// environment's `site-packages` directory for `.dist-info` entries).
     pub package_count: Option<usize>,
     /// Sorted list of installed package display strings (`"name version"`).
     pub installed_packages: Vec<String>,
@@ -151,6 +165,11 @@ impl<'a> Activate for UvVenv<'a> {
 }
 
 impl<'a> UvVenv<'a> {
+    /// Create a new `UvVenv` with the given metadata.
+    ///
+    /// `path`, `python_version`, `packages`, and `default` may be empty /
+    /// `false` when building a lightweight handle used only for name-based
+    /// lookups.
     pub fn new(
         name: Cow<'a, str>,
         path: String,
