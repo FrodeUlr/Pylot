@@ -16,8 +16,8 @@ log = { workspace = true }
 pylot-tui = { workspace = true }
 
 [dev-dependencies]
-assert_cmd = "2.0"
-predicates = "3.0"
+assert_cmd = "2.2.0"
+predicates = "3.1.4"
 shellexpand = { workspace = true }
-tokio-test = "0.4"
-tempfile = "3.23"
+tokio-test = "0.4.5"
+tempfile = "3.27.0"
