@@ -213,27 +213,27 @@ The TUI has two tabs: **Environments** and **UV**.
 
 #### Environments tab
 
-| Key | Action |
-|-----|--------|
-| `n` | Create a new virtual environment (inline form) |
-| `d` | Delete the selected environment |
-| `Enter` / `a` | Activate the selected environment |
-| `i` | Add packages to the selected environment |
-| `r` | Remove packages from the selected environment |
-| `/` | Search / filter the package list for the selected environment |
-| `j` / `k` | Scroll the package list down / up |
-| `Tab` / `→` | Switch to the UV tab |
-| `q` / `Esc` | Quit |
+| Key           | Action                                                        |
+| ------------- | ------------------------------------------------------------- |
+| `n`           | Create a new virtual environment (inline form)                |
+| `d`           | Delete the selected environment                               |
+| `Enter` / `a` | Activate the selected environment                             |
+| `i`           | Add packages to the selected environment                      |
+| `r`           | Remove packages from the selected environment                 |
+| `/`           | Search / filter the package list for the selected environment |
+| `j` / `k`     | Scroll the package list down / up                             |
+| `Tab` / `→`   | Switch to the UV tab                                          |
+| `q` / `Esc`   | Quit                                                          |
 
 #### UV tab
 
-| Key | Action |
-|-----|--------|
-| `i` | Install UV |
-| `u` | Update UV |
-| `d` | Uninstall UV |
+| Key         | Action                         |
+| ----------- | ------------------------------ |
+| `i`         | Install UV                     |
+| `u`         | Update UV                      |
+| `d`         | Uninstall UV                   |
 | `Tab` / `→` | Switch to the Environments tab |
-| `q` / `Esc` | Quit |
+| `q` / `Esc` | Quit                           |
 
 ### Shell Completions
 
@@ -294,7 +294,7 @@ cargo doc --workspace --no-deps --open
 ### Documentation Notes
 
 `cargo doc --workspace --no-deps` documents the public API across all workspace
-crates.  Items inside private modules will not appear unless they are publicly
+crates. Items inside private modules will not appear unless they are publicly
 re-exported or you generate docs with private items enabled.
 
 To include private items in generated documentation:
@@ -304,12 +304,11 @@ cargo doc --workspace --no-deps --document-private-items
 ```
 
 Running `make doc` runs `cargo test --doc` followed by
-`cargo doc --workspace --no-deps`, so the generated HTML in `target/doc/` is
-always test-verified.  Append `open` to the Make invocation to open the docs in
-a browser automatically:
+`cargo doc --workspace --no-deps --open`, so the generated HTML in `target/doc/` is
+always test-verified. The docs will open in the browser after generation.
 
 ```bash
-make doc open
+make doc
 ```
 
 ## Testing And CI

@@ -100,4 +100,4 @@ debug:
 doc:
 	@$(call echo_line,--- Test and create docs ---,GREEN)
 	@cargo test --doc
-	@cargo doc --workspace --no-deps $(if $(findstring open,$(MAKECMDGOALS)),--open)
+	@cargo doc --workspace --no-deps --open
