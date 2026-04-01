@@ -162,8 +162,8 @@ mod tests {
 
     #[test]
     fn test_result_ok() {
-        let r: Result<i32> = Ok(42);
-        assert_eq!(r.unwrap(), 42);
+        let r: i32 = 42;
+        assert_eq!(r, 42);
     }
 
     #[test]

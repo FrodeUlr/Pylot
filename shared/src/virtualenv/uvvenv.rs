@@ -32,27 +32,33 @@ impl<'a> Create for UvVenv<'a> {
             &self.settings.venvs_path
         };
         let path = shellexpand::tilde(venvs_path).to_string();
-        
+
         // Create directory if it doesn't exist
         async_fs::create_dir_all(&path)
             .await
-            .map_err(|e| PylotError::Io(e))?;
+            .map_err(PylotError::Io)?;
 
         let args = ["venv", &self.name, "--python", self.python_version.as_str()];
         log::info!("Creating virtual environment: {}", self.name);
-        
+
         // Execute uv venv command in the target directory
         let mut child = tokio::process::Command::new("uv")
-            .args(&args)
+            .args(args)
             .current_dir(&path)
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
-            .map_err(|e| PylotError::CommandExecution(format!("Failed to spawn uv command: {}", e)))?;
+            .map_err(|e| {
+                PylotError::CommandExecution(format!("Failed to spawn uv command: {}", e))
+            })?;
 
-        let stdout = child.stdout.take()
+        let stdout = child
+            .stdout
+            .take()
             .ok_or_else(|| PylotError::CommandExecution("Failed to open stdout".to_string()))?;
-        let stderr = child.stderr.take()
+        let stderr = child
+            .stderr
+            .take()
             .ok_or_else(|| PylotError::CommandExecution("Failed to open stderr".to_string()))?;
 
         let stdout_reader = tokio::io::BufReader::new(stdout);
@@ -72,7 +78,7 @@ impl<'a> Create for UvVenv<'a> {
             let default_pkgs = self.settings.default_pkgs.clone();
             pkgs.extend(default_pkgs);
         }
-        
+
         if !pkgs.is_empty() {
             // Validate all package names before installation
             for pkg in &pkgs {
@@ -82,27 +88,23 @@ impl<'a> Create for UvVenv<'a> {
             let venv_path = shellexpand::tilde(&self.settings.venvs_path).to_string();
             self.install_packages(pkgs, venv_path).await?;
         }
-        
+
         Ok(())
     }
 }
 
 impl<'a> Delete for UvVenv<'a> {
-    async fn delete<R: std::io::Read>(
-        &self,
-        input: R,
-        confirm: bool,
-    ) -> Result<()> {
+    async fn delete<R: std::io::Read>(&self, input: R, confirm: bool) -> Result<()> {
         // Validate venv name
         Self::validate_venv_name(&self.name)?;
 
         let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
         let venv_path = format!("{}/{}", path, self.name);
-        
+
         if !async_fs::try_exists(&venv_path).await.unwrap_or(false) {
             return Err(PylotError::VenvNotFound(ERROR_VENV_NOT_EXISTS.to_string()));
         }
-        
+
         let mut choice = !confirm;
         if confirm {
             log::info!(
@@ -114,15 +116,15 @@ impl<'a> Delete for UvVenv<'a> {
             );
             choice = utils::confirm(input);
         }
-        
+
         if !choice {
             return Ok(());
         }
-        
+
         async_fs::remove_dir_all(venv_path)
             .await
-            .map_err(|e| PylotError::Io(e))?;
-        
+            .map_err(PylotError::Io)?;
+
         Ok(())
     }
 }
@@ -133,18 +135,18 @@ impl<'a> Activate for UvVenv<'a> {
         Self::validate_venv_name(&self.name)?;
 
         let (shell, cmd, path) = self.get_shell_cmd()?;
-        
+
         if !async_fs::try_exists(&path).await.unwrap_or(false) {
             return Err(PylotError::VenvNotFound(ERROR_VENV_NOT_EXISTS.to_string()));
         }
-        
+
         log::info!("\nActivating virtual environment: {}", self.name);
         log::warn!(
             "{} {}",
             "Note: To exit the virtual environment, type",
             "'exit'".green()
         );
-        
+
         processes::activate_venv_shell(shell.as_str(), cmd)
             .map_err(|e| PylotError::CommandExecution(e.to_string()))
     }
@@ -203,7 +205,9 @@ impl<'a> UvVenv<'a> {
         }
 
         // Reject packages with shell metacharacters
-        let dangerous_chars = ['&', '|', ';', '$', '`', '\n', '\r', '<', '>', '(', ')', '{', '}'];
+        let dangerous_chars = [
+            '&', '|', ';', '$', '`', '\n', '\r', '<', '>', '(', ')', '{', '}',
+        ];
         if package.chars().any(|c| dangerous_chars.contains(&c)) {
             return Err(PylotError::InvalidPackageName(format!(
                 "Package name '{}' contains invalid characters",
@@ -235,9 +239,7 @@ impl<'a> UvVenv<'a> {
     /// Populates `self.package_count` and `self.installed_packages` (sorted).
     pub(crate) async fn count_packages(&mut self) {
         // Unix layout: {path}/lib/pythonX.Y/site-packages/
-        if let Ok(mut lib_entries) =
-            async_fs::read_dir(format!("{}/lib", self.path)).await
-        {
+        if let Ok(mut lib_entries) = async_fs::read_dir(format!("{}/lib", self.path)).await {
             while let Ok(Some(entry)) = lib_entries.next_entry().await {
                 if entry.file_type().await.map(|t| t.is_dir()).unwrap_or(false) {
                     let name = entry.file_name().to_string_lossy().to_string();
@@ -276,7 +278,7 @@ impl<'a> UvVenv<'a> {
                 packages.push(Self::format_dist_info_name(&name_str));
             }
         }
-        packages.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+        packages.sort_by_key(|a| a.to_lowercase());
         Some(packages)
     }
 
@@ -315,10 +317,14 @@ impl<'a> UvVenv<'a> {
     /// Note: backslashes should be normalized to forward slashes before calling this.
     pub fn validate_req_file_path(path: &str) -> Result<()> {
         if path.is_empty() {
-            return Err(PylotError::PathError("Requirements file path cannot be empty".to_string()));
+            return Err(PylotError::PathError(
+                "Requirements file path cannot be empty".to_string(),
+            ));
         }
         // Backslashes are accepted as Windows path separators and normalized before this call.
-        let dangerous_chars = ['&', '|', ';', '$', '`', '\n', '\r', '<', '>', '(', ')', '{', '}', '"', '\''];
+        let dangerous_chars = [
+            '&', '|', ';', '$', '`', '\n', '\r', '<', '>', '(', ')', '{', '}', '"', '\'',
+        ];
         if path.chars().any(|c| dangerous_chars.contains(&c)) {
             return Err(PylotError::PathError(format!(
                 "Requirements file path '{}' contains invalid characters",
@@ -380,11 +386,17 @@ impl<'a> UvVenv<'a> {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
-            .map_err(|e| PylotError::CommandExecution(format!("Failed to install from requirements: {}", e)))?;
+            .map_err(|e| {
+                PylotError::CommandExecution(format!("Failed to install from requirements: {}", e))
+            })?;
 
-        let stdout = child.stdout.take()
+        let stdout = child
+            .stdout
+            .take()
             .ok_or_else(|| PylotError::CommandExecution("Failed to open stdout".to_string()))?;
-        let stderr = child.stderr.take()
+        let stderr = child
+            .stderr
+            .take()
             .ok_or_else(|| PylotError::CommandExecution("Failed to open stderr".to_string()))?;
 
         let stdout_reader = tokio::io::BufReader::new(stdout);
@@ -397,7 +409,9 @@ impl<'a> UvVenv<'a> {
             |line| log::warn!("{}", line),
         )
         .await
-        .map_err(|e| PylotError::CommandExecution(format!("Error installing from requirements: {}", e)))?;
+        .map_err(|e| {
+            PylotError::CommandExecution(format!("Error installing from requirements: {}", e))
+        })?;
 
         Ok(())
     }
@@ -439,9 +453,13 @@ impl<'a> UvVenv<'a> {
             command_parts.push("uninstall".to_string());
             command_parts.extend(pkgs.iter().cloned());
 
-            (pwsh_cmd, vec!["-Command".to_string(), command_parts.join(" ")])
+            (
+                pwsh_cmd,
+                vec!["-Command".to_string(), command_parts.join(" ")],
+            )
         } else {
-            let mut command_parts = vec![".".to_string(), activate_script.clone(), "&&".to_string()];
+            let mut command_parts =
+                vec![".".to_string(), activate_script.clone(), "&&".to_string()];
             command_parts.push("uv".to_string());
             command_parts.push("pip".to_string());
             command_parts.push("uninstall".to_string());
@@ -455,11 +473,17 @@ impl<'a> UvVenv<'a> {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
-            .map_err(|e| PylotError::CommandExecution(format!("Failed to uninstall packages: {}", e)))?;
+            .map_err(|e| {
+                PylotError::CommandExecution(format!("Failed to uninstall packages: {}", e))
+            })?;
 
-        let stdout = child.stdout.take()
+        let stdout = child
+            .stdout
+            .take()
             .ok_or_else(|| PylotError::CommandExecution("Failed to open stdout".to_string()))?;
-        let stderr = child.stderr.take()
+        let stderr = child
+            .stderr
+            .take()
             .ok_or_else(|| PylotError::CommandExecution("Failed to open stderr".to_string()))?;
 
         let stdout_reader = tokio::io::BufReader::new(stdout);
@@ -498,23 +522,27 @@ impl<'a> UvVenv<'a> {
             } else {
                 POWERSHELL_CMD
             };
-            
+
             // For PowerShell, we need to build a command string that activates and then runs uv
             let mut command_parts = vec![activate_script.clone(), ";".to_string()];
             command_parts.push("uv".to_string());
             command_parts.push("pip".to_string());
             command_parts.push("install".to_string());
             command_parts.extend(pkgs.iter().cloned());
-            
-            (pwsh_cmd, vec!["-Command".to_string(), command_parts.join(" ")])
+
+            (
+                pwsh_cmd,
+                vec!["-Command".to_string(), command_parts.join(" ")],
+            )
         } else {
             // For Unix, we use command chaining with sh -c
-            let mut command_parts = vec![".".to_string(), activate_script.clone(), "&&".to_string()];
+            let mut command_parts =
+                vec![".".to_string(), activate_script.clone(), "&&".to_string()];
             command_parts.push("uv".to_string());
             command_parts.push("pip".to_string());
             command_parts.push("install".to_string());
             command_parts.extend(pkgs.iter().cloned());
-            
+
             (SH_CMD, vec!["-c".to_string(), command_parts.join(" ")])
         };
 
@@ -523,11 +551,17 @@ impl<'a> UvVenv<'a> {
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
             .spawn()
-            .map_err(|e| PylotError::CommandExecution(format!("Failed to install packages: {}", e)))?;
+            .map_err(|e| {
+                PylotError::CommandExecution(format!("Failed to install packages: {}", e))
+            })?;
 
-        let stdout = child.stdout.take()
+        let stdout = child
+            .stdout
+            .take()
             .ok_or_else(|| PylotError::CommandExecution("Failed to open stdout".to_string()))?;
-        let stderr = child.stderr.take()
+        let stderr = child
+            .stderr
+            .take()
             .ok_or_else(|| PylotError::CommandExecution("Failed to open stderr".to_string()))?;
 
         let stdout_reader = tokio::io::BufReader::new(stdout);
@@ -551,13 +585,16 @@ impl<'a> UvVenv<'a> {
 
         let path = shellexpand::tilde(&self.settings.venvs_path).to_string();
         let shell = processes::get_parent_shell()?;
-        
+
         let (cmd, path) = if cfg!(target_os = "windows") {
             let venv_path = format!("{}/{}/scripts/activate.ps1", path, self.name);
             // Use -NoExit so the shell stays open after activating, and -Command with the
             // call operator (&) to execute the activation script correctly.
             let activate_cmd = format!("& '{}'", venv_path);
-            (vec!["-NoExit".to_string(), "-Command".to_string(), activate_cmd], venv_path)
+            (
+                vec!["-NoExit".to_string(), "-Command".to_string(), activate_cmd],
+                venv_path,
+            )
         } else {
             let venv_path = format!("{}/{}/bin/activate", path, self.name);
             // Return the command string to execute. The -c flag will be added by activate_venv_shell.
@@ -565,7 +602,7 @@ impl<'a> UvVenv<'a> {
             let venv_cmd = format!(". {} && {} -i", venv_path, shell.as_str());
             (vec![venv_cmd], venv_path)
         };
-        
+
         Ok((shell, cmd, path))
     }
 }
@@ -723,9 +760,12 @@ mod tests {
         logger::initialize_logger(log::LevelFilter::Trace);
         let dir = tempdir().unwrap();
         let cfg_path = dir.path().join("pyvenv.cfg");
-        tokio::fs::write(&cfg_path, "home = /usr/bin\ninclude-system-site-packages = false\n")
-            .await
-            .unwrap();
+        tokio::fs::write(
+            &cfg_path,
+            "home = /usr/bin\ninclude-system-site-packages = false\n",
+        )
+        .await
+        .unwrap();
 
         let mut venv = UvVenv::new(
             Cow::Borrowed("myenv"),
@@ -744,7 +784,9 @@ mod tests {
     #[test]
     fn test_validate_package_name_each_dangerous_char() {
         logger::initialize_logger(log::LevelFilter::Trace);
-        for ch in ['&', '|', ';', '$', '`', '\n', '\r', '<', '>', '(', ')', '{', '}'] {
+        for ch in [
+            '&', '|', ';', '$', '`', '\n', '\r', '<', '>', '(', ')', '{', '}',
+        ] {
             let pkg = format!("pkg{}name", ch);
             assert!(
                 UvVenv::validate_package_name(&pkg).is_err(),
@@ -798,7 +840,11 @@ mod tests {
         let dir = tempdir().unwrap();
 
         // Create a fake Unix venv layout with two .dist-info dirs and one non-dist-info dir.
-        let site_pkgs = dir.path().join("lib").join("python3.11").join("site-packages");
+        let site_pkgs = dir
+            .path()
+            .join("lib")
+            .join("python3.11")
+            .join("site-packages");
         tokio::fs::create_dir_all(&site_pkgs).await.unwrap();
         tokio::fs::create_dir_all(site_pkgs.join("requests-2.28.0.dist-info"))
             .await
@@ -806,7 +852,9 @@ mod tests {
         tokio::fs::create_dir_all(site_pkgs.join("flask-3.0.0.dist-info"))
             .await
             .unwrap();
-        tokio::fs::create_dir_all(site_pkgs.join("requests")).await.unwrap(); // not a dist-info dir
+        tokio::fs::create_dir_all(site_pkgs.join("requests"))
+            .await
+            .unwrap(); // not a dist-info dir
 
         let mut venv = UvVenv::new(
             Cow::Borrowed("myenv"),
@@ -855,25 +903,37 @@ mod tests {
 
     #[test]
     fn test_format_dist_info_name_simple() {
-        assert_eq!(UvVenv::format_dist_info_name("requests-2.28.0.dist-info"), "requests 2.28.0");
+        assert_eq!(
+            UvVenv::format_dist_info_name("requests-2.28.0.dist-info"),
+            "requests 2.28.0"
+        );
     }
 
     #[test]
     fn test_format_dist_info_name_underscores() {
         // Underscores in the package name are replaced with hyphens (PEP 427).
-        assert_eq!(UvVenv::format_dist_info_name("my_package-1.0.0.dist-info"), "my-package 1.0.0");
+        assert_eq!(
+            UvVenv::format_dist_info_name("my_package-1.0.0.dist-info"),
+            "my-package 1.0.0"
+        );
     }
 
     #[test]
     fn test_format_dist_info_name_uppercase() {
         // Name is normalised to lowercase.
-        assert_eq!(UvVenv::format_dist_info_name("Pillow-10.0.0.dist-info"), "pillow 10.0.0");
+        assert_eq!(
+            UvVenv::format_dist_info_name("Pillow-10.0.0.dist-info"),
+            "pillow 10.0.0"
+        );
     }
 
     #[test]
     fn test_format_dist_info_name_no_version() {
         // No `-` separator → treat the whole thing as the name.
-        assert_eq!(UvVenv::format_dist_info_name("somepkg.dist-info"), "somepkg");
+        assert_eq!(
+            UvVenv::format_dist_info_name("somepkg.dist-info"),
+            "somepkg"
+        );
     }
 
     // ── add_packages / remove_packages (validation) ──────────────────────────
@@ -994,7 +1054,10 @@ mod tests {
 
         let result = venv.delete(std::io::Cursor::new(""), false).await;
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), PylotError::InvalidVenvName(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            PylotError::InvalidVenvName(_)
+        ));
     }
 
     #[tokio::test]

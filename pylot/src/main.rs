@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn test_cli_output_check() {
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
-        cmd.args(&["uv", "check"])
+        cmd.args(["uv", "check"])
             .current_dir(env!("CARGO_MANIFEST_DIR"))
             .assert()
             .success()
@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn test_cli_output_activate() {
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
-        cmd.args(&["venv", "activate"])
+        cmd.args(["venv", "activate"])
             .current_dir(env!("CARGO_MANIFEST_DIR"))
             .assert()
             .success()
@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn test_cli_output_delete() {
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
-        cmd.args(&["venv", "delete"])
+        cmd.args(["venv", "delete"])
             .current_dir(env!("CARGO_MANIFEST_DIR"))
             .assert()
             .success()
@@ -179,7 +179,7 @@ mod tests {
     #[test]
     fn test_cli_output_delete_name() {
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
-        cmd.args(&["venv", "delete", "myvenv"])
+        cmd.args(["venv", "delete", "myvenv"])
             .current_dir(env!("CARGO_MANIFEST_DIR"))
             .assert()
             .success()
@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn test_cli_output_activate_name() {
         let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).unwrap();
-        cmd.args(&["venv", "activate", "myvenv"])
+        cmd.args(["venv", "activate", "myvenv"])
             .current_dir(env!("CARGO_MANIFEST_DIR"))
             .assert()
             .success()

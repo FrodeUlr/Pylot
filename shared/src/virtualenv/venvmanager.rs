@@ -89,7 +89,11 @@ impl<'a> VenvManager {
         Ok(venv)
     }
 
-    fn get_index<R: std::io::Read>(&self, input: R, size: usize) -> std::result::Result<usize, String> {
+    fn get_index<R: std::io::Read>(
+        &self,
+        input: R,
+        size: usize,
+    ) -> std::result::Result<usize, String> {
         let mut input_string = String::new();
         let mut stdin = std::io::BufReader::new(input);
         let _ = stdout().flush();
@@ -110,7 +114,7 @@ impl<'a> VenvManager {
 
     async fn collect_venvs(&'a self, mut entries: fs::ReadDir) -> Vec<UvVenv<'a>> {
         let mut venvs = Vec::new();
-        
+
         while let Ok(Some(entry)) = entries.next_entry().await {
             if let Ok(file_type) = entry.file_type().await {
                 if file_type.is_dir() {
@@ -120,15 +124,14 @@ impl<'a> VenvManager {
                         dir_path.join(UNIX_PYTHON_EXEC),
                         dir_path.join(UNIX_PYTHON3_EXEC),
                     ];
-                    
+
                     if let Some(folder_name) = entry.file_name().to_str() {
-                        let has_python = futures::future::join_all(
-                            python_paths.iter().map(|p| fs::try_exists(p))
-                        )
-                        .await
-                        .into_iter()
-                        .any(|r| r.unwrap_or(false));
-                        
+                        let has_python =
+                            futures::future::join_all(python_paths.iter().map(fs::try_exists))
+                                .await
+                                .into_iter()
+                                .any(|r| r.unwrap_or(false));
+
                         if has_python {
                             if let Some(path_str) = dir_path.to_str() {
                                 venvs.push(UvVenv::new(
@@ -144,7 +147,7 @@ impl<'a> VenvManager {
                 }
             }
         }
-        
+
         venvs
     }
 

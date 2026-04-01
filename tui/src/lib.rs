@@ -11,19 +11,18 @@ use app::{ConfirmAction, ConfirmDialog, CreateDialog, PkgDialog, PkgDialogMode, 
 use crossterm::{
     event::{Event, EventStream, KeyCode, KeyEventKind},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use futures::StreamExt;
-use ratatui::{Terminal, backend::CrosstermBackend};
 use pylot_shared::constants::DEFAULT_PYTHON_VERSION;
 use pylot_shared::uvvenv::UvVenv;
 use pylot_shared::venvtraits::{Activate, Create, Delete};
 use pylot_shared::{uvctrl, venvmanager};
+use ratatui::{backend::CrosstermBackend, Terminal};
 use std::borrow::Cow;
 use std::io;
 use std::time::Duration;
 use tokio::sync::oneshot;
-use shellexpand;
 
 /// Run the TUI application
 ///
@@ -147,7 +146,9 @@ fn read_dir_entries_blocking(dir_path: &str) -> Vec<String> {
                 // Directories (trailing '/') sort before files.
                 let a_is_dir = a.ends_with('/');
                 let b_is_dir = b.ends_with('/');
-                b_is_dir.cmp(&a_is_dir).then(a.to_lowercase().cmp(&b.to_lowercase()))
+                b_is_dir
+                    .cmp(&a_is_dir)
+                    .then(a.to_lowercase().cmp(&b.to_lowercase()))
             });
             names
         }
@@ -179,7 +180,9 @@ fn update_completions(dialog: &mut CreateDialog) {
             let prefix_lower = filter_prefix.to_lowercase();
             entries.retain(|e| {
                 // Strip trailing '/' from directory names before comparing.
-                e.trim_end_matches('/').to_lowercase().starts_with(&prefix_lower)
+                e.trim_end_matches('/')
+                    .to_lowercase()
+                    .starts_with(&prefix_lower)
             });
         }
 
@@ -252,8 +255,7 @@ where
                     let task_name = app.bg_task_name.take().unwrap_or_default();
                     match result {
                         Ok(()) => {
-                            app.status_message =
-                                Some((format!("{} completed.", task_name), false));
+                            app.status_message = Some((format!("{} completed.", task_name), false));
                         }
                         Err(e) => {
                             app.status_message = Some((format!("Error: {}", e), true));
@@ -451,7 +453,11 @@ where
                             let default_pkgs = dialog.default_pkgs;
                             // Normalize Windows paths before storing.
                             let req_file = dialog.req_file.trim().replace('\\', "/");
-                            let req_file_opt = if req_file.is_empty() { None } else { Some(req_file) };
+                            let req_file_opt = if req_file.is_empty() {
+                                None
+                            } else {
+                                Some(req_file)
+                            };
                             let label = format!("Creating '{}'", name);
                             app.create_dialog = None;
                             // Spawn background task – TUI stays open.
@@ -465,10 +471,12 @@ where
                                 );
                                 venv.create().await?;
                                 if let Some(ref path) = req_file_opt {
-                                    venv.install_from_requirements(path).await
-                                        .map_err(|e| pylot_shared::error::PylotError::Other(
-                                            format!("Venv created; requirements install failed: {}", e)
-                                        ))?;
+                                    venv.install_from_requirements(path).await.map_err(|e| {
+                                        pylot_shared::error::PylotError::Other(format!(
+                                            "Venv created; requirements install failed: {}",
+                                            e
+                                        ))
+                                    })?;
                                 }
                                 Ok(())
                             });
@@ -593,9 +601,7 @@ where
 
             // UV management – only active on the UV Info tab and when not busy.
             KeyCode::Char('i')
-                if app.tab == app::Tab::UvInfo
-                    && !app.uv_installed
-                    && !app.is_busy() =>
+                if app.tab == app::Tab::UvInfo && !app.uv_installed && !app.is_busy() =>
             {
                 // Pressing 'i' is the user's confirmation – auto-reply "y\n" so
                 // uvctrl::install's interactive prompt is satisfied without a shell.
@@ -606,78 +612,57 @@ where
                 );
             }
             KeyCode::Char('u')
-                if app.tab == app::Tab::UvInfo
-                    && app.uv_installed
-                    && !app.is_busy() =>
+                if app.tab == app::Tab::UvInfo && app.uv_installed && !app.is_busy() =>
             {
                 spawn_uv_task(app, "Updating UV", uvctrl::update());
             }
             KeyCode::Char('d')
-                if app.tab == app::Tab::UvInfo
-                    && app.uv_installed
-                    && !app.is_busy() =>
+                if app.tab == app::Tab::UvInfo && app.uv_installed && !app.is_busy() =>
             {
                 // Show a confirmation dialog before uninstalling.
                 app.confirm_dialog = Some(ConfirmDialog::new(ConfirmAction::UninstallUv));
             }
 
             // Venv management – only active on the Environments tab and when not busy.
-            KeyCode::Char('n')
-                if app.tab == app::Tab::Environments && !app.is_busy() =>
-            {
+            KeyCode::Char('n') if app.tab == app::Tab::Environments && !app.is_busy() => {
                 app.create_dialog = Some(CreateDialog::new(DEFAULT_PYTHON_VERSION));
             }
             KeyCode::Char('d')
-                if app.tab == app::Tab::Environments
-                    && !app.venvs.is_empty()
-                    && !app.is_busy() =>
+                if app.tab == app::Tab::Environments && !app.venvs.is_empty() && !app.is_busy() =>
             {
                 let name = app.venvs[app.selected].name.to_string();
                 // Show a confirmation dialog before deleting.
-                app.confirm_dialog =
-                    Some(ConfirmDialog::new(ConfirmAction::DeleteVenv(name)));
+                app.confirm_dialog = Some(ConfirmDialog::new(ConfirmAction::DeleteVenv(name)));
             }
             KeyCode::Enter
-                if app.tab == app::Tab::Environments
-                    && !app.venvs.is_empty()
-                    && !app.is_busy() =>
+                if app.tab == app::Tab::Environments && !app.venvs.is_empty() && !app.is_busy() =>
             {
                 // Activate still exits the TUI (exec on Unix).
                 app.pending_venv_action = Some(VenvAction::Activate);
                 break;
             }
             // Package list scrolling – active when a venv is selected.
-            KeyCode::Char('j')
-                if app.tab == app::Tab::Environments && !app.venvs.is_empty() =>
-            {
+            KeyCode::Char('j') if app.tab == app::Tab::Environments && !app.venvs.is_empty() => {
                 let total = app.venvs[app.selected].installed_packages.len();
                 app.scroll_pkg_down(total);
             }
-            KeyCode::Char('k')
-                if app.tab == app::Tab::Environments && !app.venvs.is_empty() =>
-            {
+            KeyCode::Char('k') if app.tab == app::Tab::Environments && !app.venvs.is_empty() => {
                 app.scroll_pkg_up();
             }
             // Add packages – active when a venv is selected and not busy.
             KeyCode::Char('i') | KeyCode::Char('a')
-                if app.tab == app::Tab::Environments
-                    && !app.venvs.is_empty()
-                    && !app.is_busy() =>
+                if app.tab == app::Tab::Environments && !app.venvs.is_empty() && !app.is_busy() =>
             {
                 app.pkg_dialog = Some(PkgDialog::new(PkgDialogMode::Add));
             }
             // Remove packages – active when a venv is selected and not busy.
             KeyCode::Char('r')
-                if app.tab == app::Tab::Environments
-                    && !app.venvs.is_empty()
-                    && !app.is_busy() =>
+                if app.tab == app::Tab::Environments && !app.venvs.is_empty() && !app.is_busy() =>
             {
                 app.pkg_dialog = Some(PkgDialog::new(PkgDialogMode::Remove));
             }
             // Search packages – active when a venv is selected.
-            KeyCode::Char('/')
-                if app.tab == app::Tab::Environments && !app.venvs.is_empty() =>
-            {
+            KeyCode::Char('/') if app.tab == app::Tab::Environments && !app.venvs.is_empty() => {
                 app.pkg_search = Some(String::new());
                 app.pkg_scroll = 0;
             }
@@ -891,7 +876,10 @@ mod tests {
 
         update_completions(&mut dialog);
 
-        assert!(!dialog.completions.is_empty(), "Expected completions to be populated");
+        assert!(
+            !dialog.completions.is_empty(),
+            "Expected completions to be populated"
+        );
         assert_eq!(dialog.completions_dir, format!("{}/", dir_path));
         assert_eq!(dialog.completion_selected, 0);
         assert_eq!(dialog.completion_scroll, 0);
@@ -914,7 +902,10 @@ mod tests {
         assert!(!dialog.completions.is_empty());
         for entry in &dialog.completions {
             assert!(
-                entry.trim_end_matches('/').to_lowercase().starts_with("req"),
+                entry
+                    .trim_end_matches('/')
+                    .to_lowercase()
+                    .starts_with("req"),
                 "Completion '{}' should start with 'req'",
                 entry
             );

@@ -82,34 +82,32 @@ pub async fn create(
 ) -> Result<()> {
     // Validate venv name
     uvvenv::UvVenv::validate_venv_name(name)?;
-    
-    uvctrl::check("uv")
-        .await
-        .map_err(|_| {
-            PylotError::Other(format!(
-                "Astral UV is not installed. Please run '{} uv install' to install it.",
-                env!("CARGO_PKG_NAME")
-            ))
-        })?;
-    
+
+    uvctrl::check("uv").await.map_err(|_| {
+        PylotError::Other(format!(
+            "Astral UV is not installed. Please run '{} uv install' to install it.",
+            env!("CARGO_PKG_NAME")
+        ))
+    })?;
+
     let mut pkgs = packages.unwrap_or_default();
-    
+
     if venvmanager::VENVMANAGER.check_if_exists(name).await {
         return Err(PylotError::VenvExists(format!(
             "A virtual environment with the name {} already exists",
             name
         )));
     }
-    
+
     if let Some(req) = requirements {
         update_packages_from_requirements(req, &mut pkgs).await?;
     }
-    
+
     // Validate all package names
     for pkg in &pkgs {
         uvvenv::UvVenv::validate_package_name(pkg)?;
     }
-    
+
     let venv = uvvenv::UvVenv::new(
         Cow::Borrowed(name),
         "".to_owned(),
@@ -117,7 +115,7 @@ pub async fn create(
         pkgs,
         default,
     );
-    
+
     match venv.create().await {
         Ok(_) => Ok(()),
         Err(e) => {
@@ -136,7 +134,7 @@ async fn update_packages_from_requirements(
         let read_pkgs = utils::read_requirements_file(requirements)
             .await
             .map_err(|e| PylotError::Other(e.to_string()))?;
-        
+
         // Preserve package order while deduplicating
         // This ensures installation order is maintained, which can matter
         // for packages with conflicting dependencies or when using --no-deps
@@ -177,7 +175,7 @@ pub async fn delete<R: std::io::Read, F: std::io::Read>(
     let venv = venvmanager::VENVMANAGER
         .find_venv(find_input, name, "delete")
         .await?;
-    
+
     venv.delete(confirm_input, true).await?;
     log::info!("Virtual environment '{}' deleted.", venv.name);
     Ok(())
@@ -203,9 +201,7 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<()> {
         log::info!("Astral UV is already installed.");
         return Ok(());
     }
-    uvctrl::install(input)
-        .await
-        .map_err(|e| PylotError::Other(e))
+    uvctrl::install(input).await.map_err(PylotError::Other)
 }
 
 /// Update Astral UV
@@ -251,9 +247,7 @@ pub async fn uninstall<R: std::io::Read>(input: R) -> Result<()> {
         log::info!("Astral UV is not installed.");
         return Ok(());
     }
-    uvctrl::uninstall(input)
-        .await
-        .map_err(|e| PylotError::Other(e))
+    uvctrl::uninstall(input).await.map_err(PylotError::Other)
 }
 
 /// List all available virtual environments
@@ -318,21 +312,21 @@ mod tests {
     async fn test_update_packages_from_requirements() {
         logger::initialize_logger(log::LevelFilter::Trace);
         use std::io::Write;
-        
+
         let mut temp_file = tempfile::NamedTempFile::new().unwrap();
         writeln!(temp_file, "pandas").unwrap();
         writeln!(temp_file, "scipy").unwrap();
         temp_file.flush().unwrap();
-        
+
         let requirements = temp_file.path().to_str().unwrap();
         let mut packages = vec!["numpy".to_string()];
-        
+
         let result = update_packages_from_requirements(requirements, &mut packages).await;
         assert!(result.is_ok());
         assert!(packages.contains(&"numpy".to_string()));
         assert!(packages.contains(&"pandas".to_string()));
         assert!(packages.contains(&"scipy".to_string()));
-        
+
         // temp_file is automatically deleted when dropped
     }
 
