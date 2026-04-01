@@ -5,6 +5,11 @@ use log::{Level, LevelFilter};
 
 static INIT: Once = Once::new();
 
+/// Initialize the global logger with the given `log_level`.
+///
+/// This function is idempotent: subsequent calls after the first successful
+/// initialization are silently ignored.  The logger emits colored output to
+/// stderr using ANSI escape codes.
 pub fn initialize_logger(log_level: LevelFilter) {
     INIT.call_once(|| {
         build_logger(log_level);

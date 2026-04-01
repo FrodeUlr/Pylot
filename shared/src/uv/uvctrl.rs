@@ -8,6 +8,20 @@ use crate::{
     utils::{self, confirm},
 };
 
+/// Install Astral UV.
+///
+/// On **Windows** this delegates to `winget install astral-sh.uv`.
+/// On **Unix** it downloads and runs the official installation shell script via
+/// `curl … | sh`.
+///
+/// The user is shown the exact command that will run and prompted to confirm
+/// before anything is executed.  Passing `"n\n"` (or any non-`y` response) as
+/// `input` cancels the operation without error.
+///
+/// # Errors
+///
+/// Returns `Err(String)` if a required prerequisite (`winget`, `curl`, …) is
+/// missing or if the underlying command fails.
 pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
     log::info!("Installing Astral UV...");
 
@@ -33,6 +47,15 @@ pub async fn install<R: std::io::Read>(input: R) -> Result<(), String> {
     Ok(())
 }
 
+/// Update Astral UV to the latest version.
+///
+/// On **Windows** this runs `winget upgrade astral-sh.uv`.
+/// On **Unix** it runs `uv self update`.
+///
+/// # Errors
+///
+/// Returns `Err(String)` if `winget` / `uv` is not found on `PATH` or if the
+/// underlying update command fails.
 pub async fn update() -> Result<(), String> {
     log::info!("Updating Astral UV...");
     if cfg!(target_os = "windows") {
@@ -55,6 +78,19 @@ pub async fn update() -> Result<(), String> {
     Ok(())
 }
 
+/// Uninstall Astral UV.
+///
+/// On **Windows** this delegates to `winget uninstall astral-sh.uv`.
+/// On **Unix** it removes the `uv` and `uvx` binaries from
+/// `~/.local/bin/`.
+///
+/// The user is shown the command that will run and prompted to confirm before
+/// anything is executed.
+///
+/// # Errors
+///
+/// Returns `Err(String)` if `winget` is not available (Windows) or if the
+/// underlying command fails.
 pub async fn uninstall<R: std::io::Read>(input: R) -> Result<(), String> {
     log::info!("Uninstalling Astral UV...");
     let (cmd, args): (&str, &[&str]) = if cfg!(target_os = "windows") {
@@ -88,6 +124,10 @@ fn confirm_cmd<R: std::io::Read>(input: R, cmd: &str, args: &[&str]) -> Option<R
     None
 }
 
+/// Check whether the binary named `name` is present on `PATH`.
+///
+/// Returns `Ok(message)` when the binary is found, or `Err(message)` when it
+/// is not.
 pub async fn check(name: &str) -> Result<String, Box<dyn std::error::Error>> {
     match which::which(name)
         .map(|_| ())

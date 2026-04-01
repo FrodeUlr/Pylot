@@ -1,6 +1,13 @@
 use std::io::{stdout, BufRead, Write};
 use tokio::fs;
 
+/// Parse a requirements file and return the list of package names / specifiers.
+///
+/// Blank lines and lines starting with `#` are ignored.
+///
+/// # Errors
+///
+/// Returns an error if the file does not exist or cannot be read.
 pub async fn read_requirements_file(
     requirements: &str,
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
@@ -16,6 +23,9 @@ pub async fn read_requirements_file(
     Ok(lines)
 }
 
+/// Prompt the user to confirm an action by reading a line from `input`.
+///
+/// Returns `true` only if the user types `y`, `yes`, `Y`, or `YES`.
 pub fn confirm<R: std::io::Read>(input: R) -> bool {
     let mut stdin = std::io::BufReader::new(input);
     log::info!("Do you want to continue? (y/n): ");
@@ -43,6 +53,12 @@ pub fn shorten_home_path(path: &str) -> String {
     }
 }
 
+/// Check that every command in `cmd` is available on `PATH`.
+///
+/// # Errors
+///
+/// Returns an error that lists all missing commands when at least one entry in
+/// `cmd` is not found.
 pub fn which_check(cmd: &[&str]) -> Result<(), Box<dyn std::error::Error>> {
     let missing_cmds: Vec<&str> = cmd
         .iter()

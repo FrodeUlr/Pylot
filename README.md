@@ -209,13 +209,31 @@ Launch the terminal UI:
 pylot tui
 ```
 
-The TUI lets you:
+The TUI has two tabs: **Environments** and **UV**.
 
-- browse managed environments
-- create and delete environments
-- activate environments
-- inspect UV installation status
-- install, update, or uninstall UV interactively
+#### Environments tab
+
+| Key | Action |
+|-----|--------|
+| `n` | Create a new virtual environment (inline form) |
+| `d` | Delete the selected environment |
+| `Enter` / `a` | Activate the selected environment |
+| `i` | Add packages to the selected environment |
+| `r` | Remove packages from the selected environment |
+| `/` | Search / filter the package list for the selected environment |
+| `j` / `k` | Scroll the package list down / up |
+| `Tab` / `→` | Switch to the UV tab |
+| `q` / `Esc` | Quit |
+
+#### UV tab
+
+| Key | Action |
+|-----|--------|
+| `i` | Install UV |
+| `u` | Update UV |
+| `d` | Uninstall UV |
+| `Tab` / `→` | Switch to the Environments tab |
+| `q` / `Esc` | Quit |
 
 ### Shell Completions
 
@@ -270,17 +288,28 @@ Direct Cargo equivalents:
 cargo fmt
 cargo clippy -- -D warnings
 cargo test -- --test-threads=1 --no-capture
-cargo doc --open
+cargo doc --workspace --no-deps --open
 ```
 
 ### Documentation Notes
 
-`cargo doc --open` documents the public API by default. Items inside private modules will not appear unless they are publicly re-exported or you generate docs with private items enabled.
+`cargo doc --workspace --no-deps` documents the public API across all workspace
+crates.  Items inside private modules will not appear unless they are publicly
+re-exported or you generate docs with private items enabled.
 
 To include private items in generated documentation:
 
 ```bash
 cargo doc --workspace --no-deps --document-private-items
+```
+
+Running `make doc` runs `cargo test --doc` followed by
+`cargo doc --workspace --no-deps`, so the generated HTML in `target/doc/` is
+always test-verified.  Append `open` to the Make invocation to open the docs in
+a browser automatically:
+
+```bash
+make doc open
 ```
 
 ## Testing And CI
