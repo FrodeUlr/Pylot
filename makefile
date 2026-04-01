@@ -83,7 +83,7 @@ clean:
 
 install:
 	@$(call echo_line,--- Installing $(PROJECT_NAME) ---,GREEN)
-	@cargo install --path .
+	@cargo install --path pylot
 
 package: build
 	@$(call echo_line,--- Copy build files to /dist ---,GREEN)
