@@ -323,6 +323,8 @@ mod tests {
         assert!(d.message().contains("Uninstall"));
     }
 
+    // -─ HelpDialog ────────────────────────────────────────────────────────────
+
     #[test]
     fn test_help_dialog_new_env_help() {
         let d = HelpDialog::new(HelpMode::EnvHelp);
