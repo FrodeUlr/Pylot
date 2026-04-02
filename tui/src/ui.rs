@@ -1,15 +1,15 @@
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::{Line, Span},
+    text::{Line, Span, Text},
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Tabs},
     Frame,
 };
 
-use crate::app::App;
 use crate::create_field::CreateField;
 use crate::dialogs::{ConfirmDialog, PkgDialog};
 use crate::tabs::Tab;
+use crate::{app::App, dialogs::HelpDialog};
 
 /// Draw the TUI to the given frame
 pub fn draw(frame: &mut Frame, app: &App) {
@@ -45,6 +45,9 @@ pub fn draw(frame: &mut Frame, app: &App) {
             ""
         };
         draw_pkg_dialog(frame, dialog, venv_name);
+    }
+    if let Some(ref dialog) = app.help_menu {
+        draw_help_dialog(frame, dialog);
     }
 }
 fn draw_tabs(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
@@ -497,9 +500,7 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         } else {
             vec![
                 Span::styled("Tab", Style::default().fg(Color::Yellow)),
-                Span::raw(": next field  "),
-                Span::styled("Shift+Tab", Style::default().fg(Color::Yellow)),
-                Span::raw(": prev field  "),
+                Span::raw(": next/prev field  "),
                 Span::styled("←→", Style::default().fg(Color::Yellow)),
                 Span::raw(": cursor  "),
                 Span::styled("Enter", Style::default().fg(Color::Yellow)),
@@ -585,6 +586,8 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         Span::raw(": switch tab  "),
         Span::styled("↑↓", Style::default().fg(Color::Yellow)),
         Span::raw(": navigate  "),
+        Span::styled("?", Style::default().fg(Color::Yellow)),
+        Span::raw(": help  "),
     ];
 
     match app.tab {
@@ -596,14 +599,8 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
                 spans.push(Span::raw(": delete  "));
                 spans.push(Span::styled("Enter", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(": activate  "));
-                spans.push(Span::styled("a", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(": add pkg  "));
-                spans.push(Span::styled("r", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(": remove pkg  "));
-                spans.push(Span::styled("/", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(": search  "));
-                spans.push(Span::styled("j/k", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(": scroll  "));
+                spans.push(Span::styled("a / r", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(": add / remove pkgs  "));
             }
         }
         Tab::UvInfo => {
@@ -618,9 +615,6 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
             }
         }
     }
-
-    spans.push(Span::styled("q", Style::default().fg(Color::Yellow)));
-    spans.push(Span::raw(": quit"));
 
     let help = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
     frame.render_widget(help, area);
@@ -942,6 +936,24 @@ fn draw_confirm_dialog(frame: &mut Frame, dialog: &ConfirmDialog) {
     frame.render_widget(paragraph, area);
 }
 
+/// Render the help dialog as a centered overlay popup.
+fn draw_help_dialog(frame: &mut Frame, dialog: &HelpDialog) {
+    let area = centered_rect(dialog.width, dialog.height, frame.area());
+
+    // Clear the background so the dialog appears cleanly over other widgets.
+    frame.render_widget(Clear, area);
+    let lines = dialog.lines();
+    let test = Text::from(lines.clone());
+    let paragraph = Paragraph::new(test).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Help ")
+            .title_alignment(Alignment::Center)
+            .border_style(Style::default().fg(Color::LightGreen)),
+    );
+
+    frame.render_widget(paragraph, area);
+}
 /// Return a `Rect` centered within `r` with the given width (columns) and height (rows).
 ///
 /// If the requested size exceeds the available space it is clamped to fit.

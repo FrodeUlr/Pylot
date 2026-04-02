@@ -13,7 +13,7 @@ mod ui;
 use actions::{ConfirmAction, VenvAction};
 pub use app::App;
 use create_dialog::CreateDialog;
-use dialogs::{ConfirmDialog, PkgDialog, PkgDialogMode};
+use dialogs::{ConfirmDialog, HelpDialog, HelpMode, PkgDialog, PkgDialogMode};
 
 use crossterm::{
     event::{Event, EventStream, KeyCode, KeyEventKind},
@@ -598,6 +598,17 @@ where
             continue; // search mode consumed the key; skip normal bindings
         }
 
+        // --- Help dialog captures all input while open ---
+        if app.help_menu.is_some() {
+            match key.code {
+                KeyCode::Esc | KeyCode::Char('q') => {
+                    app.help_menu = None;
+                }
+                _ => {}
+            }
+            continue; // dialog consumed the key; skip normal bindings
+        }
+
         // --- Normal (non-dialog) key bindings ---
         match key.code {
             KeyCode::Char('q') | KeyCode::Esc => break,
@@ -642,6 +653,13 @@ where
                 let name = app.venvs[app.selected].name.to_string();
                 // Show a confirmation dialog before deleting.
                 app.confirm_dialog = Some(ConfirmDialog::new(ConfirmAction::DeleteVenv(name)));
+            }
+            KeyCode::Char('?') => {
+                if app.tab == tabs::Tab::Environments {
+                    app.help_menu = Some(HelpDialog::new(HelpMode::EnvHelp));
+                } else if app.tab == tabs::Tab::UvInfo {
+                    app.help_menu = Some(HelpDialog::new(HelpMode::UvHelp));
+                }
             }
             KeyCode::Enter
                 if app.tab == tabs::Tab::Environments

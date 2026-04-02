@@ -2,7 +2,7 @@ use pylot_shared::virtualenv::uvvenv::UvVenv;
 
 use crate::actions::{UvAction, VenvAction};
 use crate::create_dialog::CreateDialog;
-use crate::dialogs::{ConfirmDialog, PkgDialog};
+use crate::dialogs::{ConfirmDialog, HelpDialog, PkgDialog};
 use crate::tabs::Tab;
 
 /// Application state for the TUI
@@ -18,6 +18,7 @@ pub struct App<'a> {
     pub create_dialog: Option<CreateDialog>,
     /// When `Some`, a yes/no confirmation overlay is open.
     pub confirm_dialog: Option<ConfirmDialog>,
+    pub help_menu: Option<HelpDialog>,
     /// Receiver end of the channel used to collect a background task's result.
     pub bg_rx: Option<tokio::sync::oneshot::Receiver<Result<(), String>>>,
     /// Human-readable label for the running task, shown in the status bar.
@@ -44,6 +45,7 @@ impl<'a> App<'a> {
             pending_venv_action: None,
             create_dialog: None,
             confirm_dialog: None,
+            help_menu: None,
             pkg_dialog: None,
             pkg_search: None,
             bg_rx: None,
