@@ -2,11 +2,18 @@
 //!
 //! Provides a terminal user interface to manage virtual environments and UV.
 
+mod actions;
 mod app;
+mod create_dialog;
+mod create_field;
+mod dialogs;
+mod tabs;
 mod ui;
 
+use actions::{ConfirmAction, VenvAction};
 pub use app::App;
-use app::{ConfirmAction, ConfirmDialog, CreateDialog, PkgDialog, PkgDialogMode, VenvAction};
+use create_dialog::CreateDialog;
+use dialogs::{ConfirmDialog, PkgDialog, PkgDialogMode};
 
 use crossterm::{
     event::{Event, EventStream, KeyCode, KeyEventKind},
@@ -351,8 +358,8 @@ where
             }
 
             // ── Phase 2: Completion navigation (when ReqFile has completions) ──
-            let completions_active =
-                dialog.field == app::CreateField::ReqFile && !dialog.completions.is_empty();
+            let completions_active = dialog.field == create_field::CreateField::ReqFile
+                && !dialog.completions.is_empty();
             if completions_active {
                 match key.code {
                     KeyCode::Down => {
@@ -396,7 +403,7 @@ where
             }
 
             // ── Phase 3: Cursor movement (ReqFile field) ──
-            if dialog.field == app::CreateField::ReqFile {
+            if dialog.field == create_field::CreateField::ReqFile {
                 match key.code {
                     KeyCode::Left => {
                         dialog.req_file_cursor_left();
@@ -419,7 +426,7 @@ where
             }
 
             // ── Phase 4: Normal field handling ──
-            let is_req_file_field = dialog.field == app::CreateField::ReqFile;
+            let is_req_file_field = dialog.field == create_field::CreateField::ReqFile;
             match key.code {
                 KeyCode::Tab | KeyCode::Down => {
                     let next = dialog.field.next();
@@ -438,14 +445,14 @@ where
                     dialog.completions_dir = String::new();
                 }
                 KeyCode::Char(' ') => {
-                    if dialog.field == app::CreateField::DefaultPkgs {
+                    if dialog.field == create_field::CreateField::DefaultPkgs {
                         dialog.toggle_default();
                     } else {
                         dialog.push_char(' ');
                     }
                 }
                 KeyCode::Enter => {
-                    if dialog.field == app::CreateField::DefaultPkgs {
+                    if dialog.field == create_field::CreateField::DefaultPkgs {
                         let name = dialog.name.trim().to_string();
                         if !name.is_empty() {
                             let version = dialog.effective_version();
@@ -601,7 +608,7 @@ where
 
             // UV management – only active on the UV Info tab and when not busy.
             KeyCode::Char('i')
-                if app.tab == app::Tab::UvInfo && !app.uv_installed && !app.is_busy() =>
+                if app.tab == tabs::Tab::UvInfo && !app.uv_installed && !app.is_busy() =>
             {
                 // Pressing 'i' is the user's confirmation – auto-reply "y\n" so
                 // uvctrl::install's interactive prompt is satisfied without a shell.
@@ -612,57 +619,65 @@ where
                 );
             }
             KeyCode::Char('u')
-                if app.tab == app::Tab::UvInfo && app.uv_installed && !app.is_busy() =>
+                if app.tab == tabs::Tab::UvInfo && app.uv_installed && !app.is_busy() =>
             {
                 spawn_uv_task(app, "Updating UV", uvctrl::update());
             }
             KeyCode::Char('d')
-                if app.tab == app::Tab::UvInfo && app.uv_installed && !app.is_busy() =>
+                if app.tab == tabs::Tab::UvInfo && app.uv_installed && !app.is_busy() =>
             {
                 // Show a confirmation dialog before uninstalling.
                 app.confirm_dialog = Some(ConfirmDialog::new(ConfirmAction::UninstallUv));
             }
 
             // Venv management – only active on the Environments tab and when not busy.
-            KeyCode::Char('n') if app.tab == app::Tab::Environments && !app.is_busy() => {
+            KeyCode::Char('n') if app.tab == tabs::Tab::Environments && !app.is_busy() => {
                 app.create_dialog = Some(CreateDialog::new(DEFAULT_PYTHON_VERSION));
             }
             KeyCode::Char('d')
-                if app.tab == app::Tab::Environments && !app.venvs.is_empty() && !app.is_busy() =>
+                if app.tab == tabs::Tab::Environments
+                    && !app.venvs.is_empty()
+                    && !app.is_busy() =>
             {
                 let name = app.venvs[app.selected].name.to_string();
                 // Show a confirmation dialog before deleting.
                 app.confirm_dialog = Some(ConfirmDialog::new(ConfirmAction::DeleteVenv(name)));
             }
             KeyCode::Enter
-                if app.tab == app::Tab::Environments && !app.venvs.is_empty() && !app.is_busy() =>
+                if app.tab == tabs::Tab::Environments
+                    && !app.venvs.is_empty()
+                    && !app.is_busy() =>
             {
                 // Activate still exits the TUI (exec on Unix).
                 app.pending_venv_action = Some(VenvAction::Activate);
                 break;
             }
             // Package list scrolling – active when a venv is selected.
-            KeyCode::Char('j') if app.tab == app::Tab::Environments && !app.venvs.is_empty() => {
+            KeyCode::Char('j') if app.tab == tabs::Tab::Environments && !app.venvs.is_empty() => {
                 let total = app.venvs[app.selected].installed_packages.len();
                 app.scroll_pkg_down(total);
             }
-            KeyCode::Char('k') if app.tab == app::Tab::Environments && !app.venvs.is_empty() => {
+            KeyCode::Char('k') if app.tab == tabs::Tab::Environments && !app.venvs.is_empty() => {
                 app.scroll_pkg_up();
             }
             // Add packages – active when a venv is selected and not busy.
             KeyCode::Char('i') | KeyCode::Char('a')
-                if app.tab == app::Tab::Environments && !app.venvs.is_empty() && !app.is_busy() =>
+                if app.tab == tabs::Tab::Environments
+                    && !app.venvs.is_empty()
+                    && !app.is_busy() =>
             {
                 app.pkg_dialog = Some(PkgDialog::new(PkgDialogMode::Add));
             }
             // Remove packages – active when a venv is selected and not busy.
             KeyCode::Char('r')
-                if app.tab == app::Tab::Environments && !app.venvs.is_empty() && !app.is_busy() =>
+                if app.tab == tabs::Tab::Environments
+                    && !app.venvs.is_empty()
+                    && !app.is_busy() =>
             {
                 app.pkg_dialog = Some(PkgDialog::new(PkgDialogMode::Remove));
             }
             // Search packages – active when a venv is selected.
-            KeyCode::Char('/') if app.tab == app::Tab::Environments && !app.venvs.is_empty() => {
+            KeyCode::Char('/') if app.tab == tabs::Tab::Environments && !app.venvs.is_empty() => {
                 app.pkg_search = Some(String::new());
                 app.pkg_scroll = 0;
             }
