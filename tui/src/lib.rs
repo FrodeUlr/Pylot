@@ -755,14 +755,15 @@ async fn get_uv_version() -> Option<String> {
     }
 }
 
-/// Run `uv self update --dry-run` and parse its output to determine whether a
-/// newer version of UV is available.
+/// Run `uv self update --dry-run` and parse its output to determine the latest
+/// available version of UV.
 ///
-/// When an update is available UV prints a line of the form:
-///   `Would update uv from v0.11.2 to v0.11.3`
+/// Two output shapes are handled:
+/// * Update available:  `Would update uv from v0.11.2 to v0.11.3`
+/// * Already current:   `success: You're already on version v0.11.3 of uv (the latest version).`
 ///
-/// Returns `Some(version_string)` (e.g. `"0.11.3"`) if a newer version was
-/// found, or `None` when already up to date or on any error.
+/// Returns `Some(version_string)` (e.g. `"0.11.3"`) in both cases, or `None`
+/// on any error.
 async fn get_latest_uv_version() -> Option<String> {
     use pylot_shared::infra::processes;
     let child = processes::create_child_cmd("uv", &["self", "update", "--dry-run"], "").ok()?;
@@ -770,11 +771,21 @@ async fn get_latest_uv_version() -> Option<String> {
     // UV writes its dry-run output to stderr.
     let text = String::from_utf8_lossy(&output.stderr);
     for line in text.lines() {
-        // Expected line: "Would update uv from v0.11.2 to v0.11.3"
+        // Update available: "Would update uv from v0.11.2 to v0.11.3"
         if let Some(rest) = line.strip_prefix("Would update uv from ") {
             // rest = "v0.11.2 to v0.11.3"
             if let Some(version_part) = rest.split(" to ").nth(1) {
                 let version = version_part.trim().trim_start_matches('v').to_string();
+                if !version.is_empty() {
+                    return Some(version);
+                }
+            }
+        }
+        // Already on latest: "success: You're already on version v0.11.3 of uv (the latest version)."
+        if let Some(rest) = line.strip_prefix("success: You're already on version v") {
+            // rest = "0.11.3 of uv (the latest version)."
+            if let Some(version) = rest.split_whitespace().next() {
+                let version = version.trim_end_matches('.').to_string();
                 if !version.is_empty() {
                     return Some(version);
                 }
@@ -824,15 +835,33 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_dry_run_no_update_line() {
-        // If the "Would update" line is absent, nothing is extracted.
-        let line = "info: uv is already at the latest version (0.11.3)";
+    fn test_parse_dry_run_already_current() {
+        // "success: You're already on version v0.11.3 of uv (the latest version)."
+        // → should yield "0.11.3"
+        let line = "success: You're already on version v0.11.3 of uv (the latest version).";
         let result: Option<String> = line
+            .strip_prefix("success: You're already on version v")
+            .and_then(|rest| rest.split_whitespace().next())
+            .map(|v| v.trim_end_matches('.').to_string())
+            .filter(|v| !v.is_empty());
+        assert_eq!(result, Some("0.11.3".to_string()));
+    }
+
+    #[test]
+    fn test_parse_dry_run_unrecognised_line() {
+        // An unrecognised line yields nothing (no panic).
+        let line = "info: Checking for updates...";
+        let from_update: Option<String> = line
             .strip_prefix("Would update uv from ")
             .and_then(|rest| rest.split(" to ").nth(1))
             .map(|v| v.trim().trim_start_matches('v').to_string())
             .filter(|v| !v.is_empty());
-        assert_eq!(result, None);
+        let from_success: Option<String> = line
+            .strip_prefix("success: You're already on version v")
+            .and_then(|rest| rest.split_whitespace().next())
+            .map(|v| v.trim_end_matches('.').to_string())
+            .filter(|v| !v.is_empty());
+        assert_eq!(from_update.or(from_success), None);
     }
 
     // ── spawn_uv_task ────────────────────────────────────────────────────────
