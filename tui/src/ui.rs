@@ -499,8 +499,8 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
             ]
         } else {
             vec![
-                Span::styled("Tab/Shift+Tab", Style::default().fg(Color::Yellow)),
-                Span::raw(": next/prev field  "),
+                Span::styled("Tab", Style::default().fg(Color::Yellow)),
+                Span::raw(": change field  "),
                 Span::styled("←→", Style::default().fg(Color::Yellow)),
                 Span::raw(": cursor  "),
                 Span::styled("Enter", Style::default().fg(Color::Yellow)),
@@ -799,8 +799,8 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::create_dialog::CreateDi
         ])
     } else {
         Line::from(vec![
-            Span::styled("  Tab/Shift+Tab", Style::default().fg(Color::Yellow)),
-            Span::raw(": next/prev field  "),
+            Span::styled("  Tab", Style::default().fg(Color::Yellow)),
+            Span::raw(": change field  "),
             Span::styled("Enter", Style::default().fg(Color::Yellow)),
             Span::raw(": confirm  "),
             Span::styled("Esc", Style::default().fg(Color::Yellow)),
