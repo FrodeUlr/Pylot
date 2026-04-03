@@ -1,12 +1,15 @@
 use ratatui::{
-    Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Tabs},
+    Frame,
 };
 
-use crate::app::{App, ConfirmDialog, CreateField, PkgDialog, Tab};
+use crate::create_field::CreateField;
+use crate::dialogs::{ConfirmDialog, PkgDialog};
+use crate::tabs::Tab;
+use crate::{app::App, dialogs::HelpDialog};
 
 /// Draw the TUI to the given frame
 pub fn draw(frame: &mut Frame, app: &App) {
@@ -43,12 +46,12 @@ pub fn draw(frame: &mut Frame, app: &App) {
         };
         draw_pkg_dialog(frame, dialog, venv_name);
     }
+    if let Some(ref dialog) = app.help_dialog {
+        draw_help_dialog(frame, dialog);
+    }
 }
 fn draw_tabs(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
-    let tab_titles: Vec<Line> = Tab::ALL
-        .iter()
-        .map(|t| Line::from(t.title()))
-        .collect();
+    let tab_titles: Vec<Line> = Tab::ALL.iter().map(|t| Line::from(t.title())).collect();
 
     let selected = Tab::ALL.iter().position(|t| *t == app.tab).unwrap_or(0);
 
@@ -74,10 +77,7 @@ fn draw_environments(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) 
     // Split horizontally: venv list (left) + detail panel (right)
     let columns = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(55),
-            Constraint::Percentage(45),
-        ])
+        .constraints([Constraint::Percentage(55), Constraint::Percentage(45)])
         .split(area);
 
     // ── Left: venv list with column header ───────────────────────────────────
@@ -151,10 +151,7 @@ fn draw_venv_detail(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     if app.venvs.is_empty() {
         let lines = vec![
             Line::from(""),
-            Line::from(vec![Span::styled(
-                "  No environments found.",
-                label_style,
-            )]),
+            Line::from(vec![Span::styled("  No environments found.", label_style)]),
             Line::from(""),
             Line::from(vec![Span::styled(
                 "  Press [n] to create one.",
@@ -162,8 +159,7 @@ fn draw_venv_detail(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
             )]),
         ];
         frame.render_widget(
-            Paragraph::new(lines)
-                .block(Block::default().borders(Borders::ALL).title(" Details ")),
+            Paragraph::new(lines).block(Block::default().borders(Borders::ALL).title(" Details ")),
             area,
         );
         return;
@@ -214,7 +210,11 @@ fn draw_venv_detail(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
 
     let total_pkg_count = venv.installed_packages.len();
     let display_count = if search_active && !search_query.is_empty() {
-        format!("  Packages ({}/{})  ", filtered_packages.len(), total_pkg_count)
+        format!(
+            "  Packages ({}/{})  ",
+            filtered_packages.len(),
+            total_pkg_count
+        )
     } else {
         format!("  Packages ({})  ", total_pkg_count)
     };
@@ -248,7 +248,9 @@ fn draw_venv_detail(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
             if search_active {
                 Span::styled(
                     pkg_scroll_hint,
-                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
                 )
             } else {
                 Span::styled(pkg_scroll_hint, label_style)
@@ -319,7 +321,10 @@ fn highlight_match<'a>(
     highlight_color: Color,
 ) -> Vec<Span<'a>> {
     if query.is_empty() {
-        return vec![Span::styled(text.to_string(), Style::default().fg(base_color))];
+        return vec![Span::styled(
+            text.to_string(),
+            Style::default().fg(base_color),
+        )];
     }
     let mut spans = Vec::new();
     let text_lower = text.to_lowercase();
@@ -372,36 +377,50 @@ fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         Line::from(vec![
             Span::raw("  Version:  "),
             Span::styled(
-                app.uv_version
-                    .as_deref()
-                    .unwrap_or("N/A"),
+                app.uv_version.as_deref().unwrap_or("N/A"),
                 Style::default().fg(Color::Cyan),
             ),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("  Actions:  ", Style::default().fg(Color::DarkGray)),
-        ]),
+        Line::from(vec![Span::styled(
+            "  Actions:  ",
+            Style::default().fg(Color::DarkGray),
+        )]),
     ];
 
     if app.uv_installed {
         lines.push(Line::from(vec![
             Span::raw("    "),
-            Span::styled("[u]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "[u]",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" Update    "),
-            Span::styled("[d]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "[d]",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" Uninstall"),
         ]));
     } else {
         lines.push(Line::from(vec![
             Span::raw("    "),
-            Span::styled("[i]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "[i]",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(" Install"),
         ]));
     }
 
-    let paragraph = Paragraph::new(lines)
-        .block(Block::default().borders(Borders::ALL).title(" Astral UV "));
+    let paragraph =
+        Paragraph::new(lines).block(Block::default().borders(Borders::ALL).title(" Astral UV "));
 
     frame.render_widget(paragraph, area);
 }
@@ -431,7 +450,9 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         let spans = vec![
             Span::styled(
                 " ⏳ Running: ",
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(task_name.as_str(), Style::default().fg(Color::Cyan)),
             Span::styled("…", Style::default().fg(Color::Yellow)),
@@ -445,9 +466,17 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     // Priority 3: show confirm-dialog hints when a confirmation is pending.
     if app.confirm_dialog.is_some() {
         let spans = vec![
-            Span::styled("y / Enter", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "y / Enter",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(": confirm  "),
-            Span::styled("n / Esc", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "n / Esc",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
             Span::raw(": cancel"),
         ];
         let help = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
@@ -458,7 +487,7 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     // When the create dialog is open, show dialog-specific hints instead of the normal bar.
     if let Some(ref d) = app.create_dialog {
         let completions_active =
-            d.field == crate::app::CreateField::ReqFile && !d.completions.is_empty();
+            d.field == crate::create_field::CreateField::ReqFile && !d.completions.is_empty();
         let spans = if completions_active {
             vec![
                 Span::styled("↑↓", Style::default().fg(Color::Yellow)),
@@ -470,10 +499,8 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
             ]
         } else {
             vec![
-                Span::styled("Tab", Style::default().fg(Color::Yellow)),
-                Span::raw(": next field  "),
-                Span::styled("Shift+Tab", Style::default().fg(Color::Yellow)),
-                Span::raw(": prev field  "),
+                Span::styled("Tab/Shift+Tab", Style::default().fg(Color::Yellow)),
+                Span::raw(": next/prev field  "),
                 Span::styled("←→", Style::default().fg(Color::Yellow)),
                 Span::raw(": cursor  "),
                 Span::styled("Enter", Style::default().fg(Color::Yellow)),
@@ -491,7 +518,12 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     if app.pkg_dialog.is_some() {
         let action = app.pkg_dialog.as_ref().map(|d| d.title()).unwrap_or("");
         let spans = vec![
-            Span::styled(action, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                action,
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw("  "),
             Span::styled("Enter", Style::default().fg(Color::Yellow)),
             Span::raw(": confirm  "),
@@ -524,7 +556,12 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         };
 
         let mut spans = vec![
-            Span::styled("/", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "/",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw(": search  "),
             Span::styled("Enter/Esc", Style::default().fg(Color::Yellow)),
             Span::raw(": close"),
@@ -549,6 +586,8 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         Span::raw(": switch tab  "),
         Span::styled("↑↓", Style::default().fg(Color::Yellow)),
         Span::raw(": navigate  "),
+        Span::styled("?", Style::default().fg(Color::Yellow)),
+        Span::raw(": help  "),
     ];
 
     match app.tab {
@@ -560,14 +599,8 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
                 spans.push(Span::raw(": delete  "));
                 spans.push(Span::styled("Enter", Style::default().fg(Color::Yellow)));
                 spans.push(Span::raw(": activate  "));
-                spans.push(Span::styled("a", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(": add pkg  "));
-                spans.push(Span::styled("r", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(": remove pkg  "));
-                spans.push(Span::styled("/", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(": search  "));
-                spans.push(Span::styled("j/k", Style::default().fg(Color::Yellow)));
-                spans.push(Span::raw(": scroll  "));
+                spans.push(Span::styled("a / r", Style::default().fg(Color::Yellow)));
+                spans.push(Span::raw(": add / remove pkgs  "));
             }
         }
         Tab::UvInfo => {
@@ -583,9 +616,6 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         }
     }
 
-    spans.push(Span::styled("q", Style::default().fg(Color::Yellow)));
-    spans.push(Span::raw(": quit"));
-
     let help = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
     frame.render_widget(help, area);
 }
@@ -594,16 +624,19 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
 const COMPLETION_MAX_SHOWN: usize = 6;
 
 /// Render the create-venv dialog as a centered overlay popup.
-fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
-    let completions_active =
-        dialog.field == CreateField::ReqFile && !dialog.completions.is_empty();
+fn draw_create_dialog(frame: &mut Frame, dialog: &crate::create_dialog::CreateDialog) {
+    let completions_active = dialog.field == CreateField::ReqFile && !dialog.completions.is_empty();
 
     // Compute the visible window into the completions list.
     let total = dialog.completions.len();
     let scroll = dialog.completion_scroll;
     let more_above = scroll > 0;
     let visible_end = (scroll + COMPLETION_MAX_SHOWN).min(total);
-    let shown_count = if completions_active { visible_end.saturating_sub(scroll) } else { 0 };
+    let shown_count = if completions_active {
+        visible_end.saturating_sub(scroll)
+    } else {
+        0
+    };
     let more_below = completions_active && visible_end < total;
 
     // Extra lines: 1 blank separator + shown rows + optional scroll indicators.
@@ -621,7 +654,9 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
     // Clear the background so the dialog appears cleanly over other widgets.
     frame.render_widget(Clear, area);
 
-    let focused_style = Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD);
+    let focused_style = Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD);
     let normal_style = Style::default().fg(Color::White);
     let hint_style = Style::default().fg(Color::DarkGray);
 
@@ -637,8 +672,16 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
     let default_indicator = if dialog.default_pkgs { "[x]" } else { "[ ]" };
 
     // Build req_file line with cursor at the correct position.
-    let req_before: String = dialog.req_file.chars().take(dialog.req_file_cursor).collect();
-    let req_after: String = dialog.req_file.chars().skip(dialog.req_file_cursor).collect();
+    let req_before: String = dialog
+        .req_file
+        .chars()
+        .take(dialog.req_file_cursor)
+        .collect();
+    let req_after: String = dialog
+        .req_file
+        .chars()
+        .skip(dialog.req_file_cursor)
+        .collect();
 
     let mut req_file_spans = vec![
         Span::styled("  Req. file   : ", label_style(CreateField::ReqFile)),
@@ -673,7 +716,10 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
         Line::from(""),
         Line::from(vec![
             Span::styled("  Packages    : ", label_style(CreateField::Packages)),
-            Span::styled(dialog.packages.as_str(), Style::default().fg(Color::Magenta)),
+            Span::styled(
+                dialog.packages.as_str(),
+                Style::default().fg(Color::Magenta),
+            ),
             if dialog.field == CreateField::Packages {
                 Span::styled("█", Style::default().fg(Color::Magenta))
             } else {
@@ -700,10 +746,7 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
         if more_above {
             lines.push(Line::from(vec![
                 Span::raw("    "),
-                Span::styled(
-                    format!("▲ {} more above", scroll),
-                    hint_style,
-                ),
+                Span::styled(format!("▲ {} more above", scroll), hint_style),
             ]));
         }
 
@@ -714,7 +757,10 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
             let (prefix, entry_style) = if is_selected {
                 (
                     "  ▶ ",
-                    Style::default().fg(Color::Black).bg(Color::Blue).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(Color::Black)
+                        .bg(Color::Blue)
+                        .add_modifier(Modifier::BOLD),
                 )
             } else {
                 ("    ", Style::default().fg(Color::Blue))
@@ -729,10 +775,7 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
         if more_below {
             lines.push(Line::from(vec![
                 Span::raw("    "),
-                Span::styled(
-                    format!("▼ {} more below", total - visible_end),
-                    hint_style,
-                ),
+                Span::styled(format!("▼ {} more below", total - visible_end), hint_style),
             ]));
         }
     }
@@ -756,8 +799,8 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::app::CreateDialog) {
         ])
     } else {
         Line::from(vec![
-            Span::styled("  Tab", Style::default().fg(Color::Yellow)),
-            Span::raw(": next field  "),
+            Span::styled("  Tab/Shift+Tab", Style::default().fg(Color::Yellow)),
+            Span::raw(": next/prev field  "),
             Span::styled("Enter", Style::default().fg(Color::Yellow)),
             Span::raw(": confirm  "),
             Span::styled("Esc", Style::default().fg(Color::Yellow)),
@@ -785,8 +828,8 @@ fn draw_pkg_dialog(frame: &mut Frame, dialog: &PkgDialog, venv_name: &str) {
 
     let hint_style = Style::default().fg(Color::DarkGray);
     let input_color = match dialog.mode {
-        crate::app::PkgDialogMode::Add => Color::Green,
-        crate::app::PkgDialogMode::Remove => Color::Red,
+        crate::dialogs::PkgDialogMode::Add => Color::Green,
+        crate::dialogs::PkgDialogMode::Remove => Color::Red,
     };
     let border_color = input_color;
 
@@ -798,12 +841,20 @@ fn draw_pkg_dialog(frame: &mut Frame, dialog: &PkgDialog, venv_name: &str) {
 
     let lines = vec![
         Line::from(""),
-        Line::from(vec![
-            Span::styled(venv_label, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
-        ]),
+        Line::from(vec![Span::styled(
+            venv_label,
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("  Packages    : ", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "  Packages    : ",
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled(dialog.input.as_str(), Style::default().fg(input_color)),
             Span::styled("█", Style::default().fg(input_color)),
         ]),
@@ -844,20 +895,33 @@ fn draw_confirm_dialog(frame: &mut Frame, dialog: &ConfirmDialog) {
             Span::raw("  "),
             Span::styled(
                 dialog.message(),
-                Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
             ),
         ]),
         Line::from(""),
         Line::from(vec![
             Span::raw("  "),
-            Span::styled("This action cannot be undone.", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                "This action cannot be undone.",
+                Style::default().fg(Color::DarkGray),
+            ),
         ]),
         Line::from(""),
         Line::from(vec![
             Span::raw("  "),
-            Span::styled("[y] Yes", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "[y] Yes",
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw("    "),
-            Span::styled("[n] No", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "[n] No",
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            ),
         ]),
     ];
 
@@ -872,6 +936,22 @@ fn draw_confirm_dialog(frame: &mut Frame, dialog: &ConfirmDialog) {
     frame.render_widget(paragraph, area);
 }
 
+/// Render the help dialog as a centered overlay popup.
+fn draw_help_dialog(frame: &mut Frame, dialog: &HelpDialog) {
+    let area = centered_rect(dialog.width, dialog.height, frame.area());
+
+    // Clear the background so the dialog appears cleanly over other widgets.
+    frame.render_widget(Clear, area);
+    let paragraph = Paragraph::new(dialog.lines()).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(" Help ")
+            .title_alignment(Alignment::Center)
+            .border_style(Style::default().fg(Color::LightGreen)),
+    );
+
+    frame.render_widget(paragraph, area);
+}
 /// Return a `Rect` centered within `r` with the given width (columns) and height (rows).
 ///
 /// If the requested size exceeds the available space it is clamped to fit.
@@ -880,17 +960,23 @@ fn centered_rect(width: u16, height: u16, r: Rect) -> Rect {
     let h = height.min(r.height);
     let x = r.x + r.width.saturating_sub(w) / 2;
     let y = r.y + r.height.saturating_sub(h) / 2;
-    Rect { x, y, width: w, height: h }
+    Rect {
+        x,
+        y,
+        width: w,
+        height: h,
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::{
-        App, ConfirmAction, ConfirmDialog, CreateDialog,
-    };
+    use crate::actions::ConfirmAction;
+    use crate::app::App;
+    use crate::create_dialog::CreateDialog;
+    use crate::dialogs::ConfirmDialog;
     use pylot_shared::uvvenv::UvVenv;
-    use ratatui::{Terminal, backend::TestBackend};
+    use ratatui::{backend::TestBackend, Terminal};
     use std::borrow::Cow;
 
     fn make_app<'a>() -> App<'a> {
@@ -921,7 +1007,12 @@ mod tests {
 
     #[test]
     fn test_centered_rect_basic() {
-        let r = Rect { x: 0, y: 0, width: 100, height: 50 };
+        let r = Rect {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+        };
         let result = centered_rect(60, 14, r);
         assert_eq!(result.width, 60);
         assert_eq!(result.height, 14);
@@ -933,7 +1024,12 @@ mod tests {
 
     #[test]
     fn test_centered_rect_clamped_when_larger_than_parent() {
-        let r = Rect { x: 0, y: 0, width: 40, height: 10 };
+        let r = Rect {
+            x: 0,
+            y: 0,
+            width: 40,
+            height: 10,
+        };
         let result = centered_rect(100, 50, r);
         // Should be clamped to the parent's dimensions.
         assert_eq!(result.width, 40);
@@ -944,7 +1040,12 @@ mod tests {
 
     #[test]
     fn test_centered_rect_zero_size() {
-        let r = Rect { x: 5, y: 3, width: 80, height: 24 };
+        let r = Rect {
+            x: 5,
+            y: 3,
+            width: 80,
+            height: 24,
+        };
         let result = centered_rect(0, 0, r);
         assert_eq!(result.width, 0);
         assert_eq!(result.height, 0);
@@ -952,7 +1053,12 @@ mod tests {
 
     #[test]
     fn test_centered_rect_offset_parent() {
-        let r = Rect { x: 10, y: 5, width: 80, height: 24 };
+        let r = Rect {
+            x: 10,
+            y: 5,
+            width: 80,
+            height: 24,
+        };
         let result = centered_rect(40, 10, r);
         assert_eq!(result.width, 40);
         assert_eq!(result.height, 10);
@@ -1069,7 +1175,7 @@ mod tests {
 
     #[test]
     fn test_draw_create_dialog_all_fields() {
-        use crate::app::CreateField;
+        use crate::create_field::CreateField;
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
 
@@ -1114,7 +1220,7 @@ mod tests {
 
     #[test]
     fn test_draw_with_pkg_dialog_add() {
-        use crate::app::{PkgDialog, PkgDialogMode};
+        use crate::dialogs::{PkgDialog, PkgDialogMode};
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = make_app_with_venvs();
@@ -1126,7 +1232,7 @@ mod tests {
 
     #[test]
     fn test_draw_with_pkg_dialog_remove() {
-        use crate::app::{PkgDialog, PkgDialogMode};
+        use crate::dialogs::{PkgDialog, PkgDialogMode};
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = make_app_with_venvs();
@@ -1152,5 +1258,21 @@ mod tests {
         let mut app = make_app_with_venvs();
         app.pkg_search = Some("req".to_string());
         terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+    fn assert_help_dialog_renders(tab: Tab) {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app_with_venvs();
+        app.tab = tab;
+        app.help_dialog = Some(HelpDialog::new(tab.help_mode()));
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+    #[test]
+    fn draw_renders_help_dialog_overlay_for_environments_tab() {
+        assert_help_dialog_renders(Tab::Environments);
+    }
+    #[test]
+    fn draw_renders_help_dialog_overlay_for_uv_info_tab() {
+        assert_help_dialog_renders(Tab::UvInfo);
     }
 }

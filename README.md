@@ -215,6 +215,7 @@ The TUI has two tabs: **Environments** and **UV**.
 
 | Key           | Action                                                        |
 | ------------- | ------------------------------------------------------------- |
+| `?`           | Help menu with keybindings                                    |
 | `n`           | Create a new virtual environment (inline form)                |
 | `d`           | Delete the selected environment                               |
 | `Enter` / `a` | Activate the selected environment                             |
@@ -229,6 +230,7 @@ The TUI has two tabs: **Environments** and **UV**.
 
 | Key         | Action                         |
 | ----------- | ------------------------------ |
+| `?`         | Help menu with keybindings     |
 | `i`         | Install UV                     |
 | `u`         | Update UV                      |
 | `d`         | Uninstall UV                   |
