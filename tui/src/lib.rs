@@ -44,19 +44,13 @@ use tokio::sync::oneshot;
 pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let venvs = venvmanager::VENVMANAGER.list().await;
     let uv_installed = uvctrl::check("uv").await.is_ok();
-    let uv_version = if uv_installed {
-        get_uv_version().await
-    } else {
-        None
-    };
-    let uv_latest_version = if uv_installed {
-        get_latest_uv_version().await
-    } else {
-        None
-    };
 
-    let mut app = App::new(venvs, uv_installed, uv_version);
-    app.uv_latest_version = uv_latest_version;
+    // Start the TUI immediately; UV version info will be fetched in the
+    // background and appear once available.
+    let mut app = App::new(venvs, uv_installed, None);
+    if uv_installed {
+        spawn_uv_info_task(&mut app);
+    }
 
     // Suppress all log output while the TUI is active so that mio/tokio trace
     // messages (and any other log output) cannot write to the TTY and corrupt
@@ -109,11 +103,11 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
         // Refresh state before re-entering the TUI.
         app.uv_installed = uvctrl::check("uv").await.is_ok();
-        app.uv_version = if app.uv_installed {
-            get_uv_version().await
-        } else {
-            None
-        };
+        app.uv_version = None;
+        app.uv_latest_version = None;
+        if app.uv_installed {
+            spawn_uv_info_task(&mut app);
+        }
         app.venvs = venvmanager::VENVMANAGER.list().await;
         if !app.venvs.is_empty() && app.selected >= app.venvs.len() {
             app.selected = app.venvs.len() - 1;
@@ -222,6 +216,22 @@ fn update_completions(dialog: &mut CreateDialog) {
 /// Maximum number of completion entries shown at once in the dialog.
 const COMPLETION_MAX_SHOWN: usize = 6;
 
+/// Spawn a background task that fetches both the current and latest UV version
+/// and sends the results back via the `uv_info_rx` channel on `app`.
+///
+/// Both queries run concurrently.  Only called when `app.uv_installed` is
+/// `true`.
+fn spawn_uv_info_task(app: &mut App) {
+    let (tx, rx) =
+        tokio::sync::oneshot::channel::<(Option<String>, Option<String>)>();
+    tokio::spawn(async move {
+        let (uv_version, uv_latest_version) =
+            tokio::join!(get_uv_version(), get_latest_uv_version());
+        let _ = tx.send((uv_version, uv_latest_version));
+    });
+    app.uv_info_rx = Some(rx);
+}
+
 /// Spawn a background task for a UV management operation and record it in `app`.
 fn spawn_uv_task(
     app: &mut App,
@@ -276,16 +286,11 @@ where
                     }
                     // Refresh venv and UV state without leaving the TUI.
                     app.uv_installed = uvctrl::check("uv").await.is_ok();
-                    app.uv_version = if app.uv_installed {
-                        get_uv_version().await
-                    } else {
-                        None
-                    };
-                    app.uv_latest_version = if app.uv_installed {
-                        get_latest_uv_version().await
-                    } else {
-                        None
-                    };
+                    app.uv_version = None;
+                    app.uv_latest_version = None;
+                    if app.uv_installed {
+                        spawn_uv_info_task(app);
+                    }
                     app.venvs = venvmanager::VENVMANAGER.list().await;
                     if !app.venvs.is_empty() && app.selected >= app.venvs.len() {
                         app.selected = app.venvs.len() - 1;
@@ -300,6 +305,21 @@ where
         }
 
         terminal.draw(|frame| ui::draw(frame, app))?;
+
+        // --- Poll UV info background task for completion ---
+        if let Some(rx) = app.uv_info_rx.as_mut() {
+            match rx.try_recv() {
+                Ok((uv_version, uv_latest_version)) => {
+                    app.uv_info_rx = None;
+                    app.uv_version = uv_version;
+                    app.uv_latest_version = uv_latest_version;
+                }
+                Err(oneshot::error::TryRecvError::Empty) => {}
+                Err(oneshot::error::TryRecvError::Closed) => {
+                    app.uv_info_rx = None;
+                }
+            }
+        }
 
         // Wait for a key event or a 200 ms timeout (keeps the spinner ticking).
         let maybe_event = tokio::select! {
@@ -717,11 +737,17 @@ async fn get_uv_version() -> Option<String> {
     let child = processes::create_child_cmd("uv", &["version"], "").ok()?;
     let output = child.wait_with_output().await.ok()?;
     if output.status.success() {
-        let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if s.is_empty() {
-            None
+        // Some uv releases write the version to stderr as an "info:" line;
+        // try stdout first, then stderr as a fallback.
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !stdout.is_empty() {
+            return Some(stdout);
+        }
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        if !stderr.is_empty() {
+            Some(stderr)
         } else {
-            Some(s)
+            None
         }
     } else {
         None

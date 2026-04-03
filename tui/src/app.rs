@@ -12,8 +12,11 @@ pub struct App<'a> {
     pub selected: usize,
     pub uv_installed: bool,
     pub uv_version: Option<String>,
-    /// Latest UV version available on PyPI, used to show an update indicator.
+    /// Latest UV version available, used to show an update indicator.
     pub uv_latest_version: Option<String>,
+    /// Receiver end of the background UV info fetch (version + latest).
+    pub uv_info_rx:
+        Option<tokio::sync::oneshot::Receiver<(Option<String>, Option<String>)>>,
     pub pending_action: Option<UvAction>,
     pub pending_venv_action: Option<VenvAction>,
     /// When `Some`, the create-venv dialog is open.
@@ -44,6 +47,7 @@ impl<'a> App<'a> {
             uv_installed,
             uv_version,
             uv_latest_version: None,
+            uv_info_rx: None,
             pending_action: None,
             pending_venv_action: None,
             create_dialog: None,
@@ -101,6 +105,11 @@ impl<'a> App<'a> {
     /// Returns `true` while a background task is in-flight.
     pub fn is_busy(&self) -> bool {
         self.bg_rx.is_some()
+    }
+
+    /// Returns `true` while the UV version info is being fetched in the background.
+    pub fn is_uv_info_loading(&self) -> bool {
+        self.uv_info_rx.is_some()
     }
 
     /// Scroll the packages list in the detail panel down by one row.
@@ -225,6 +234,21 @@ mod tests {
         app.bg_rx = Some(rx);
         assert!(app.is_busy());
         drop(tx); // avoid leak warning
+    }
+
+    #[test]
+    fn test_is_uv_info_loading_default_false() {
+        let app = make_app();
+        assert!(!app.is_uv_info_loading());
+    }
+
+    #[test]
+    fn test_is_uv_info_loading_true_when_rx_set() {
+        let mut app = make_app();
+        let (_tx, rx) =
+            tokio::sync::oneshot::channel::<(Option<String>, Option<String>)>();
+        app.uv_info_rx = Some(rx);
+        assert!(app.is_uv_info_loading());
     }
 
     #[test]

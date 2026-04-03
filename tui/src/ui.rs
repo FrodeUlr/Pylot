@@ -378,6 +378,8 @@ fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         (Some(cur), Some(latest)) if cur != latest
     );
 
+    let loading = app.is_uv_info_loading();
+
     let mut lines = vec![
         Line::from(""),
         Line::from(vec![
@@ -388,14 +390,22 @@ fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
         Line::from(vec![
             Span::raw("  Version:  "),
             Span::styled(
-                app.uv_version.as_deref().unwrap_or("N/A"),
+                if loading {
+                    "..."
+                } else {
+                    app.uv_version.as_deref().unwrap_or("N/A")
+                },
                 Style::default().fg(Color::Cyan),
             ),
         ]),
         Line::from(vec![
             Span::raw("  Latest:   "),
             Span::styled(
-                app.uv_latest_version.as_deref().unwrap_or("N/A"),
+                if loading {
+                    "..."
+                } else {
+                    app.uv_latest_version.as_deref().unwrap_or("N/A")
+                },
                 Style::default().fg(Color::Cyan),
             ),
         ]),
@@ -1163,6 +1173,22 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = App::new(vec![], true, Some("uv 0.6.0 (abc 2024-06-01)".to_string()));
         app.uv_latest_version = Some("0.6.0".to_string());
+        app.next_tab();
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+
+    #[test]
+    fn test_draw_uv_info_loading() {
+        // While the background UV info task is in-flight, version fields show "...".
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = App::new(vec![], true, None);
+        // Simulate a pending uv_info_rx by creating a channel whose sender we
+        // immediately drop – the receiver will be Closed on try_recv, but
+        // is_uv_info_loading() returns true while the Option is Some.
+        let (_tx, rx) = tokio::sync::oneshot::channel::<(Option<String>, Option<String>)>();
+        app.uv_info_rx = Some(rx);
+        assert!(app.is_uv_info_loading());
         app.next_tab();
         terminal.draw(|frame| draw(frame, &app)).unwrap();
     }
