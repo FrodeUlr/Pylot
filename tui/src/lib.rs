@@ -734,15 +734,16 @@ where
 
 async fn get_uv_version() -> Option<String> {
     use pylot_shared::infra::processes;
-    let child = processes::create_child_cmd("uv", &["version"], "").ok()?;
+    // Use `uv --version` (the flag form) – `uv version` is a project-version
+    // subcommand that exits non-zero outside a project.
+    let child = processes::create_child_cmd("uv", &["--version"], "").ok()?;
     let output = child.wait_with_output().await.ok()?;
     if output.status.success() {
-        // Some uv releases write the version to stderr as an "info:" line;
-        // try stdout first, then stderr as a fallback.
         let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
         if !stdout.is_empty() {
             return Some(stdout);
         }
+        // Fallback: some older builds wrote to stderr.
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
         if !stderr.is_empty() {
             Some(stderr)
