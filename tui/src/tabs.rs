@@ -1,3 +1,5 @@
+use crate::dialogs::HelpMode;
+
 /// Tab identifiers for the TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
@@ -12,6 +14,13 @@ impl Tab {
         match self {
             Tab::Environments => "Environments",
             Tab::UvInfo => "UV Info",
+        }
+    }
+
+    pub fn help_mode(self) -> HelpMode {
+        match self {
+            Tab::Environments => HelpMode::EnvHelp,
+            Tab::UvInfo => HelpMode::UvHelp,
         }
     }
 }
@@ -29,5 +38,11 @@ mod tests {
     #[test]
     fn test_all_tabs() {
         assert_eq!(Tab::ALL.len(), 2);
+    }
+
+    #[test]
+    fn test_help_modes() {
+        assert_eq!(Tab::Environments.help_mode(), HelpMode::EnvHelp);
+        assert_eq!(Tab::UvInfo.help_mode(), HelpMode::UvHelp);
     }
 }

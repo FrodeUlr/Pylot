@@ -53,13 +53,4 @@ mod tests {
         assert_eq!(CreateField::ReqFile.prev(), CreateField::Packages);
         assert_eq!(CreateField::DefaultPkgs.prev(), CreateField::ReqFile);
     }
-    #[test]
-    fn test_create_field_prev_version() {
-        assert_eq!(CreateField::Version.prev(), CreateField::Name);
-    }
-
-    #[test]
-    fn test_create_field_prev_packages() {
-        assert_eq!(CreateField::Packages.prev(), CreateField::Version);
-    }
 }

@@ -13,7 +13,7 @@ mod ui;
 use actions::{ConfirmAction, VenvAction};
 pub use app::App;
 use create_dialog::CreateDialog;
-use dialogs::{ConfirmDialog, HelpDialog, HelpMode, PkgDialog, PkgDialogMode};
+use dialogs::{ConfirmDialog, HelpDialog, PkgDialog, PkgDialogMode};
 
 use crossterm::{
     event::{Event, EventStream, KeyCode, KeyEventKind},
@@ -599,10 +599,10 @@ where
         }
 
         // --- Help dialog captures all input while open ---
-        if app.help_menu.is_some() {
+        if app.help_dialog.is_some() {
             match key.code {
                 KeyCode::Esc | KeyCode::Char('q') => {
-                    app.help_menu = None;
+                    app.help_dialog = None;
                 }
                 _ => {}
             }
@@ -655,11 +655,7 @@ where
                 app.confirm_dialog = Some(ConfirmDialog::new(ConfirmAction::DeleteVenv(name)));
             }
             KeyCode::Char('?') => {
-                if app.tab == tabs::Tab::Environments {
-                    app.help_menu = Some(HelpDialog::new(HelpMode::EnvHelp));
-                } else if app.tab == tabs::Tab::UvInfo {
-                    app.help_menu = Some(HelpDialog::new(HelpMode::UvHelp));
-                }
+                app.help_dialog = Some(HelpDialog::new(app.tab.help_mode()));
             }
             KeyCode::Enter
                 if app.tab == tabs::Tab::Environments

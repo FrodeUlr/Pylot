@@ -1,7 +1,7 @@
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::{Line, Span, Text},
+    text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Tabs},
     Frame,
 };
@@ -46,7 +46,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         };
         draw_pkg_dialog(frame, dialog, venv_name);
     }
-    if let Some(ref dialog) = app.help_menu {
+    if let Some(ref dialog) = app.help_dialog {
         draw_help_dialog(frame, dialog);
     }
 }
@@ -942,9 +942,7 @@ fn draw_help_dialog(frame: &mut Frame, dialog: &HelpDialog) {
 
     // Clear the background so the dialog appears cleanly over other widgets.
     frame.render_widget(Clear, area);
-    let lines = dialog.lines();
-    let test = Text::from(lines.clone());
-    let paragraph = Paragraph::new(test).block(
+    let paragraph = Paragraph::new(dialog.lines()).block(
         Block::default()
             .borders(Borders::ALL)
             .title(" Help ")
@@ -1260,5 +1258,21 @@ mod tests {
         let mut app = make_app_with_venvs();
         app.pkg_search = Some("req".to_string());
         terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+    fn assert_help_dialog_renders(tab: Tab) {
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut app = make_app_with_venvs();
+        app.tab = tab;
+        app.help_dialog = Some(HelpDialog::new(tab.help_mode()));
+        terminal.draw(|frame| draw(frame, &app)).unwrap();
+    }
+    #[test]
+    fn draw_renders_help_dialog_overlay_for_environments_tab() {
+        assert_help_dialog_renders(Tab::Environments);
+    }
+    #[test]
+    fn draw_renders_help_dialog_overlay_for_uv_info_tab() {
+        assert_help_dialog_renders(Tab::UvInfo);
     }
 }

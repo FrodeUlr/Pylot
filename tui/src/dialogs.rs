@@ -85,7 +85,7 @@ pub enum HelpMode {
 
 // Help dialog
 pub struct HelpDialog {
-    pub help_menu: HelpMode,
+    pub help_mode: HelpMode,
     pub height: u16,
     pub width: u16,
 }
@@ -95,12 +95,12 @@ impl HelpDialog {
     pub fn new(help_menu: HelpMode) -> Self {
         match help_menu {
             HelpMode::EnvHelp => HelpDialog {
-                help_menu,
+                help_mode: help_menu,
                 height: 21,
                 width: 60,
             },
             HelpMode::UvHelp => HelpDialog {
-                help_menu,
+                help_mode: help_menu,
                 height: 17,
                 width: 50,
             },
@@ -109,7 +109,7 @@ impl HelpDialog {
     // Create the help lines based on the active help menu, including global and footer lines
     pub fn lines(&self) -> Vec<Line<'static>> {
         let mut lines = self.global_help_lines();
-        match self.help_menu {
+        match self.help_mode {
             HelpMode::EnvHelp => lines.extend(self.env_help_lines()),
             HelpMode::UvHelp => lines.extend(self.uv_help_lines()),
         }
@@ -117,7 +117,7 @@ impl HelpDialog {
         lines
     }
 
-    fn default_bulet_span(&self) -> Span<'static> {
+    fn default_bullet_span(&self) -> Span<'static> {
         Span::raw("    - ")
     }
 
@@ -135,17 +135,17 @@ impl HelpDialog {
             ]),
             Line::from(""),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("Tab / ←→", Style::default().fg(Color::Yellow)),
                 Span::raw(": Next/Previous tab"),
             ]),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("↑↓      ", Style::default().fg(Color::Yellow)),
                 Span::raw(": Navigate"),
             ]),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("Esc / q ", Style::default().fg(Color::Yellow)),
                 Span::raw(": Quit (or dismiss dialogs)"),
             ]),
@@ -177,37 +177,37 @@ impl HelpDialog {
             ]),
             Line::from(""),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("Enter", Style::default().fg(Color::Yellow)),
                 Span::raw(": Select environment"),
             ]),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("n    ", Style::default().fg(Color::Yellow)),
                 Span::raw(": Create new environment"),
             ]),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("a    ", Style::default().fg(Color::Yellow)),
                 Span::raw(": Add packages to selected environment"),
             ]),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("r    ", Style::default().fg(Color::Yellow)),
                 Span::raw(": Remove packages from selected environment"),
             ]),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("d    ", Style::default().fg(Color::Yellow)),
                 Span::raw(": Delete selected environment"),
             ]),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("/    ", Style::default().fg(Color::Yellow)),
                 Span::raw(": Search for package in selected environment"),
             ]),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("j/k  ", Style::default().fg(Color::Yellow)),
                 Span::raw(": Scroll package list up/down"),
             ]),
@@ -228,17 +228,17 @@ impl HelpDialog {
             ]),
             Line::from(""),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("i", Style::default().fg(Color::Yellow)),
                 Span::raw(": Install Astral UV"),
             ]),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("d", Style::default().fg(Color::Yellow)),
                 Span::raw(": Uninstall Astral UV"),
             ]),
             Line::from(vec![
-                self.default_bulet_span(),
+                self.default_bullet_span(),
                 Span::styled("u", Style::default().fg(Color::Yellow)),
                 Span::raw(": Update Astral UV to latest version"),
             ]),
@@ -328,7 +328,7 @@ mod tests {
     #[test]
     fn test_help_dialog_new_env_help() {
         let d = HelpDialog::new(HelpMode::EnvHelp);
-        assert_eq!(d.help_menu, HelpMode::EnvHelp);
+        assert_eq!(d.help_mode, HelpMode::EnvHelp);
         assert_eq!(d.height, 21);
         assert_eq!(d.width, 60);
     }
@@ -336,7 +336,7 @@ mod tests {
     #[test]
     fn test_help_dialog_new_uv_help() {
         let d = HelpDialog::new(HelpMode::UvHelp);
-        assert_eq!(d.help_menu, HelpMode::UvHelp);
+        assert_eq!(d.help_mode, HelpMode::UvHelp);
         assert_eq!(d.height, 17);
         assert_eq!(d.width, 50);
     }
@@ -344,7 +344,7 @@ mod tests {
     #[test]
     fn test_help_dialog_default_bullet_span() {
         let d = HelpDialog::new(HelpMode::EnvHelp);
-        let span = d.default_bulet_span();
+        let span = d.default_bullet_span();
         assert_eq!(span.content, "    - ");
     }
 
