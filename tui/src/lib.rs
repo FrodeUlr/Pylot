@@ -44,13 +44,19 @@ use tokio::sync::oneshot;
 pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let venvs = venvmanager::VENVMANAGER.list().await;
     let uv_installed = uvctrl::check("uv").await.is_ok();
-    let uv_version = if uv_installed {
-        get_uv_version().await
-    } else {
-        None
-    };
+    let (uv_version, uv_latest_version) = tokio::join!(
+        async {
+            if uv_installed {
+                get_uv_version().await
+            } else {
+                None
+            }
+        },
+        get_latest_uv_version(),
+    );
 
     let mut app = App::new(venvs, uv_installed, uv_version);
+    app.uv_latest_version = uv_latest_version;
 
     // Suppress all log output while the TUI is active so that mio/tokio trace
     // messages (and any other log output) cannot write to the TTY and corrupt
@@ -270,11 +276,18 @@ where
                     }
                     // Refresh venv and UV state without leaving the TUI.
                     app.uv_installed = uvctrl::check("uv").await.is_ok();
-                    app.uv_version = if app.uv_installed {
-                        get_uv_version().await
-                    } else {
-                        None
-                    };
+                    let (uv_version, uv_latest_version) = tokio::join!(
+                        async {
+                            if app.uv_installed {
+                                get_uv_version().await
+                            } else {
+                                None
+                            }
+                        },
+                        get_latest_uv_version(),
+                    );
+                    app.uv_version = uv_version;
+                    app.uv_latest_version = uv_latest_version;
                     app.venvs = venvmanager::VENVMANAGER.list().await;
                     if !app.venvs.is_empty() && app.selected >= app.venvs.len() {
                         app.selected = app.venvs.len() - 1;
@@ -717,6 +730,33 @@ async fn get_uv_version() -> Option<String> {
     }
 }
 
+/// Query PyPI for the latest published version of `uv`.
+///
+/// Returns `Some(version_string)` on success, `None` on any network or parse error.
+async fn get_latest_uv_version() -> Option<String> {
+    #[derive(serde::Deserialize)]
+    struct Info {
+        version: String,
+    }
+    #[derive(serde::Deserialize)]
+    struct PypiResponse {
+        info: Info,
+    }
+
+    let resp = reqwest::get("https://pypi.org/pypi/uv/json")
+        .await
+        .ok()?
+        .json::<PypiResponse>()
+        .await
+        .ok()?;
+    let v = resp.info.version;
+    if v.is_empty() {
+        None
+    } else {
+        Some(v)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -733,6 +773,15 @@ mod tests {
         // We don't know whether `uv` is installed in the test environment, so
         // just verify that the function returns without panicking.
         let _version = get_uv_version().await;
+    }
+
+    // ── get_latest_uv_version ────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_get_latest_uv_version_returns_some_or_none() {
+        // Network may not be available in every test environment; the function
+        // must not panic regardless of network reachability.
+        let _latest = get_latest_uv_version().await;
     }
 
     // ── spawn_uv_task ────────────────────────────────────────────────────────

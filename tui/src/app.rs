@@ -12,6 +12,8 @@ pub struct App<'a> {
     pub selected: usize,
     pub uv_installed: bool,
     pub uv_version: Option<String>,
+    /// Latest UV version available on PyPI, used to show an update indicator.
+    pub uv_latest_version: Option<String>,
     pub pending_action: Option<UvAction>,
     pub pending_venv_action: Option<VenvAction>,
     /// When `Some`, the create-venv dialog is open.
@@ -41,6 +43,7 @@ impl<'a> App<'a> {
             selected: 0,
             uv_installed,
             uv_version,
+            uv_latest_version: None,
             pending_action: None,
             pending_venv_action: None,
             create_dialog: None,
