@@ -800,7 +800,7 @@ fn draw_create_dialog(frame: &mut Frame, dialog: &crate::create_dialog::CreateDi
     } else {
         Line::from(vec![
             Span::styled("  Tab", Style::default().fg(Color::Yellow)),
-            Span::raw(": next field  "),
+            Span::raw(": next/prev field  "),
             Span::styled("Enter", Style::default().fg(Color::Yellow)),
             Span::raw(": confirm  "),
             Span::styled("Esc", Style::default().fg(Color::Yellow)),
