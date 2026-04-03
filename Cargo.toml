@@ -32,4 +32,3 @@ futures = "0.3.32"
 ratatui = "0.30.0"
 crossterm = "0.29.0"
 pylot-tui = { path = "./tui" }
-reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls"] }

@@ -44,16 +44,16 @@ use tokio::sync::oneshot;
 pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let venvs = venvmanager::VENVMANAGER.list().await;
     let uv_installed = uvctrl::check("uv").await.is_ok();
-    let (uv_version, uv_latest_version) = tokio::join!(
-        async {
-            if uv_installed {
-                get_uv_version().await
-            } else {
-                None
-            }
-        },
-        get_latest_uv_version(),
-    );
+    let uv_version = if uv_installed {
+        get_uv_version().await
+    } else {
+        None
+    };
+    let uv_latest_version = if uv_installed {
+        get_latest_uv_version().await
+    } else {
+        None
+    };
 
     let mut app = App::new(venvs, uv_installed, uv_version);
     app.uv_latest_version = uv_latest_version;
@@ -276,18 +276,16 @@ where
                     }
                     // Refresh venv and UV state without leaving the TUI.
                     app.uv_installed = uvctrl::check("uv").await.is_ok();
-                    let (uv_version, uv_latest_version) = tokio::join!(
-                        async {
-                            if app.uv_installed {
-                                get_uv_version().await
-                            } else {
-                                None
-                            }
-                        },
-                        get_latest_uv_version(),
-                    );
-                    app.uv_version = uv_version;
-                    app.uv_latest_version = uv_latest_version;
+                    app.uv_version = if app.uv_installed {
+                        get_uv_version().await
+                    } else {
+                        None
+                    };
+                    app.uv_latest_version = if app.uv_installed {
+                        get_latest_uv_version().await
+                    } else {
+                        None
+                    };
                     app.venvs = venvmanager::VENVMANAGER.list().await;
                     if !app.venvs.is_empty() && app.selected >= app.venvs.len() {
                         app.selected = app.venvs.len() - 1;
@@ -730,31 +728,33 @@ async fn get_uv_version() -> Option<String> {
     }
 }
 
-/// Query PyPI for the latest published version of `uv`.
+/// Run `uv self update --dry-run` and parse its output to determine whether a
+/// newer version of UV is available.
 ///
-/// Returns `Some(version_string)` on success, `None` on any network or parse error.
+/// When an update is available UV prints a line of the form:
+///   `Would update uv from v0.11.2 to v0.11.3`
+///
+/// Returns `Some(version_string)` (e.g. `"0.11.3"`) if a newer version was
+/// found, or `None` when already up to date or on any error.
 async fn get_latest_uv_version() -> Option<String> {
-    #[derive(serde::Deserialize)]
-    struct Info {
-        version: String,
+    use pylot_shared::infra::processes;
+    let child = processes::create_child_cmd("uv", &["self", "update", "--dry-run"], "").ok()?;
+    let output = child.wait_with_output().await.ok()?;
+    // UV writes its dry-run output to stderr.
+    let text = String::from_utf8_lossy(&output.stderr);
+    for line in text.lines() {
+        // Expected line: "Would update uv from v0.11.2 to v0.11.3"
+        if let Some(rest) = line.strip_prefix("Would update uv from ") {
+            // rest = "v0.11.2 to v0.11.3"
+            if let Some(version_part) = rest.split(" to ").nth(1) {
+                let version = version_part.trim().trim_start_matches('v').to_string();
+                if !version.is_empty() {
+                    return Some(version);
+                }
+            }
+        }
     }
-    #[derive(serde::Deserialize)]
-    struct PypiResponse {
-        info: Info,
-    }
-
-    let resp = reqwest::get("https://pypi.org/pypi/uv/json")
-        .await
-        .ok()?
-        .json::<PypiResponse>()
-        .await
-        .ok()?;
-    let v = resp.info.version;
-    if v.is_empty() {
-        None
-    } else {
-        Some(v)
-    }
+    None
 }
 
 #[cfg(test)]
@@ -779,9 +779,33 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_latest_uv_version_returns_some_or_none() {
-        // Network may not be available in every test environment; the function
-        // must not panic regardless of network reachability.
+        // uv may or may not be installed and may or may not have an update
+        // available; the function must not panic in any case.
         let _latest = get_latest_uv_version().await;
+    }
+
+    #[test]
+    fn test_parse_dry_run_update_available() {
+        // Simulate parsing the "Would update" line directly.
+        let line = "Would update uv from v0.11.2 to v0.11.3";
+        let result: Option<String> = line
+            .strip_prefix("Would update uv from ")
+            .and_then(|rest| rest.split(" to ").nth(1))
+            .map(|v| v.trim().trim_start_matches('v').to_string())
+            .filter(|v| !v.is_empty());
+        assert_eq!(result, Some("0.11.3".to_string()));
+    }
+
+    #[test]
+    fn test_parse_dry_run_no_update_line() {
+        // If the "Would update" line is absent, nothing is extracted.
+        let line = "info: uv is already at the latest version (0.11.3)";
+        let result: Option<String> = line
+            .strip_prefix("Would update uv from ")
+            .and_then(|rest| rest.split(" to ").nth(1))
+            .map(|v| v.trim().trim_start_matches('v').to_string())
+            .filter(|v| !v.is_empty());
+        assert_eq!(result, None);
     }
 
     // ── spawn_uv_task ────────────────────────────────────────────────────────
