@@ -16,7 +16,7 @@ crossterm = { workspace = true, features = ["event-stream"] }
 futures = { workspace = true }
 shellexpand = { workspace = true }
 reqwest = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 tempfile = "3.27.0"
