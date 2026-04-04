@@ -11,7 +11,7 @@ mod tabs;
 mod ui;
 
 use actions::{ConfirmAction, VenvAction};
-pub use app::App;
+pub use app::{App, STATUS_MESSAGE_TIMEOUT_SECS};
 use create_dialog::CreateDialog;
 use dialogs::{ConfirmDialog, HelpDialog, PkgDialog, PkgDialogMode};
 
@@ -28,7 +28,7 @@ use pylot_shared::{uvctrl, venvmanager};
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::borrow::Cow;
 use std::io;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::oneshot;
 
 /// Run the TUI application
@@ -278,10 +278,12 @@ where
                     let task_name = app.bg_task_name.take().unwrap_or_default();
                     match result {
                         Ok(()) => {
-                            app.status_message = Some((format!("{} completed.", task_name), false));
+                            app.status_message =
+                                Some((format!("{} completed.", task_name), false, Instant::now()));
                         }
                         Err(e) => {
-                            app.status_message = Some((format!("Error: {}", e), true));
+                            app.status_message =
+                                Some((format!("Error: {}", e), true, Instant::now()));
                         }
                     }
                     // Refresh venv and UV state without leaving the TUI.
@@ -326,6 +328,13 @@ where
             evt = events.next() => evt,
             _ = tokio::time::sleep(Duration::from_millis(200)) => None,
         };
+
+        // Auto-clear status message after STATUS_MESSAGE_TIMEOUT_SECS seconds.
+        if let Some((_, _, set_at)) = app.status_message {
+            if set_at.elapsed() >= Duration::from_secs(STATUS_MESSAGE_TIMEOUT_SECS) {
+                app.status_message = None;
+            }
+        }
 
         let Some(Ok(Event::Key(key))) = maybe_event else {
             continue;
