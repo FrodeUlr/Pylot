@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use pylot_shared::virtualenv::uvvenv::UvVenv;
 
 use crate::actions::{UvAction, VenvAction};
@@ -28,8 +30,8 @@ pub struct App<'a> {
     pub bg_rx: Option<tokio::sync::oneshot::Receiver<Result<(), String>>>,
     /// Human-readable label for the running task, shown in the status bar.
     pub bg_task_name: Option<String>,
-    /// One-shot status message (text, is_error) – cleared on the next keypress.
-    pub status_message: Option<(String, bool)>,
+    /// One-shot status message (text, is_error, set_at) – cleared after 3 s or any keypress.
+    pub status_message: Option<(String, bool, Instant)>,
     /// When `Some`, the add/remove-package dialog is open.
     pub pkg_dialog: Option<PkgDialog>,
     /// When `Some`, package search is active with this query string.
@@ -345,8 +347,8 @@ mod tests {
     #[test]
     fn test_status_message_can_be_set() {
         let mut app = make_app();
-        app.status_message = Some(("done".to_string(), false));
-        assert_eq!(app.status_message, Some(("done".to_string(), false)));
+        app.status_message = Some(("done".to_string(), false, Instant::now()));
+        assert!(matches!(app.status_message, Some((ref msg, false, _)) if msg == "done"));
     }
 
     // ── App bg_task_name field ───────────────────────────────────────────────

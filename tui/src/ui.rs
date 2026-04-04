@@ -476,18 +476,17 @@ fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
 
 fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     // Priority 1: show a one-shot status message (success or error from a background task).
-    if let Some((ref msg, is_error)) = app.status_message {
+    if let Some((ref msg, is_error, set_at)) = app.status_message {
         let color = if is_error { Color::Red } else { Color::Green };
+        let remaining = 3u64.saturating_sub(set_at.elapsed().as_secs());
+        let hint = format!("  (auto-dismisses in {}s)", remaining);
         let spans = vec![
             Span::styled(
                 if is_error { " ✗ " } else { " ✓ " },
                 Style::default().fg(color).add_modifier(Modifier::BOLD),
             ),
             Span::styled(msg.as_str(), Style::default().fg(color)),
-            Span::styled(
-                "  (press any key to dismiss)",
-                Style::default().fg(Color::DarkGray),
-            ),
+            Span::styled(hint, Style::default().fg(Color::DarkGray)),
         ];
         let bar = Paragraph::new(Line::from(spans)).alignment(Alignment::Center);
         frame.render_widget(bar, area);
@@ -1027,6 +1026,7 @@ mod tests {
     use pylot_shared::uvvenv::UvVenv;
     use ratatui::{backend::TestBackend, Terminal};
     use std::borrow::Cow;
+    use std::time::Instant;
 
     fn make_app<'a>() -> App<'a> {
         App::new(vec![], true, Some("uv 0.5.0".to_string()))
@@ -1200,7 +1200,7 @@ mod tests {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = make_app();
-        app.status_message = Some(("Operation completed.".to_string(), false));
+        app.status_message = Some(("Operation completed.".to_string(), false, Instant::now()));
         terminal.draw(|frame| draw(frame, &app)).unwrap();
     }
 
@@ -1209,7 +1209,7 @@ mod tests {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
         let mut app = make_app();
-        app.status_message = Some(("Something went wrong.".to_string(), true));
+        app.status_message = Some(("Something went wrong.".to_string(), true, Instant::now()));
         terminal.draw(|frame| draw(frame, &app)).unwrap();
     }
 
