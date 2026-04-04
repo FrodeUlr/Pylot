@@ -11,7 +11,7 @@ mod tabs;
 mod ui;
 
 use actions::{ConfirmAction, VenvAction};
-pub use app::App;
+pub use app::{App, STATUS_MESSAGE_TIMEOUT_SECS};
 use create_dialog::CreateDialog;
 use dialogs::{ConfirmDialog, HelpDialog, PkgDialog, PkgDialogMode};
 
@@ -329,9 +329,9 @@ where
             _ = tokio::time::sleep(Duration::from_millis(200)) => None,
         };
 
-        // Auto-clear status message after 3 seconds.
+        // Auto-clear status message after STATUS_MESSAGE_TIMEOUT_SECS seconds.
         if let Some((_, _, set_at)) = app.status_message {
-            if set_at.elapsed() >= Duration::from_secs(3) {
+            if set_at.elapsed() >= Duration::from_secs(STATUS_MESSAGE_TIMEOUT_SECS) {
                 app.status_message = None;
             }
         }

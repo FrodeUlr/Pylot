@@ -9,7 +9,10 @@ use ratatui::{
 use crate::create_field::CreateField;
 use crate::dialogs::{ConfirmDialog, PkgDialog};
 use crate::tabs::Tab;
-use crate::{app::App, dialogs::HelpDialog};
+use crate::{
+    app::{App, STATUS_MESSAGE_TIMEOUT_SECS},
+    dialogs::HelpDialog,
+};
 
 /// Draw the TUI to the given frame
 pub fn draw(frame: &mut Frame, app: &App) {
@@ -478,7 +481,9 @@ fn draw_status_bar(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     // Priority 1: show a one-shot status message (success or error from a background task).
     if let Some((ref msg, is_error, set_at)) = app.status_message {
         let color = if is_error { Color::Red } else { Color::Green };
-        let remaining = 3u64.saturating_sub(set_at.elapsed().as_secs());
+        let remaining = STATUS_MESSAGE_TIMEOUT_SECS
+            .saturating_sub(set_at.elapsed().as_secs())
+            .max(1);
         let hint = format!("  (auto-dismisses in {}s)", remaining);
         let spans = vec![
             Span::styled(

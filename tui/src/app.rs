@@ -7,6 +7,9 @@ use crate::create_dialog::CreateDialog;
 use crate::dialogs::{ConfirmDialog, HelpDialog, PkgDialog};
 use crate::tabs::Tab;
 
+/// How long (in seconds) a one-shot status message is shown before auto-dismissal.
+pub const STATUS_MESSAGE_TIMEOUT_SECS: u64 = 3;
+
 /// Application state for the TUI
 pub struct App<'a> {
     pub tab: Tab,
