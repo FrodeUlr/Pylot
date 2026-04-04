@@ -422,50 +422,11 @@ fn draw_uv_info(frame: &mut Frame, app: &App, area: ratatui::layout::Rect) {
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                format!(
-                    " ({})",
-                    app.uv_latest_version.as_deref().unwrap_or("")
-                ),
+                format!(" ({})", app.uv_latest_version.as_deref().unwrap_or("")),
                 Style::default().fg(Color::Yellow),
             ),
         ]));
         lines.push(Line::from(""));
-    }
-
-    lines.push(Line::from(vec![Span::styled(
-        "  Actions:  ",
-        Style::default().fg(Color::DarkGray),
-    )]));
-
-    if app.uv_installed {
-        lines.push(Line::from(vec![
-            Span::raw("    "),
-            Span::styled(
-                "[u]",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(" Update    "),
-            Span::styled(
-                "[d]",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(" Uninstall"),
-        ]));
-    } else {
-        lines.push(Line::from(vec![
-            Span::raw("    "),
-            Span::styled(
-                "[i]",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(" Install"),
-        ]));
     }
 
     let paragraph =
