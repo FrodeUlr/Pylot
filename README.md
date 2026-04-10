@@ -5,6 +5,28 @@
 
 Pylot is a Rust workspace for managing Python virtual environments built with Astral UV.
 
+## Table of Contents
+
+- [Features](#features)
+- [Workspace Layout](#workspace-layout)
+- [Installation](#installation)
+  - [Prerequisites](#prerequisites)
+  - [Install From GitHub](#install-from-github)
+  - [Install From Source](#install-from-source)
+  - [Local Development Run](#local-development-run)
+  - [Packaged Build](#packaged-build)
+- [Configuration](#configuration)
+  - [Important For Local Development](#important-for-local-development)
+- [Usage](#usage)
+  - [UV Management](#uv-management)
+  - [Virtual Environment Management](#virtual-environment-management)
+  - [TUI](#tui)
+  - [Shell Completions](#shell-completions)
+- [Development](#development)
+  - [Documentation Notes](#documentation-notes)
+- [Testing And CI](#testing-and-ci)
+- [License](#license)
+
 It provides:
 
 - a CLI for installing, checking, updating, and uninstalling UV
@@ -39,9 +61,17 @@ This repository is split into multiple crates:
 - Rust toolchain
 - UV is optional at install time because Pylot can install it for you
 
+### Install From GitHub
+
+Install the latest version directly from the GitHub repository:
+
+```bash
+cargo install --git https://github.com/FrodeUlr/Pylot pylot
+```
+
 ### Install From Source
 
-Install the CLI from the workspace:
+Install the CLI from a local clone of the workspace:
 
 ```bash
 cargo install --path pylot
@@ -197,8 +227,10 @@ Short aliases:
 ```bash
 pylot v c myenv -v 3.11 -p requests numpy
 pylot v l
+pylot v ls
 pylot v a myenv
 pylot v d myenv
+pylot v del myenv
 ```
 
 ### TUI
@@ -247,6 +279,13 @@ pylot complete zsh
 pylot complete fish
 pylot complete powershell
 pylot complete elvish
+```
+
+Short alias:
+
+```bash
+pylot c bash
+pylot c zsh
 ```
 
 Examples:
