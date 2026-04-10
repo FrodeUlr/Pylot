@@ -5,6 +5,28 @@
 
 Pylot is a Rust workspace for managing Python virtual environments built with Astral UV.
 
+## Table of Contents
+
+- [Features](#features)
+- [Workspace Layout](#workspace-layout)
+- [Installation](#installation)
+  - [Prerequisites](#prerequisites)
+  - [Install From GitHub](#install-from-github)
+  - [Install From Source](#install-from-source)
+  - [Local Development Run](#local-development-run)
+  - [Packaged Build](#packaged-build)
+- [Configuration](#configuration)
+  - [Important For Local Development](#important-for-local-development)
+- [Usage](#usage)
+  - [UV Management](#uv-management)
+  - [Virtual Environment Management](#virtual-environment-management)
+  - [TUI](#tui)
+  - [Shell Completions](#shell-completions)
+- [Development](#development)
+  - [Documentation Notes](#documentation-notes)
+- [Testing And CI](#testing-and-ci)
+- [License](#license)
+
 It provides:
 
 - a CLI for installing, checking, updating, and uninstalling UV
