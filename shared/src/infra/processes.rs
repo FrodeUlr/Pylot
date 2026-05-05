@@ -35,7 +35,7 @@ impl Shell {
         }
     }
 
-    fn from_process_name(name: &str) -> Self {
+    pub fn from_process_name(name: &str) -> Self {
         // Strip .exe suffix on Windows
         let name = name.to_lowercase();
         let name = name.trim_end_matches(".exe");
@@ -264,7 +264,12 @@ pub fn get_parent_shell() -> Result<Shell> {
         let shell = std::env::var("SHELL").map_err(|_| {
             PylotError::EnvVarNotSet("SHELL environment variable is not set".to_string())
         })?;
-        return Ok(Shell::from_process_name(&shell));
+        // $SHELL holds a full path (e.g. /bin/bash); extract just the filename.
+        let name = std::path::Path::new(&shell)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(&shell);
+        return Ok(Shell::from_process_name(name));
     }
 
     #[cfg(target_os = "windows")]
