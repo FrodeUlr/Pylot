@@ -161,7 +161,7 @@ impl<'a> Activate for UvVenv<'a> {
             "'exit'".green()
         );
 
-        processes::activate_venv_shell(shell.as_str(), cmd)
+        processes::activate_venv_shell(shell.executable(), cmd)
             .map_err(|e| PylotError::CommandExecution(e.to_string()))
     }
 }
@@ -598,7 +598,7 @@ impl<'a> UvVenv<'a> {
         Ok(())
     }
 
-    fn get_shell_cmd(&self) -> Result<(String, Vec<String>, String)> {
+    fn get_shell_cmd(&self) -> Result<(processes::Shell, Vec<String>, String)> {
         // Validate venv name to prevent command injection
         Self::validate_venv_name(&self.name)?;
 
@@ -618,7 +618,7 @@ impl<'a> UvVenv<'a> {
             let venv_path = format!("{}/{}/bin/activate", path, self.name);
             // Return the command string to execute. The -c flag will be added by activate_venv_shell.
             // This constructs a command that sources the activation script and starts an interactive shell.
-            let venv_cmd = format!(". {} && {} -i", venv_path, shell.as_str());
+            let venv_cmd = format!(". {} && {} -i", venv_path, shell.executable());
             (vec![venv_cmd], venv_path)
         };
 

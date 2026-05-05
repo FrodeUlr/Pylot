@@ -1,10 +1,57 @@
 use crate::error::{PylotError, Result};
-use crate::utility::constants::{POWERSHELL_CMD, PWSH_CMD};
 use std::process::{Command as StdCommand, Stdio};
 use tokio::{
     io::{AsyncBufRead, AsyncBufReadExt, BufReader},
     process::{Child, Command},
 };
+
+/// Known shells and how to identify them from a process name.
+#[derive(Debug, PartialEq, Clone)]
+pub enum Shell {
+    /// PowerShell 7+
+    Pwsh,
+    /// Windows PowerShell 5.x
+    PowerShell,
+    Cmd,
+    Bash,
+    Zsh,
+    Fish,
+    Nu,
+    Unknown(String),
+}
+
+impl Shell {
+    /// Returns the executable name used to spawn this shell.
+    pub fn executable(&self) -> &str {
+        match self {
+            Shell::Pwsh => "pwsh",
+            Shell::PowerShell => "powershell",
+            Shell::Cmd => "cmd",
+            Shell::Bash => "bash",
+            Shell::Zsh => "zsh",
+            Shell::Fish => "fish",
+            Shell::Nu => "nu",
+            Shell::Unknown(name) => name.as_str(),
+        }
+    }
+
+    pub fn from_process_name(name: &str) -> Self {
+        // Strip .exe suffix on Windows
+        let name = name.to_lowercase();
+        let name = name.trim_end_matches(".exe");
+
+        match name {
+            "pwsh" => Shell::Pwsh,
+            "powershell" => Shell::PowerShell,
+            "cmd" => Shell::Cmd,
+            "bash" => Shell::Bash,
+            "zsh" => Shell::Zsh,
+            "fish" => Shell::Fish,
+            "nu" => Shell::Nu,
+            other => Shell::Unknown(other.to_string()),
+        }
+    }
+}
 
 /// Spawn `cmd` as a Tokio async child process with stdout and stderr piped.
 ///
@@ -202,25 +249,59 @@ pub async fn run_command(child: &mut Child) -> Result<()> {
 
 /// Return the shell that should be used for activating virtual environments.
 ///
-/// On **Windows** this is `pwsh` if available, otherwise `powershell`.
-/// On **Unix** it reads the `SHELL` environment variable.
+/// On **Unix** this reads the `SHELL` environment variable.
+/// On **Windows** it walks the process tree with `sysinfo` to find the actual
+/// parent shell, giving a more accurate result than simply probing for `pwsh`.
 ///
 /// # Errors
 ///
 /// Returns [`PylotError::EnvVarNotSet`] on Unix when the `SHELL` variable is
-/// not set.
-pub fn get_parent_shell() -> Result<String> {
-    if cfg!(target_os = "windows") {
-        let shell = if which::which(PWSH_CMD).is_ok() {
-            PWSH_CMD
-        } else {
-            POWERSHELL_CMD
-        };
-        return Ok(shell.to_string());
+/// not set, or [`PylotError::CommandExecution`] on Windows if the parent
+/// process cannot be determined.
+pub fn get_parent_shell() -> Result<Shell> {
+    #[cfg(not(target_os = "windows"))]
+    {
+        let shell = std::env::var("SHELL").map_err(|_| {
+            PylotError::EnvVarNotSet("SHELL environment variable is not set".to_string())
+        })?;
+        // $SHELL holds a full path (e.g. /bin/bash); extract just the filename.
+        let name = std::path::Path::new(&shell)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(&shell);
+        return Ok(Shell::from_process_name(name));
     }
-    std::env::var("SHELL").map_err(|_| {
-        PylotError::EnvVarNotSet("SHELL environment variable is not set".to_string())
-    })
+
+    #[cfg(target_os = "windows")]
+    {
+        get_parent_shell_windows()
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn get_parent_shell_windows() -> Result<Shell> {
+    use sysinfo::{Pid, ProcessesToUpdate, System};
+
+    let mut sys = System::new();
+    let current_pid = Pid::from(std::process::id() as usize);
+
+    sys.refresh_processes(ProcessesToUpdate::All, true);
+
+    let parent_pid = sys
+        .process(current_pid)
+        .and_then(|p| p.parent())
+        .ok_or_else(|| {
+            PylotError::CommandExecution("Could not find parent process".to_string())
+        })?;
+
+    let parent_name = sys
+        .process(parent_pid)
+        .map(|p| p.name().to_string_lossy().into_owned())
+        .ok_or_else(|| {
+            PylotError::CommandExecution("Could not read parent process name".to_string())
+        })?;
+
+    Ok(Shell::from_process_name(&parent_name))
 }
 
 #[cfg(test)]
@@ -262,12 +343,41 @@ mod tests {
         let shell = get_parent_shell();
         if cfg!(target_os = "windows") {
             assert!(shell.is_ok());
-            let shell_val = shell.unwrap();
-            assert!(shell_val == "powershell" || shell_val == "pwsh");
         } else {
             // On Unix, result depends on SHELL env var
             assert!(shell.is_ok() || shell.is_err());
         }
+    }
+
+    #[test]
+    fn test_shell_from_process_name() {
+        assert_eq!(Shell::from_process_name("pwsh"), Shell::Pwsh);
+        assert_eq!(Shell::from_process_name("pwsh.exe"), Shell::Pwsh);
+        assert_eq!(Shell::from_process_name("PWSH.EXE"), Shell::Pwsh);
+        assert_eq!(Shell::from_process_name("powershell"), Shell::PowerShell);
+        assert_eq!(Shell::from_process_name("powershell.exe"), Shell::PowerShell);
+        assert_eq!(Shell::from_process_name("cmd"), Shell::Cmd);
+        assert_eq!(Shell::from_process_name("cmd.exe"), Shell::Cmd);
+        assert_eq!(Shell::from_process_name("bash"), Shell::Bash);
+        assert_eq!(Shell::from_process_name("zsh"), Shell::Zsh);
+        assert_eq!(Shell::from_process_name("fish"), Shell::Fish);
+        assert_eq!(Shell::from_process_name("nu"), Shell::Nu);
+        assert_eq!(
+            Shell::from_process_name("myshell"),
+            Shell::Unknown("myshell".to_string())
+        );
+    }
+
+    #[test]
+    fn test_shell_executable() {
+        assert_eq!(Shell::Pwsh.executable(), "pwsh");
+        assert_eq!(Shell::PowerShell.executable(), "powershell");
+        assert_eq!(Shell::Cmd.executable(), "cmd");
+        assert_eq!(Shell::Bash.executable(), "bash");
+        assert_eq!(Shell::Zsh.executable(), "zsh");
+        assert_eq!(Shell::Fish.executable(), "fish");
+        assert_eq!(Shell::Nu.executable(), "nu");
+        assert_eq!(Shell::Unknown("myshell".to_string()).executable(), "myshell");
     }
 
     #[tokio::test]
